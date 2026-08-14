@@ -1,0 +1,31 @@
+{
+  "name": "@community/monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Community app — RBAC/ACL, notifications, dashboard, and organization management, extracted from the ERP system as a standalone app",
+  "workspaces": [
+    "server/platform/common",
+    "server/platform/shared-entities",
+    "server/platform/gateway",
+    "server/services/*",
+    "client"
+  ],
+  "scripts": {
+    "install:all": "npm install",
+    "build:shared": "npm run build --workspace=@shared/common && npm run build --workspace=@shared/entities",
+    "build:services": "npm run build --workspaces --if-present",
+    "clean": "rm -rf node_modules server/*/node_modules server/*/*/node_modules",
+    "clean:deep": "find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "type-check": "npm run type-check --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20.0.0 <21.0.0",
+    "npm": ">=10.0.0"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10"
+  }
+}

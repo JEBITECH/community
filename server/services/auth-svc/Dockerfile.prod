@@ -1,0 +1,32 @@
+FROM node:24.12-alpine
+
+WORKDIR /app
+
+# Copy shared packages first
+COPY server/platform/common ./platform/common
+COPY server/platform/shared-entities ./platform/shared-entities
+
+# Copy package files
+COPY server/services/auth-svc/package*.json ./
+
+# Install ALL deps (including dev for build)
+RUN npm install --legacy-peer-deps
+
+# Copy source
+COPY server/services/auth-svc/ .
+
+# Build (needs typescript)
+RUN npm run build
+
+# Remove dev dependencies
+RUN npm prune --omit=dev --legacy-peer-deps
+
+# NOW set production mode
+ENV NODE_ENV=production
+
+# Security
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
+
+EXPOSE 4001
+CMD ["node", "dist/src/index.js"]

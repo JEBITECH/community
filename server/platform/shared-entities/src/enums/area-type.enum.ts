@@ -1,0 +1,15 @@
+export enum AreaType {
+  Bedroom = 'Bedroom',
+  Bathroom = 'Bathroom',
+  Kitchen = 'Kitchen',
+  LivingRoom = 'LivingRoom',
+  Pool = 'Pool',
+  Balcony = 'Balcony',
+  Terrace = 'Terrace',
+  Lobby = 'Lobby',
+  MaidRoom = 'MaidRoom',
+  PowderRoom = 'PowderRoom',
+  EntireBuilding = 'EntireBuilding',
+  Lawn = 'Lawn',
+  EntireArea = 'EntireArea',
+}

@@ -1,0 +1,26 @@
+# Development Dockerfile for Client (standalone, no workspace)
+FROM node:20
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
+
+# Create app user (Debian syntax)
+RUN groupadd --gid 1001 nodejs && useradd --uid 1001 --gid nodejs --shell /bin/bash --create-home nodejs
+
+WORKDIR /app
+
+# Copy client files only
+COPY client/package*.json ./
+COPY client ./
+
+# Install dependencies directly (not as workspace)
+RUN npm install --legacy-peer-deps
+
+# Change ownership
+RUN chown -R nodejs:nodejs /app
+
+USER nodejs
+
+EXPOSE 5174
+
+CMD ["npm", "run", "dev"]

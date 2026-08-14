@@ -1,0 +1,33 @@
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+COPY package*.json ./
+COPY server/platform/common ./server/platform/common/
+COPY server/platform/shared-entities ./server/platform/shared-entities/
+COPY server/services/notification-svc ./server/services/notification-svc/
+
+RUN npm ci
+RUN npm run build --workspace=@erp/notification-svc
+
+FROM node:20-alpine
+
+RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
+
+WORKDIR /app
+
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/server/platform/common ./server/platform/common
+COPY --from=builder /app/server/services/notification-svc/dist ./server/services/notification-svc/dist
+COPY --from=builder /app/server/services/notification-svc/package.json ./server/services/notification-svc/package.json
+
+RUN chown -R nodejs:nodejs /app
+
+USER nodejs
+
+WORKDIR /app/server/services/notification-svc
+
+EXPOSE 5011 6011
+
+CMD ["npm", "run", "start:prod"]

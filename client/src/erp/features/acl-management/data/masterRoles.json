@@ -1,0 +1,14 @@
+[
+  { "id": 1, "label": "Executor", "value": "executor" },
+  { "id": 2, "label": "Super Admin", "value": "super_admin" },
+  { "id": 3, "label": "Vendor", "value": "vendor" },
+  { "id": 4, "label": "Manager", "value": "manager" },
+  { "id": 5, "label": "Accountant", "value": "accountant" },
+  { "id": 6, "label": "Staff", "value": "staff" },
+  { "id": 7, "label": "Franchise Manager", "value": "franchise_manager" },
+  { "id": 8, "label": "Franchisor Super Admin", "value": "franchisor_super_admin" },
+  { "id": 9, "label": "Inspector", "value": "inspector" },
+  { "id": 10, "label": "Owner", "value": "owner" },
+  { "id": 11, "label": "Guest Services", "value": "guest_services" },
+  { "id": 12, "label": "Agent", "value": "agent" }
+]

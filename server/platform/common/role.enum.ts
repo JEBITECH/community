@@ -1,0 +1,15 @@
+export enum Role {
+  SUPERADMIN = 'super_admin',
+  MANAGER = 'manager',
+  INSPECTOR = 'inspector',
+  EXECUTOR = 'executor',
+  VENDOR = 'vendor',
+  ACCOUNTANT = 'accountant',
+  STAFF = 'staff',
+  AGENT = 'agent',
+  OWNER = 'owner',
+  USER = 'user',
+  GUEST = 'guest',
+  GUESTSERVICES = 'guestServices',
+  APPLICATIONADMIN = 'platformOwner',
+}

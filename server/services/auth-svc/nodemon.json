@@ -1,0 +1,14 @@
+{
+  "watch": ["src", "../../../platform/common/src", "../../../platform/shared-entities/src"],
+  "ext": "ts,json",
+  "ignore": ["src/**/*.test.ts", "src/**/*.spec.ts", "node_modules", "dist"],
+  "exec": "ts-node --project tsconfig.json --transpile-only src/index.ts",
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "delay": 2000,
+  "verbose": true,
+  "legacyWatch": true,
+  "polling": true,
+  "pollingInterval": 1000
+}

@@ -1,0 +1,28 @@
+FROM node:24.12-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY server/platform/gateway/package*.json ./
+
+# Install ALL deps (including dev for build)
+RUN npm ci
+
+# Copy source
+COPY server/platform/gateway/ .
+
+# Build (needs typescript)
+RUN npm run build
+
+# Remove dev dependencies
+RUN npm prune --omit=dev
+
+# NOW set production mode
+ENV NODE_ENV=production
+
+# Security
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+USER appuser
+
+EXPOSE 4000
+CMD ["node", "dist/src/index.js"]

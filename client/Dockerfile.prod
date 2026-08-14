@@ -1,0 +1,31 @@
+FROM node:20-alpine
+
+RUN apk add --no-cache nginx
+
+WORKDIR /app
+
+# Copy package files
+COPY client/package*.json ./
+
+RUN npm install --legacy-peer-deps
+
+# Copy all source
+COPY client/ .
+
+# Hardcoded API URL
+ENV VITE_API_URL=http://139.59.22.205:3000/api
+
+# Build app
+RUN npm run build
+
+# Remove default nginx config
+RUN rm /etc/nginx/http.d/default.conf
+COPY client/nginx.conf /etc/nginx/http.d/default.conf
+
+# Copy build output (IMPORTANT FIX HERE)
+RUN mkdir -p /usr/share/nginx/html \
+    && cp -r ../dist/client/* /usr/share/nginx/html/
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

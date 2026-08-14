@@ -1,0 +1,9 @@
+node_modules/
+dist/
+dist-ssr/
+build/
+.env
+!.env.example
+*.tsbuildinfo
+*.log
+.DS_Store

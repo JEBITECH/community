@@ -1,0 +1,4 @@
+export enum MicroserviceNamesEnum {
+  AUTH_SERVICE = "AUTH-SERVICE",
+  NOTIFICATION_SERVICE = "NOTIFICATION-SERVICE",
+}

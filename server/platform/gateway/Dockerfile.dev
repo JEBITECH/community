@@ -1,0 +1,41 @@
+# Development Dockerfile for Gateway with npm workspaces
+FROM node:20-alpine
+
+# Install build dependencies
+RUN apk add --no-cache python3 make g++
+
+# Create app user for security
+RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
+
+WORKDIR /app
+
+# Copy workspace configuration first
+COPY package*.json ./
+
+# Copy shared packages
+COPY server/platform/common ./server/platform/common/
+COPY server/platform/shared-entities ./server/platform/shared-entities/
+
+# Copy gateway package.json
+COPY server/platform/gateway/package*.json ./server/platform/gateway/
+
+# Install ALL dependencies at root level (this creates workspace symlinks)
+# --legacy-peer-deps: the workspace mixes @nestjs/swagger versions across services;
+# matches the prod Dockerfiles which already use this flag.
+RUN npm install --legacy-peer-deps
+
+# Build shared packages
+
+# Copy gateway source code
+COPY server/platform/gateway ./server/platform/gateway/
+
+# Change ownership
+RUN chown -R nodejs:nodejs /app
+
+USER nodejs
+
+WORKDIR /app/server/platform/gateway
+
+EXPOSE 4000
+
+CMD ["npm", "run", "dev"]
