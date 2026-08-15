@@ -2,9 +2,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function SystemStatus() {
   const services = [
-    { name: "Import Service", status: "Online", healthy: true },
+    { name: "Notifications Service", status: "Online", healthy: true },
     { name: "Auth Service", status: "Online", healthy: true },
-    { name: "Database", status: "High Load", healthy: false },
+    { name: "Database", status: "Online", healthy: true },
     { name: "Redis Cache", status: "Online", healthy: true },
   ];
 

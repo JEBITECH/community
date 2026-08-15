@@ -1,8 +1,15 @@
-import { allMenuItems } from "@/constants/menuItems";
+import { allMenuItems, memberMenuItems, orgAdminMenuItems } from "@/constants/menuItems";
 import { ModuleAccess } from "@/erp/features/auth/type";
 
 // Roles
-export type Role = "master_admin" | "super_admin" | "manager" | "custom_role";
+export type Role =
+  | "master_admin"
+  | "super_admin"
+  | "manager"
+  | "core_committee"
+  | "internal_member"
+  | "external_member"
+  | "custom_role";
 
 type MenuItem = {
   path: string;
@@ -14,7 +21,11 @@ type MenuItem = {
 };
 
 const NOTIFICATIONS_PATH = "/notifications";
-const ALWAYS_VISIBLE_ROLES: Role[] = ["master_admin", "super_admin", "manager"];
+const ALWAYS_VISIBLE_ROLES: Role[] = ["master_admin", "super_admin", "manager", "core_committee"];
+// Every active member sees the member-facing nav (Explore, ...), independent
+// of the admin ACL grid — see memberMenuItems' doc comment for why.
+const MEMBER_NAV_ROLES: Role[] = ["super_admin", "core_committee", "internal_member", "external_member"];
+const ORG_ADMIN_NAV_ROLES: Role[] = ["super_admin", "core_committee"];
 
 /**
  * Get menus for master admin — full static menu
@@ -87,22 +98,36 @@ export const getMenusByRole = (role: Role, modules: ModuleAccess[]): MenuItem[] 
         return getMasterAdminMenus();
       case "super_admin":
       case "manager":
+      case "core_committee":
       case "custom_role":
         return getCustomMenus(modules);
+      case "internal_member":
+      case "external_member":
       default:
         return [];
     }
   })();
 
-  const notificationMenu = allMenuItems.find((item) => item.path === NOTIFICATIONS_PATH);
+  let menus = roleMenus;
 
+  const notificationMenu = allMenuItems.find((item) => item.path === NOTIFICATIONS_PATH);
   if (
     notificationMenu &&
     ALWAYS_VISIBLE_ROLES.includes(role) &&
-    !roleMenus.some((item) => item.path === NOTIFICATIONS_PATH)
+    !menus.some((item) => item.path === NOTIFICATIONS_PATH)
   ) {
-    return [...roleMenus, notificationMenu];
+    menus = [...menus, notificationMenu];
   }
 
-  return roleMenus;
+  if (MEMBER_NAV_ROLES.includes(role)) {
+    const missing = memberMenuItems.filter((item) => !menus.some((m) => m.path === item.path));
+    menus = [...menus, ...missing];
+  }
+
+  if (ORG_ADMIN_NAV_ROLES.includes(role)) {
+    const missing = orgAdminMenuItems.filter((item) => !menus.some((m) => m.path === item.path));
+    menus = [...menus, ...missing];
+  }
+
+  return menus;
 };

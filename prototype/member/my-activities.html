@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en" data-org="green-acres">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Activities</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body class="page-member">
+<div class="proto-bar"><span><a href="../index.html">◀ All screens</a> <span class="proto-crumb">/ Member / My Activities</span></span></div>
+
+<header class="topbar">
+  <div class="brand"><div class="logo-mark">GA</div> Green Acres Society</div>
+  <nav><a href="dashboard.html">Home</a><a href="explore.html">Explore</a><a href="calendar.html">Calendar</a><a href="feed.html">Community</a></nav>
+  <div class="topbar-actions"><a href="profile.html"><div class="avatar" style="width:36px;height:36px;">JB</div></a></div>
+</header>
+
+<main class="container" style="padding-top:20px;">
+  <a class="text-sm" href="profile.html" style="color:var(--color-primary);font-weight:700;">← Profile</a>
+  <h1 class="h2" style="margin-top:8px;">My Activities</h1>
+
+  <div data-tabs style="margin-top:16px;">
+    <div class="hscroll" style="border-bottom:1px solid var(--color-border);">
+      <button class="chip chip-primary" data-tab-btn="upcoming">Upcoming</button>
+      <button class="chip" data-tab-btn="interested">Interested</button>
+      <button class="chip" data-tab-btn="registered">Registered</button>
+      <button class="chip" data-tab-btn="organizing">Organizing</button>
+      <button class="chip" data-tab-btn="volunteering">Volunteering</button>
+      <button class="chip" data-tab-btn="sponsored">Sponsored</button>
+      <button class="chip" data-tab-btn="completed">Completed</button>
+    </div>
+
+    <div data-tab-panel="upcoming" class="grid grid-3" style="margin-top:16px;">
+      <a class="card card-pad" href="festival-overview.html"><strong class="text-sm">Ganesh Festival 2026</strong><div class="text-xs text-muted">Sep 20–25</div></a>
+      <a class="card card-pad" href="competition-detail.html"><strong class="text-sm">Kids Drawing Competition</strong><div class="text-xs text-muted">Sep 22</div></a>
+    </div>
+    <div data-tab-panel="interested" class="grid grid-3 hidden" style="margin-top:16px;">
+      <a class="card card-pad" href="idea-board.html"><strong class="text-sm">Photography Workshop</strong><div class="text-xs text-muted">Idea stage</div></a>
+    </div>
+    <div data-tab-panel="registered" class="grid grid-3 hidden" style="margin-top:16px;">
+      <a class="card card-pad" href="activity-detail.html"><strong class="text-sm">Garba Beginner Workshop</strong><div class="text-xs text-muted">Aug 24</div></a>
+    </div>
+    <div data-tab-panel="organizing" class="grid grid-3 hidden" style="margin-top:16px;">
+      <a class="card card-pad" href="duplicate-detection.html"><strong class="text-sm">Navratri Garba Night</strong><div class="text-xs text-muted">Co-organizer</div></a>
+    </div>
+    <div data-tab-panel="volunteering" class="grid grid-3 hidden" style="margin-top:16px;">
+      <a class="card card-pad" href="my-volunteering.html"><strong class="text-sm">Decoration Team</strong><div class="text-xs text-muted">Sep 19–20</div></a>
+    </div>
+    <div data-tab-panel="sponsored" class="grid grid-3 hidden" style="margin-top:16px;">
+      <a class="card card-pad" href="sponsorship-board.html"><strong class="text-sm">Kids Competition Prizes</strong><div class="text-xs text-muted">₹5,000 pledged</div></a>
+    </div>
+    <div data-tab-panel="completed" class="grid grid-3 hidden" style="margin-top:16px;">
+      <a class="card card-pad" href="winner-announcement.html"><strong class="text-sm">Rangoli Competition</strong><div class="text-xs text-muted">2026</div></a>
+      <div class="card card-pad"><strong class="text-sm">Cricket Tournament</strong><div class="text-xs text-muted">June 2026</div></div>
+    </div>
+  </div>
+</main>
+
+<nav class="bottom-nav">
+  <a href="dashboard.html"><span class="ico">🏠</span>Home</a>
+  <a href="explore.html"><span class="ico">🧭</span>Explore</a>
+  <a href="calendar.html"><span class="ico">📅</span>Calendar</a>
+  <a href="feed.html"><span class="ico">👥</span>Community</a>
+  <a href="profile.html"><span class="ico">👤</span>Profile</a>
+</nav>
+<script src="../assets/app.js"></script>
+</body>
+</html>

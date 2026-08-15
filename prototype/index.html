@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en" data-org="platform">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prototype Hub — Community Platform</title>
+<link rel="stylesheet" href="assets/style.css">
+<style>
+  .journey-card { border: 1.5px dashed var(--color-border); border-radius: var(--radius-lg); padding: var(--space-5); }
+  .journey-steps { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .journey-steps a { font-size: 12.5px; background: var(--color-surface-alt); padding: 6px 12px; border-radius: var(--radius-full); font-weight: 600; }
+  .journey-steps a:hover { background: var(--color-primary-light); color: var(--color-primary-dark); }
+  .screen-link { display: block; padding: 10px 12px; border-radius: var(--radius-md); font-size: 13.5px; font-weight: 600; color: var(--color-text); }
+  .screen-link:hover { background: var(--color-surface-alt); }
+  .screen-link .n { color: var(--color-text-faint); font-weight: 700; margin-right: 6px; }
+</style>
+</head>
+<body>
+
+<header class="hero" style="margin:24px;border-radius:24px;">
+  <div class="hero-pattern"></div>
+  <div class="container" style="position:relative;padding:56px 24px;color:#fff;">
+    <div class="chip" style="background:rgba(255,255,255,.18);color:#fff;">Clickable Prototype</div>
+    <h1 class="h1" style="margin-top:14px;font-size:38px;">Multi-Tenant Community &amp; Activity Platform</h1>
+    <p style="max-width:620px;margin-top:12px;opacity:.92;">One platform, three experiences — Platform Owner, Organization Admin, and Member/Participant — reskinned per tenant. Browse by journey or jump straight to any screen.</p>
+    <div class="row gap-3" style="margin-top:22px;">
+      <a class="btn btn-white" href="guest/landing-green-acres.html">Start: Guest → Green Acres Society</a>
+      <a class="btn btn-outline" style="border-color:rgba(255,255,255,.5);color:#fff;" href="member/dashboard.html">Start: Member Dashboard</a>
+    </div>
+  </div>
+</header>
+
+<main class="container" style="padding-bottom:60px;">
+
+  <section class="section">
+    <div class="section-head"><h2 class="h2">Same system, three tenant skins</h2></div>
+    <p class="text-muted" style="max-width:700px;margin-bottom:16px;">Theming is config-driven, not hardcoded. These three public landing pages share every component and layout — only the org's colors, name, and modules differ.</p>
+    <div class="grid grid-3">
+      <a class="card card-hover card-pad" href="guest/landing-green-acres.html" data-org="green-acres">
+        <div class="row gap-2"><div class="logo-mark">GA</div><div><strong>Green Acres Society</strong><div class="text-sm text-muted">Residential society</div></div></div>
+        <div class="row gap-2" style="margin-top:14px;"><span class="chip chip-primary">Purple / Indigo</span><span class="chip chip-secondary">Orange</span></div>
+      </a>
+      <a class="card card-hover card-pad" href="guest/landing-rhythm-garba.html" data-org="rhythm-garba">
+        <div class="row gap-2"><div class="logo-mark">RG</div><div><strong>Rhythm Garba Academy</strong><div class="text-sm text-muted">Dance training academy</div></div></div>
+        <div class="row gap-2" style="margin-top:14px;"><span class="chip chip-primary">Terracotta</span><span class="chip chip-secondary">Gold</span></div>
+      </a>
+      <a class="card card-hover card-pad" href="guest/landing-pune-cycling.html" data-org="pune-cycling">
+        <div class="row gap-2"><div class="logo-mark">PC</div><div><strong>Pune Cycling Club</strong><div class="text-sm text-muted">Sports club</div></div></div>
+        <div class="row gap-2" style="margin-top:14px;"><span class="chip chip-primary">Teal</span><span class="chip chip-secondary">Blue</span></div>
+      </a>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2 class="h2">Key user journeys</h2></div>
+    <div class="grid grid-2">
+
+      <div class="journey-card">
+        <strong>1. Guest → discovers &amp; registers externally</strong>
+        <div class="text-sm text-muted">Public page → activity → register → pay → confirmation, no login required.</div>
+        <div class="journey-steps">
+          <a href="guest/landing-green-acres.html">Public page</a><a href="guest/activity-public.html">Garba Workshop</a><a href="guest/external-registration.html">Register</a><a href="guest/payment.html">Pay</a><a href="guest/confirmation.html">Confirmation</a>
+        </div>
+      </div>
+
+      <div class="journey-card">
+        <strong>2. Resident → festival → kids competition</strong>
+        <div class="text-sm text-muted">Login → dashboard → Ganesh Festival → Day 2 → register child for a competition.</div>
+        <div class="journey-steps">
+          <a href="auth/login.html">Login</a><a href="member/dashboard.html">Dashboard</a><a href="member/festival-overview.html">Ganesh Festival</a><a href="member/festival-schedule.html">Day-by-day</a><a href="member/festival-activity.html">Kids Competition</a>
+        </div>
+      </div>
+
+      <div class="journey-card">
+        <strong>3. Resident → create → duplicate detected → collaborate</strong>
+        <div class="text-sm text-muted">Calendar → create Garba Night → similar event found → join as co-organizer.</div>
+        <div class="journey-steps">
+          <a href="member/calendar.html">Calendar</a><a href="member/create-activity.html">Create Garba Night</a><a href="member/duplicate-detection.html">Duplicate detected</a>
+        </div>
+      </div>
+
+      <div class="journey-card">
+        <strong>4. Resident → sponsorship → payment → thank you</strong>
+        <div class="text-sm text-muted">Festival → sponsorship board → sponsor kids' prizes → pay → thank-you screen.</div>
+        <div class="journey-steps">
+          <a href="member/festival-overview.html">Festival</a><a href="member/sponsorship-board.html">Sponsorship board</a><a href="member/sponsor-flow.html">Sponsor flow</a>
+        </div>
+      </div>
+
+      <div class="journey-card">
+        <strong>5. Resident → volunteer board → task assigned</strong>
+        <div class="text-sm text-muted">Browse volunteer needs → select decoration team → confirm → see it on My Volunteering.</div>
+        <div class="journey-steps">
+          <a href="member/volunteer-board.html">Volunteer board</a><a href="member/my-volunteering.html">My volunteering</a>
+        </div>
+      </div>
+
+      <div class="journey-card">
+        <strong>6. Trainer → publish course → batch → attendance</strong>
+        <div class="text-sm text-muted">Create course → open batch → external users register → check in attendance.</div>
+        <div class="journey-steps">
+          <a href="guest/trainer-profile.html">Trainer profile</a><a href="training/course.html">Course</a><a href="training/batch.html">Batch</a><a href="training/attendance.html">Attendance</a>
+        </div>
+      </div>
+
+      <div class="journey-card">
+        <strong>7. Platform admin → onboard a new organization</strong>
+        <div class="text-sm text-muted">Choose template → configure domain → assign admin → select modules → launch.</div>
+        <div class="journey-steps">
+          <a href="platform-admin/dashboard.html">Platform dashboard</a><a href="platform-admin/create-organization.html">Create organization</a><a href="platform-admin/organization-detail.html">Organization detail</a>
+        </div>
+      </div>
+
+      <div class="journey-card">
+        <strong>8. Org admin → build a multi-day festival</strong>
+        <div class="text-sm text-muted">Dashboard → create Ganesh Festival → add days → assign organizers → request volunteers &amp; sponsors → publish.</div>
+        <div class="journey-steps">
+          <a href="org-admin/dashboard.html">Admin dashboard</a><a href="org-admin/create-festival.html">Create festival</a>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2 class="h2">All screens</h2></div>
+    <div class="grid grid-4">
+
+      <div class="card card-pad">
+        <div class="eyebrow">Guest / Public</div>
+        <a class="screen-link" href="guest/landing-green-acres.html">Landing — Green Acres</a>
+        <a class="screen-link" href="guest/landing-rhythm-garba.html">Landing — Rhythm Garba</a>
+        <a class="screen-link" href="guest/landing-pune-cycling.html">Landing — Pune Cycling</a>
+        <a class="screen-link" href="guest/activity-public.html">Public activity page</a>
+        <a class="screen-link" href="guest/trainer-profile.html">Trainer profile</a>
+        <a class="screen-link" href="guest/external-registration.html">External registration</a>
+        <a class="screen-link" href="guest/payment.html">Payment</a>
+        <a class="screen-link" href="guest/confirmation.html">Confirmation</a>
+      </div>
+
+      <div class="card card-pad">
+        <div class="eyebrow">Auth</div>
+        <a class="screen-link" href="auth/login.html">Login</a>
+        <a class="screen-link" href="auth/join-community.html">Join community</a>
+        <a class="screen-link" href="auth/switcher.html">Community switcher</a>
+      </div>
+
+      <div class="card card-pad">
+        <div class="eyebrow">Member</div>
+        <a class="screen-link" href="member/dashboard.html">Dashboard</a>
+        <a class="screen-link" href="member/explore.html">Explore activities</a>
+        <a class="screen-link" href="member/activity-detail.html">Activity detail</a>
+        <a class="screen-link" href="member/festival-overview.html">Festival overview</a>
+        <a class="screen-link" href="member/festival-schedule.html">Festival day-by-day</a>
+        <a class="screen-link" href="member/festival-activity.html">Festival activity</a>
+        <a class="screen-link" href="member/create-activity.html">Create activity wizard</a>
+        <a class="screen-link" href="member/duplicate-detection.html">Duplicate detection</a>
+        <a class="screen-link" href="member/idea-board.html">Idea board</a>
+        <a class="screen-link" href="member/create-idea.html">Create idea</a>
+        <a class="screen-link" href="member/calendar.html">Calendar</a>
+        <a class="screen-link" href="member/calendar-day.html">Calendar day detail</a>
+      </div>
+
+      <div class="card card-pad">
+        <div class="eyebrow">Member (cont.)</div>
+        <a class="screen-link" href="member/sponsorship-board.html">Sponsorship board</a>
+        <a class="screen-link" href="member/sponsor-flow.html">Sponsor flow</a>
+        <a class="screen-link" href="member/volunteer-board.html">Volunteer board</a>
+        <a class="screen-link" href="member/my-volunteering.html">My volunteering</a>
+        <a class="screen-link" href="member/competitions.html">Competitions</a>
+        <a class="screen-link" href="member/competition-detail.html">Competition detail</a>
+        <a class="screen-link" href="member/winner-announcement.html">Winner announcement</a>
+        <a class="screen-link" href="member/feed.html">Community feed</a>
+        <a class="screen-link" href="member/announcements.html">Announcements</a>
+        <a class="screen-link" href="member/gallery.html">Gallery</a>
+        <a class="screen-link" href="member/directory.html">Directory</a>
+        <a class="screen-link" href="member/household.html">Household</a>
+        <a class="screen-link" href="member/profile.html">My profile</a>
+        <a class="screen-link" href="member/my-activities.html">My activities</a>
+        <a class="screen-link" href="member/notifications.html">Notifications</a>
+      </div>
+
+      <div class="card card-pad">
+        <div class="eyebrow">Training</div>
+        <a class="screen-link" href="training/course.html">Course page</a>
+        <a class="screen-link" href="training/batch.html">Batch management</a>
+        <a class="screen-link" href="training/attendance.html">Attendance</a>
+      </div>
+
+      <div class="card card-pad">
+        <div class="eyebrow">Organization Admin</div>
+        <a class="screen-link" href="org-admin/dashboard.html">Admin dashboard</a>
+        <a class="screen-link" href="org-admin/onboarding.html">Onboarding wizard</a>
+        <a class="screen-link" href="org-admin/settings.html">Settings (branding, roles, modules…)</a>
+        <a class="screen-link" href="org-admin/create-festival.html">Create festival</a>
+      </div>
+
+      <div class="card card-pad">
+        <div class="eyebrow">Platform Admin</div>
+        <a class="screen-link" href="platform-admin/dashboard.html">Platform dashboard</a>
+        <a class="screen-link" href="platform-admin/organizations.html">Organizations list</a>
+        <a class="screen-link" href="platform-admin/create-organization.html">Create organization</a>
+        <a class="screen-link" href="platform-admin/organization-detail.html">Organization detail</a>
+        <a class="screen-link" href="platform-admin/subscription-plans.html">Subscription plans</a>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+</body>
+</html>

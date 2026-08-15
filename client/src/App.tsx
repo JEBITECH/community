@@ -8,6 +8,7 @@ import { AuthProvider } from "./erp/context/AuthContext";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { LoadingProvider } from "./utils/hooks/useLoading";
 import { OrganizationProvider } from "./contexts/OrganizationContext";
+import { BrandingProvider } from "./contexts/BrandingContext";
 
 function App() {
   return (
@@ -18,9 +19,11 @@ function App() {
             <Toaster />
             <AuthProvider>
               <OrganizationProvider>
-                <BrowserRouter>
-                  <AppRouter />
-                </BrowserRouter>
+                <BrandingProvider>
+                  <BrowserRouter>
+                    <AppRouter />
+                  </BrowserRouter>
+                </BrandingProvider>
               </OrganizationProvider>
             </AuthProvider>
           </TooltipProvider>

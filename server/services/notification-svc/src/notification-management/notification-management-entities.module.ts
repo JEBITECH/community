@@ -9,7 +9,6 @@ import { NotificationDeliveryLogEntity } from '@shared/entities/src/notification
 import { NotificationReminderLogEntity } from '@shared/entities/src/notification-reminder-log.entity';
 import { NotificationTemplateEntity } from '@shared/entities';
 import { User } from '@shared/entities/src/user.entity';
-import { Task } from '@shared/entities/src/task.entity';
 
 @Module({
   imports: [
@@ -23,7 +22,6 @@ import { Task } from '@shared/entities/src/task.entity';
       NotificationReminderLogEntity,
       NotificationTemplateEntity,
       User,
-      Task,
     ]),
   ],
   exports: [TypeOrmModule],

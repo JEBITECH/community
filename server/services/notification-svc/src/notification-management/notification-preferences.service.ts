@@ -8,7 +8,6 @@ import { NotificationEntity } from '@shared/entities/src/notification.entity';
 import { NotificationDeliveryLogEntity } from '@shared/entities/src/notification-delivery-log.entity';
 import { NotificationReminderLogEntity } from '@shared/entities/src/notification-reminder-log.entity';
 import { User } from '@shared/entities/src/user.entity';
-import { Task } from '@shared/entities/src/task.entity';
 import { Repository, IsNull, In } from 'typeorm';
 import {
   UpdateDeviceTokenDto,
@@ -158,8 +157,6 @@ export class NotificationPreferencesService {
     private readonly reminderLogsRepo: Repository<NotificationReminderLogEntity>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
-    @InjectRepository(Task)
-    private readonly taskRepo: Repository<Task>,
   ) { }
 
   async getPreferences(params: {
@@ -323,7 +320,7 @@ export class NotificationPreferencesService {
     const remindersPage = normalizePositiveInteger(params.reminders?.page ?? params.page, DEFAULT_LOG_PAGE);
     const remindersLimit = normalizeLimit(params.reminders?.limit ?? params.limit, DEFAULT_LOG_LIMIT);
 
-    const [notificationsResult, deliveryResult, tasks] = await Promise.all([
+    const [notificationsResult, deliveryResult] = await Promise.all([
       this.notificationsRepo.findAndCount({
         where: { organizationId: params.organizationId },
         relations: { recipient: true } as any,
@@ -370,59 +367,16 @@ export class NotificationPreferencesService {
         skip: (deliveryPage - 1) * deliveryLimit,
         take: deliveryLimit,
       }),
-      this.taskRepo.find({
-        where: { organization_id: params.organizationId },
-        select: ['id', 'task_title'],
-      }),
     ]);
 
     const [notifications, notificationsTotal] = notificationsResult;
     const [deliveryLogs, deliveryTotal] = deliveryResult;
-    const taskIds = tasks.map((task) => task.id);
 
-    let reminderLogs: NotificationReminderLogItem[] = [];
-    let reminderTotal = 0;
-
-    if (taskIds.length > 0) {
-      const [logs, total] = await this.reminderLogsRepo.findAndCount({
-        where: { taskId: In(taskIds) as any },
-        select: ['id', 'taskId', 'eventType', 'recipientId', 'sentAt', 'createdAt'],
-        order: { createdAt: 'DESC' },
-        skip: (remindersPage - 1) * remindersLimit,
-        take: remindersLimit,
-      });
-
-      reminderTotal = total;
-
-      if (logs.length > 0) {
-        const recipientIds = [...new Set(logs.map((log) => log.recipientId).filter(Boolean))];
-        const users = recipientIds.length > 0
-          ? await this.userRepo.find({
-              where: { id: In(recipientIds) },
-              select: ['id', 'firstName', 'lastName', 'email'],
-            })
-          : [];
-
-        const userMap = new Map(users.map((user) => [user.id, user]));
-        const taskMap = new Map(tasks.map((task) => [task.id, task]));
-
-        reminderLogs = logs.map((log) => {
-          const user = userMap.get(log.recipientId) || null;
-          const task = taskMap.get(log.taskId) || null;
-
-          return {
-            id: log.id,
-            taskId: log.taskId,
-            eventType: log.eventType,
-            recipientId: log.recipientId,
-            sentAt: log.sentAt,
-            createdAt: log.createdAt,
-            recipient: mapRecipientPreview(user),
-            task: task ? { title: task.task_title } : null,
-          };
-        });
-      }
-    }
+    // Reminder logs were produced only by the PMS-era task-reminder scheduler,
+    // which no longer exists in this build; the section is kept in the response
+    // shape for API compatibility but is always empty going forward.
+    const reminderLogs: NotificationReminderLogItem[] = [];
+    const reminderTotal = 0;
 
     const notificationLogs = notifications.map((notification) => ({
       id: notification.id,

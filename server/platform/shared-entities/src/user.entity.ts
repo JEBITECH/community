@@ -6,19 +6,10 @@ import {
   UpdateDateColumn,
   BeforeInsert,
   BeforeUpdate,
-  ManyToOne,
-  JoinColumn,
   OneToMany,
 } from "typeorm";
-import { IsNumber, IsObject } from "class-validator";
-import { Organization } from "./organization.entity";
 import { UserBankAccount } from "./user-bank-account.entity";
 import { UserAddress } from "./user-address.entity";
-import { OwnerDetailsDto } from "./dto/owner-details-dto";
-import { ReservationDetailsDto } from "./dto/reservation-details.dto";
-import { TaskTypesDto } from "./dto/task-types.dto";
-import { UnitDetailsDto } from "./dto/unit-details.dto";
-
 
 const bcrypt = require("bcryptjs");
 
@@ -27,23 +18,35 @@ export class User {
   @PrimaryGeneratedColumn("uuid")
   id?: string;
 
-  @Column({ nullable: true, type: "varchar", unique: true })
-  pms_id?: string;
-
   @Column({ type: "varchar", nullable: false })
   firstName!: string;
 
   @Column({ type: "varchar", nullable: true })
   lastName?: string;
 
-  @Column({ unique: true, type: "varchar", nullable: false })
-  email!: string;
+  @Column({ unique: true, type: "varchar", nullable: true })
+  email?: string | null;
 
   @Column({ type: Date, nullable: true })
   dob?: string;
 
-  @Column({ type: "varchar", nullable: true })
+  @Column({ unique: true, type: "varchar", nullable: true })
   phone?: string;
+
+  @Column({ type: "boolean", default: false })
+  phone_verified!: boolean;
+
+  @Column({ type: "varchar", nullable: true })
+  otp_code_hash?: string | null;
+
+  @Column({ type: "timestamptz", nullable: true })
+  otp_expires_at?: Date | null;
+
+  @Column({ type: "int", default: 0 })
+  otp_attempts!: number;
+
+  @Column({ type: "timestamptz", nullable: true })
+  otp_last_requested_at?: Date | null;
 
   @Column({ type: "varchar", nullable: true })
   password?: string;
@@ -75,11 +78,14 @@ export class User {
   @Column({ default: false, type: "boolean", nullable: false })
   isActive!: boolean;
 
+  /**
+   * True for platform-level guest accounts that are never a member of any
+   * organization (e.g. a one-off external registrant before any Membership
+   * exists). Per-organization internal/external classification lives on
+   * Membership.member_type, not here.
+   */
   @Column({ type: "boolean", nullable: true, default: false })
   external_user?: boolean;
-
-  @Column({ type: "varchar", nullable: true })
-  owner_type?: string;
 
   @CreateDateColumn({ type: "timestamp", nullable: false })
   createdAt!: Date;
@@ -87,83 +93,8 @@ export class User {
   @UpdateDateColumn({ type: "timestamp", nullable: false })
   updatedAt!: Date;
 
-  @Column({ type: 'jsonb', nullable: true })
-  property_ids?: number[];
-
-  @ManyToOne(() => Organization)
-  @JoinColumn({ name: "organization_id", referencedColumnName: "id" })
-  @IsObject()
-  organization!: Organization;
-
-  @Column({ nullable: true })
-  @IsNumber()
-  organization_id?: number;
-
-  @Column({ type: "int4", nullable: true })
-  franchisee_id?: number | null;
-
-  @Column({ type: 'bool', nullable: false, default: false })
-  is_task_view!: boolean;
-
-  @Column({ type: 'jsonb', nullable: true })
-  task_types?: TaskTypesDto;
-
-  @Column({ type: 'bool', nullable: false, default: false })
-  is_reservation_view!: boolean;
-
-  @Column({ type: 'jsonb', nullable: true })
-  reservation_details?: ReservationDetailsDto;
-
-  @Column({ type: 'bool', nullable: false, default: false })
-  is_owner_view!: boolean;
-
-  @Column({ type: 'jsonb', nullable: true })
-  owner_details?: OwnerDetailsDto;
-
-  @Column({ type: 'bool', nullable: false, default: false })
-  is_unit_view!: boolean;
-
-  @Column({ type: 'jsonb', nullable: true })
-  unit_types?: UnitDetailsDto;
-
-  @Column({ type: 'bool', nullable: false, default: false })
-  is_document_view!: boolean;
-
-  @Column({ type: 'bool', nullable: false, default: false })
-  is_graph_view!: boolean;
-
-  @Column({ nullable: true })
-  cost_per_hour?: number;
-
-  @Column({ nullable: true })
-  cost_per_month?: number;
-
-  @Column({ type: 'bool', nullable: true, default: false })
-  include_trip_cost?: boolean;
-
-  @Column({ nullable: true })
-  cost_per_km?: number;
-
-  @Column('float', { nullable: true, array: true })
-  location_coordinate?: number[];
-
-  @Column('float', { nullable: true, array: true })
-  location_coordinate_end?: number[];
-
   @Column({ type: "varchar", nullable: true, default: null })
   fcm_token?: string;
-
-  @Column({ type: "varchar", nullable: true, default: null })
-  company_identification_number?: string;
-
-  @Column({ type: "varchar", nullable: true, default: null })
-  tax_number?: string;
-
-  @Column({ type: "varchar", nullable: true, default: null })
-  freefield1?: string;
-
-  @Column({ type: "varchar", nullable: true, default: null })
-  freefield2?: string;
 
   @OneToMany(() => UserBankAccount, (bank_account) => bank_account.user, {
     cascade: ["insert", "update"],
@@ -189,8 +120,6 @@ export class User {
   }
 
   async validatePassword(password: string): Promise<boolean> {
-    console.log("Plain password:", password);
-    console.log(" Stored hash:", this.password);
     return bcrypt.compare(password, this.password);
   }
 
@@ -200,10 +129,7 @@ export class User {
     delete obj.refreshToken;
     delete obj.emailVerificationToken;
     delete obj.resetPasswordToken;
+    delete obj.otp_code_hash;
     return obj;
   }
 }
-function ApiProperty(): (target: User, propertyKey: "cost_per_hour") => void {
-  throw new Error("Function not implemented.");
-}
-

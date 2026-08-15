@@ -10,12 +10,13 @@ import { Roles } from "../entity/roles.model";
 import { FilterOperator, paginate, Paginated } from "nestjs-paginate";
 import {
   Organization,
-  Unit,
   User,
   UserAddress,
   UserBankAccount,
+  Membership,
 } from "@shared/entities";
 import { PaginateQuery } from "@shared/common";
+import { Role } from "@shared/common";
 import { NotificationBootstrapService } from "./notification-bootstrap.service";
 
 export interface RegisterDto {
@@ -23,20 +24,22 @@ export interface RegisterDto {
   lastName: string;
   email: string;
   phone: string;
-  password: string;
-  role?: string;
+  password?: string;
   organizationId: number;
-  roleId?: number;
-  propertyIds?: number[];
+  roleId: number;
+  memberType?: "internal" | "external";
+  unitIdentifier?: string;
 }
 
 export interface UserCreateResponse {
   user: User;
+  membership?: Membership | null;
   module_list_access_by_user: ModuleResDto[];
 }
 
 export class UserService {
   private userRepository: Repository<User>;
+  private membershipRepository: Repository<Membership>;
   private emailService: EmailService;
   private roleModuleAccessService: RoleModuleAccessService;
   private roleModuleAccessRepo: Repository<RoleModuleAccess>;
@@ -44,11 +47,11 @@ export class UserService {
   private organizationRepository: Repository<Organization>;
   private userAddressRepository: Repository<UserAddress>;
   private bankAccountRepository: Repository<UserBankAccount>;
-  private unitRepository: Repository<Unit>;
   private notificationBootstrapService: NotificationBootstrapService;
 
   constructor() {
     this.userRepository = AppDataSource.getRepository(User);
+    this.membershipRepository = AppDataSource.getRepository(Membership);
     this.emailService = new EmailService();
     this.roleModuleAccessRepo = AppDataSource.getRepository(RoleModuleAccess);
     this.roleModuleAccessService = new RoleModuleAccessService();
@@ -56,134 +59,110 @@ export class UserService {
     this.organizationRepository = AppDataSource.getRepository(Organization);
     this.userAddressRepository = AppDataSource.getRepository(UserAddress);
     this.bankAccountRepository = AppDataSource.getRepository(UserBankAccount);
-    this.unitRepository = AppDataSource.getRepository(Unit);
     this.notificationBootstrapService = new NotificationBootstrapService();
   }
 
-  async createUser(
-    registerDto: Partial<RegisterDto>,
-  ): Promise<UserCreateResponse> {
-    const {
-      email,
-      password,
-      role,
-      firstName,
-      lastName,
-      phone,
-      organizationId,
-      roleId,
-      propertyIds,
-    } = registerDto;
-    const existingUser = await this.userRepository.findOne({
-      where: { email },
-    });
-    if (existingUser) {
-      throw new Error("User with this email already exists");
-    }
+  /** Admin-invites a member into an organization (creates the User if new, always creates a fresh Membership). */
+  async createUser(registerDto: Partial<RegisterDto>): Promise<UserCreateResponse> {
+    const { email, password, firstName, lastName, phone, organizationId, roleId, memberType, unitIdentifier } = registerDto;
 
-    const organization = await this.organizationRepository.findOne({
-      where: { id: organizationId },
-    });
+    const organization = await this.organizationRepository.findOne({ where: { id: organizationId } });
     if (!organization) {
       throw new Error("Organization not found");
     }
     if (organization.is_archived) {
       throw new Error("Cannot invite user to an archived organization");
     }
-    if (
-      organization.organization_status === "deleted" ||
-      organization.organization_status === "inactive"
-    ) {
-      throw new Error(
-        "Cannot invite user to a deleted or inactive organization",
-      );
+    if (organization.organization_status === "suspended") {
+      throw new Error("Cannot invite user to a suspended organization");
     }
 
     const userRole = await this.roleRepo.findOne({ where: { id: roleId } });
-
-    // Create new user
-    const user = new User();
-    user.firstName = firstName;
-    user.lastName = lastName;
-    user.email = email;
-    user.phone = phone;
-    user.password = password;
-    user.role = userRole.name;
-    user.emailVerificationToken = crypto.randomBytes(32).toString("hex");
-    const expiryMinutes = parseInt(
-      process.env.INVITE_TOKEN_EXPIRY_MINUTES || "480",
-      10,
-    );
-    user.emailVerificationExpires = new Date(
-      Date.now() + expiryMinutes * 60 * 1000,
-    );
-    user.organization_id = organizationId;
-    user.roleId = roleId;
-    if (propertyIds && Array.isArray(propertyIds) && propertyIds.length > 0) {
-      user.property_ids = propertyIds;
+    if (!userRole) {
+      throw new Error("Role not found");
     }
 
-    try {
+    let user = await this.userRepository.findOne({ where: { email } });
+    const isNewUser = !user;
+
+    if (user) {
+      const existingMembership = await this.membershipRepository.findOne({
+        where: { user_id: user.id!, organization_id: organizationId },
+      });
+      if (existingMembership) {
+        throw new Error("User is already a member of this organization");
+      }
+    } else {
+      user = new User();
+      user.firstName = firstName!;
+      user.lastName = lastName;
+      user.email = email;
+      user.phone = phone;
+      user.password = password;
+      user.role = userRole.name;
+      user.roleId = roleId;
+      user.isActive = false;
+      user.emailVerificationToken = crypto.randomBytes(32).toString("hex");
+      const expiryMinutes = parseInt(process.env.INVITE_TOKEN_EXPIRY_MINUTES || "480", 10);
+      user.emailVerificationExpires = new Date(Date.now() + expiryMinutes * 60 * 1000);
       await this.userRepository.save(user);
+    }
+
+    const isFirstMembership = (await this.membershipRepository.count({ where: { user_id: user.id! } })) === 0;
+    const membership = this.membershipRepository.create({
+      user_id: user.id!,
+      organization_id: organizationId,
+      role: userRole.name,
+      roleId,
+      member_type: memberType || "internal",
+      unit_identifier: unitIdentifier,
+      status: "active",
+      joined_at: new Date(),
+      is_default: isFirstMembership,
+    });
+    await this.membershipRepository.save(membership);
+
+    try {
       await this.notificationBootstrapService.bootstrapUserPreference({
-        userId: user.id,
+        userId: user.id!,
         organizationId,
         timezone: organization.organization_timezone || null,
       });
       await this.notificationBootstrapService.bootstrapRolePreference({
         organizationId,
-        role: user.role,
-        roleId: userRole?.id ?? null,
+        role: userRole.name,
+        roleId: userRole.id,
       });
 
       const userAccessList = await this.roleModuleAccessRepo.find({
-        where: {
-          organization_id: user.organization_id,
-          role_id: roleId,
-          is_access: true,
-        },
+        where: { organization_id: organizationId, role_id: roleId, is_access: true },
         relations: ["module", "action", "sub_action"],
       });
+      const moduleAcessList = await this.roleModuleAccessService.prepareModuleData(userAccessList);
 
-      const moduleAcessList =
-        await this.roleModuleAccessService.prepareModuleData(userAccessList);
-      const userResDto: UserCreateResponse = {
-        user: user,
-        module_list_access_by_user: moduleAcessList,
-      };
-      await this.emailService.sendInviteEmail(
-        email,
-        user.emailVerificationToken,
-      );
-      return userResDto;
+      if (isNewUser && user.emailVerificationToken) {
+        await this.emailService.sendInviteEmail(user.email!, user.emailVerificationToken);
+      }
+
+      return { user, membership, module_list_access_by_user: moduleAcessList };
     } catch (error) {
-      throw new Error(error);
+      throw new Error(error instanceof Error ? error.message : String(error));
     }
   }
 
   async verifyAndSetPassword(token: string, password: string): Promise<void> {
-    const user = await this.userRepository.findOne({
-      where: { emailVerificationToken: token },
-    });
-
+    const user = await this.userRepository.findOne({ where: { emailVerificationToken: token } });
     if (!user) {
       throw new Error("Invalid or expired token");
     }
-
-    if (
-      !user.emailVerificationExpires ||
-      user.emailVerificationExpires.getTime() < Date.now()
-    ) {
-      throw new Error(
-        "Invitation link has expired. Please request a new invitation.",
-      );
+    if (!user.emailVerificationExpires || user.emailVerificationExpires.getTime() < Date.now()) {
+      throw new Error("Invitation link has expired. Please request a new invitation.");
     }
 
     user.password = password;
     user.isActive = true;
     user.emailVerificationToken = null;
     user.emailVerificationExpires = null;
-
     await this.userRepository.save(user);
   }
 
@@ -194,282 +173,143 @@ export class UserService {
     }
 
     const resetToken = crypto.randomBytes(32).toString("hex");
-    const resetExpires = new Date(Date.now() + 3600000); // 1 hour
-
     user.resetPasswordToken = resetToken;
-    user.resetPasswordExpires = resetExpires;
+    user.resetPasswordExpires = new Date(Date.now() + 3600000);
     await this.userRepository.save(user);
-
-    // TODO: Send email with reset token
   }
 
-  async confirmPasswordReset(
-    token: string,
-    newPassword: string,
-  ): Promise<void> {
-    const user = await this.userRepository.findOne({
-      where: { resetPasswordToken: token },
-    });
-
+  async confirmPasswordReset(token: string, newPassword: string): Promise<void> {
+    const user = await this.userRepository.findOne({ where: { resetPasswordToken: token } });
     if (!user) {
       throw new Error("Invalid reset token");
     }
-
-    if (
-      !user.resetPasswordExpires ||
-      user.resetPasswordExpires.getTime() < Date.now()
-    ) {
+    if (!user.resetPasswordExpires || user.resetPasswordExpires.getTime() < Date.now()) {
       throw new Error("Reset token has expired");
     }
 
-    user.password = newPassword; // Will be hashed by @BeforeUpdate
+    user.password = newPassword;
     user.resetPasswordToken = null;
     user.resetPasswordExpires = null;
-    user.refreshToken = null; // Invalidate all sessions
-
+    user.refreshToken = null;
     await this.userRepository.save(user);
   }
 
   async getAllUsers(query: PaginateQuery, currentUser?: any): Promise<Paginated<User>> {
+    const selectQuery = this.userRepository.createQueryBuilder("user");
 
-    const restrictedRoles = ['executor', 'inspector', 'owner'];
-    const selectQuery = this.userRepository
-      .createQueryBuilder("user")
-
-    if (currentUser && restrictedRoles.includes(currentUser.role)) {
-      selectQuery.andWhere("user.id = :id", { id: currentUser.id });
+    if (currentUser?.organization_id && currentUser.role !== Role.MASTER_ADMIN) {
+      selectQuery
+        .innerJoin(Membership, "membership", "membership.user_id = user.id")
+        .andWhere("membership.organization_id = :orgId", { orgId: currentUser.organization_id });
     }
 
     if (query.search?.trim()) {
       const search = query.search.trim();
-
-      selectQuery.andWhere(
-        `CONCAT(user.firstName, ' ', user.lastName) ILIKE :search`,
-        {
-          search: `%${search}%`,
-        },
-      );
+      selectQuery.andWhere(`CONCAT(user."firstName", ' ', user."lastName") ILIKE :search`, { search: `%${search}%` });
     }
 
-    const result = await paginate(query as any, selectQuery, {
+    return paginate(query as any, selectQuery, {
       filterableColumns: {
         isActive: [FilterOperator.IN],
-        organization_id: [FilterOperator.EQ],
       },
-      relations: ["organization"],
-      // searchableColumns: ["firstName", "lastName"],
       sortableColumns: ["firstName", "lastName", "createdAt"],
       defaultSortBy: [["createdAt", "DESC"]],
       defaultLimit: 10,
     });
-    const userIds = result.data.map((user) => user.id);
-    const userWithRelations = await this.userRepository.find({
-      where: { id: In(userIds) },
-      relations: ["units", "units.property"]
-    });
-    const userMap = new Map(userWithRelations.map(u => [u.id, u]));
-
-    result.data = result.data.map((user) => {
-      const fullUser = userMap.get(user.id);
-      if (!user.property_ids?.length) {
-        const propertyIds = (fullUser.units || []).map((unit) => unit?.property?.id)
-
-        user.property_ids = [...new Set(propertyIds)];
-      }
-
-      return user;
-    });
-    return result;
   }
 
+  /**
+   * Completes an admin-invited account (the "set your password" screen reached
+   * via the invite email link). Gated by the same emailVerificationToken used
+   * by verifyAndSetPassword — this is a public, pre-auth endpoint, so it must
+   * never trust a bare `email` to identify whose account is being edited.
+   */
   async editUserAccountDetail(updateDto: any): Promise<User> {
-    const {
-      email,
-      firstName,
-      password,
-      lastName,
-      phone,
-      role,
-      isActive,
-      company_identification_number,
-      tax_number,
-      freefield1,
-      freefield2,
-      unitIds,
-      location_coordinate,
-      location_coordinate_end,
-    } = updateDto;
-    const existingUser = await this.userRepository.findOne({
-      where: { email },
-      relations: ["units"],
-    });
-    if (!existingUser) {
-      throw new Error("User with this email does not exist");
+    const { token, firstName, password, lastName, phone } = updateDto;
+    if (!token) {
+      throw new Error("Invitation token is required");
     }
+
+    const existingUser = await this.userRepository.findOne({ where: { emailVerificationToken: token } });
+    if (!existingUser) {
+      throw new Error("Invalid or expired invitation link");
+    }
+    if (!existingUser.emailVerificationExpires || existingUser.emailVerificationExpires.getTime() < Date.now()) {
+      throw new Error("Invitation link has expired. Please request a new invitation.");
+    }
+
     if (firstName !== undefined) existingUser.firstName = firstName;
     if (lastName !== undefined) existingUser.lastName = lastName;
     if (phone !== undefined) existingUser.phone = phone;
-    if (role !== undefined) existingUser.role = role;
-    if (isActive !== undefined) existingUser.isActive = isActive;
     if (password !== undefined) existingUser.password = password;
-    if (company_identification_number !== undefined) existingUser.company_identification_number = company_identification_number;
-    if (tax_number !== undefined) existingUser.tax_number = tax_number;
-    if (freefield1 !== undefined) existingUser.freefield1 = freefield1;
-    if (freefield2 !== undefined) existingUser.freefield2 = freefield2;
-    if (location_coordinate !== undefined) existingUser.location_coordinate = location_coordinate;
-    if (location_coordinate_end !== undefined) existingUser.location_coordinate_end = location_coordinate_end;
-
-    if (unitIds !== undefined && Array.isArray(unitIds)) {
-      existingUser.units = unitIds.length > 0
-        ? await this.unitRepository.find({ where: { id: In(unitIds) } })
-        : [];
-    }
-
-    if (updateDto.propertyIds !== undefined && Array.isArray(updateDto.propertyIds)) {
-      existingUser.property_ids = updateDto.propertyIds;
-    }
+    existingUser.isActive = true;
+    existingUser.emailVerificationToken = null;
+    existingUser.emailVerificationExpires = null;
 
     existingUser.address = [];
     if (updateDto.address && Array.isArray(updateDto.address)) {
-      updateDto.address.map((addr: UserAddress) => {
-        existingUser.address.push(
-          this.userAddressRepository.create({
-            ...addr,
-            user: existingUser,
-          }),
-        );
+      updateDto.address.forEach((addr: UserAddress) => {
+        existingUser.address!.push(this.userAddressRepository.create({ ...addr, user: existingUser }));
       });
     }
 
     existingUser.bank_account = [];
     if (updateDto.bank_account && Array.isArray(updateDto.bank_account)) {
-      updateDto.bank_account.map((bankAccount: UserBankAccount) => {
-        existingUser.bank_account.push(
-          this.bankAccountRepository.create({
-            ...bankAccount,
-            user: existingUser,
-          }),
-        );
+      updateDto.bank_account.forEach((bankAccount: UserBankAccount) => {
+        existingUser.bank_account!.push(this.bankAccountRepository.create({ ...bankAccount, user: existingUser }));
       });
     }
 
-    const updatedUser = await this.userRepository.save(existingUser);
-    console.log("Updated user:", updatedUser);
-    return updatedUser;
+    return this.userRepository.save(existingUser);
   }
 
-  async getUserProfileByToken(userToken): Promise<User> {
+  async getUserProfileByToken(userToken: { token: string }): Promise<User> {
     const { token } = userToken;
-    const existingUser = await this.userRepository.findOne({
-      where: { emailVerificationToken: token },
-    });
+    const existingUser = await this.userRepository.findOne({ where: { emailVerificationToken: token } });
     if (!existingUser) {
       throw new Error("Invalid token");
     }
-
-    if (
-      !existingUser.emailVerificationExpires ||
-      existingUser.emailVerificationExpires.getTime() < Date.now()
-    ) {
+    if (!existingUser.emailVerificationExpires || existingUser.emailVerificationExpires.getTime() < Date.now()) {
       throw new Error("Invitation link has expired");
     }
-
     return existingUser;
   }
 
-  async reInviteUserById(
-    userId: string,
-  ): Promise<{ status: boolean; message: string }> {
+  async reInviteUserById(userId: string): Promise<{ status: boolean; message: string }> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
-      return {
-        status: false,
-        message: "Invalid User",
-      };
+      return { status: false, message: "Invalid User" };
     }
 
-    const organization = await this.organizationRepository.findOne({
-      where: { id: user.organization_id },
+    const membership = await this.membershipRepository.findOne({
+      where: { user_id: userId },
+      relations: ["organization"],
+      order: { createdAt: "ASC" },
     });
-    if (!organization) {
-      return {
-        status: false,
-        message: "Organization not found",
-      };
-    }
-    if (organization.is_archived) {
-      return {
-        status: false,
-        message: "Cannot re-invite user to an archived organization",
-      };
-    }
-    if (
-      organization.organization_status === "deleted" ||
-      organization.organization_status === "inactive"
-    ) {
-      return {
-        status: false,
-        message: "Cannot re-invite user to a deleted or inactive organization",
-      };
+
+    if (membership?.organization) {
+      if (membership.organization.is_archived) {
+        return { status: false, message: "Cannot re-invite user to an archived organization" };
+      }
+      if (membership.organization.organization_status === "suspended") {
+        return { status: false, message: "Cannot re-invite user to a suspended organization" };
+      }
     }
 
     user.emailVerificationToken = crypto.randomBytes(32).toString("hex");
-    const expiryMinutes = parseInt(
-      process.env.INVITE_TOKEN_EXPIRY_MINUTES || "480",
-      10,
-    );
-    user.emailVerificationExpires = new Date(
-      Date.now() + expiryMinutes * 60 * 1000,
-    );
+    const expiryMinutes = parseInt(process.env.INVITE_TOKEN_EXPIRY_MINUTES || "480", 10);
+    user.emailVerificationExpires = new Date(Date.now() + expiryMinutes * 60 * 1000);
     await this.userRepository.save(user);
 
-    await this.emailService.sendInviteEmail(
-      user.email,
-      user.emailVerificationToken,
-    );
-    return {
-      status: true,
-      message: "Re-Invite Sent Successfully",
-    };
+    await this.emailService.sendInviteEmail(user.email!, user.emailVerificationToken);
+    return { status: true, message: "Re-Invite Sent Successfully" };
   }
 
-  async updateUserById(
-    id: string,
-    dto: UserUpdateDto,
-    loginUser: User,
-  ): Promise<{ status: boolean; message: string }> {
+  async updateUserById(id: string, dto: UserUpdateDto, loginUser: User): Promise<{ status: boolean; message: string }> {
     if (
-      dto.firstName ||
-      dto.lastName ||
-      dto.email ||
-      dto.password ||
-      dto.phone ||
-      dto.dob !== undefined ||
-      dto.role !== undefined ||
-      dto.roleId !== undefined ||
-      dto.isActive !== undefined ||
-      dto.external_user !== undefined ||
-      dto.owner_type !== undefined ||
-      dto.is_task_view !== undefined ||
-      dto.is_reservation_view !== undefined ||
-      dto.is_unit_view !== undefined ||
-      dto.is_document_view !== undefined ||
-      dto.is_graph_view !== undefined ||
-      dto.cost_per_hour !== undefined ||
-      dto.cost_per_month !== undefined ||
-      dto.include_trip_cost !== undefined ||
-      dto.cost_per_km !== undefined ||
-      dto.company_identification_number !== undefined ||
-      dto.tax_number !== undefined ||
-      dto.freefield1 !== undefined ||
-      dto.freefield2 !== undefined ||
-      dto.owner_details !== undefined ||
-      dto.docs !== undefined ||
-      dto.task_types !== undefined ||
-      dto.reservation_details !== undefined ||
-      dto.unit_types !== undefined ||
-      dto.location_coordinate !== undefined ||
-      dto.location_coordinate_end !== undefined
+      dto.firstName || dto.lastName || dto.email || dto.password || dto.phone ||
+      dto.dob !== undefined || dto.role !== undefined || dto.roleId !== undefined ||
+      dto.isActive !== undefined || dto.external_user !== undefined
     ) {
       const regularUser = await this.userRepository.findOne({ where: { id } });
       if (!regularUser) {
@@ -478,11 +318,8 @@ export class UserService {
       this.userRepository.merge(regularUser, dto);
       await this.userRepository.save(regularUser);
     }
-    const role = await this.roleRepo.findOne({
-      where: { id: loginUser.roleId },
-    });
 
-    if (role.name === "platformOwner" && dto.module_list) {
+    if (loginUser.role === Role.MASTER_ADMIN && dto.module_list) {
       const assignModulesList: RoleModuleAccess[] = [];
       for (const module of dto.module_list) {
         const existingModuleAccess = await this.roleModuleAccessRepo.findOne({
@@ -496,50 +333,21 @@ export class UserService {
         });
         if (existingModuleAccess) {
           if (existingModuleAccess.is_access !== module.is_access) {
-            await this.roleModuleAccessRepo.update(
-              { id: existingModuleAccess.id },
-              { is_access: module.is_access },
-            );
+            await this.roleModuleAccessRepo.update({ id: existingModuleAccess.id }, { is_access: module.is_access });
           }
         } else {
-          const newModuleAccess: RoleModuleAccess =
-            this.roleModuleAccessRepo.create({
-              role_id: module.role_id,
-              organization_id: module.organization_id,
-              module_id: module.module_id,
-              action_id: module.action_id,
-              sub_action_id: module.sub_action_id,
-              is_access: module.is_access,
-            });
-          assignModulesList.push(newModuleAccess);
+          assignModulesList.push(this.roleModuleAccessRepo.create({
+            role_id: module.role_id,
+            organization_id: module.organization_id,
+            module_id: module.module_id,
+            action_id: module.action_id,
+            sub_action_id: module.sub_action_id,
+            is_access: module.is_access,
+          }));
         }
       }
       await this.roleModuleAccessRepo.save(assignModulesList);
-
       return { status: true, message: "All Records Updated Successfully" };
-    }
-
-    if (dto.unitIds !== undefined && Array.isArray(dto.unitIds)) {
-      const userWithUnits = await this.userRepository.findOne({
-        where: { id },
-        relations: ["units"],
-      });
-      if (!userWithUnits) {
-        throw new Error(`User with id ${id} not found`);
-      }
-      userWithUnits.units = dto.unitIds.length > 0
-        ? await this.unitRepository.find({ where: { id: In(dto.unitIds) } })
-        : [];
-      await this.userRepository.save(userWithUnits);
-    }
-
-    if (dto.propertyIds !== undefined && Array.isArray(dto.propertyIds)) {
-      const userForProperties = await this.userRepository.findOne({ where: { id } });
-      if (!userForProperties) {
-        throw new Error(`User with id ${id} not found`);
-      }
-      userForProperties.property_ids = dto.propertyIds;
-      await this.userRepository.save(userForProperties);
     }
 
     return { status: true, message: "User updated successfully" };
@@ -548,97 +356,43 @@ export class UserService {
   async getUserById(userId: string): Promise<UserCreateResponse> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
-      relations: ["bank_account", "address", "address.country", "units", "units.property"],
+      relations: ["bank_account", "address", "address.country"],
     });
-    if (user != null) {
-      const userRes = new User();
-      userRes.id = user.id;
-      userRes.organization_id = user.organization_id;
-      userRes.roleId = user.roleId;
-      userRes.firstName = user.firstName;
-      userRes.lastName = user.lastName;
-      userRes.email = user.email;
-      userRes.phone = user.phone;
-      userRes.isActive = user.isActive;
-      userRes.role = user.role;
-      userRes.dob = user.dob;
-      userRes.bank_account = user.bank_account;
-      userRes.address = user.address;
-      userRes.external_user = user.external_user;
-      userRes.owner_type = user.owner_type;
-      userRes.is_task_view = user.is_task_view;
-      userRes.is_reservation_view = user.is_reservation_view;
-      userRes.is_unit_view = user.is_unit_view;
-      userRes.is_document_view = user.is_document_view;
-      userRes.is_graph_view = user.is_graph_view;
-      userRes.task_types = user.task_types;
-      userRes.reservation_details = user.reservation_details;
-      userRes.unit_types = user.unit_types;
-      userRes.cost_per_hour = user.cost_per_hour;
-      userRes.cost_per_month = user.cost_per_month;
-      userRes.include_trip_cost = user.include_trip_cost;
-      userRes.cost_per_km = user.cost_per_km;
-      userRes.company_identification_number = user.company_identification_number;
-      userRes.tax_number = user.tax_number;
-      userRes.freefield1 = user.freefield1;
-      userRes.freefield2 = user.freefield2;
-      userRes.units = user.units;
-      userRes.docs = user.docs;
-
-      if (!user.property_ids?.length) {
-        const propertyIds = (user.units || []).map((unit) => unit?.property?.id)
-
-        user.property_ids = [...new Set(propertyIds)];
-      }
-      userRes.property_ids = user.property_ids;
-      const userAccessList = await this.roleModuleAccessRepo.find({
-        where: {
-          organization_id: user.organization_id,
-          role_id: user.roleId,
-          is_access: true,
-        },
-        relations: ["module", "action", "sub_action"],
-      });
-
-      const moduleAcessList =
-        await this.roleModuleAccessService.prepareModuleData(userAccessList);
-
-      const userResDto: UserCreateResponse = {
-        user: userRes,
-        module_list_access_by_user: moduleAcessList,
-      };
-
-      return userResDto;
+    if (!user) {
+      return undefined as any;
     }
+
+    const membership = await this.membershipRepository.findOne({
+      where: { user_id: userId, is_default: true },
+      relations: ["organization"],
+    });
+
+    const userAccessList = membership
+      ? await this.roleModuleAccessRepo.find({
+        where: { organization_id: membership.organization_id, role_id: membership.roleId, is_access: true },
+        relations: ["module", "action", "sub_action"],
+      })
+      : [];
+    const moduleAcessList = await this.roleModuleAccessService.prepareModuleData(userAccessList);
+
+    return { user, membership, module_list_access_by_user: moduleAcessList };
   }
 
   async getUsersByOrganizationId(organizationId: number) {
-    const users = await this.userRepository.find({
+    const memberships = await this.membershipRepository.find({
       where: { organization_id: organizationId },
+      relations: ["user"],
     });
-    return users;
+    return memberships.map(m => m.user);
   }
 
-  async saveFcmToken(
-    userId: string,
-    token: string,
-  ) {
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-    });
-
+  async saveFcmToken(userId: string, token: string) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
     if (user) {
       user.fcm_token = token;
       await this.userRepository.save(user);
-      return {
-        success: true,
-        message: 'FCM token saved successfully',
-      };
-    } else {
-      return {
-        success: false,
-        message: 'User not found',
-      };
+      return { success: true, message: 'FCM token saved successfully' };
     }
+    return { success: false, message: 'User not found' };
   }
 }

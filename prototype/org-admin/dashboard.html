@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en" data-org="green-acres">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Organization Admin Dashboard</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="proto-bar"><span><a href="../index.html">◀ All screens</a> <span class="proto-crumb">/ Org Admin / Dashboard</span></span><span class="proto-crumb">Journey 8 · step 1</span></div>
+
+<div class="admin-shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo-mark">GA</div> Green Acres Society</div>
+    <nav class="stack gap-1">
+      <div class="sidebar-section-label">Manage</div>
+      <a class="sidebar-link active" href="dashboard.html"><span class="ico">📊</span>Dashboard</a>
+      <a class="sidebar-link" href="create-festival.html"><span class="ico">🎉</span>Activities</a>
+      <a class="sidebar-link" href="../member/calendar.html"><span class="ico">📅</span>Calendar</a>
+      <a class="sidebar-link" href="../member/directory.html"><span class="ico">👥</span>Members</a>
+      <a class="sidebar-link" href="../member/announcements.html"><span class="ico">📢</span>Announcements</a>
+      <a class="sidebar-link" href="../member/sponsorship-board.html"><span class="ico">💰</span>Sponsorship</a>
+      <a class="sidebar-link" href="../member/volunteer-board.html"><span class="ico">🙋</span>Volunteers</a>
+      <a class="sidebar-link" href="../member/competitions.html"><span class="ico">🏆</span>Competitions</a>
+      <a class="sidebar-link" href="../training/course.html"><span class="ico">🎓</span>Training</a>
+      <a class="sidebar-link" href="../member/gallery.html"><span class="ico">🖼️</span>Gallery</a>
+      <div class="sidebar-section-label" style="margin-top:8px;">Admin</div>
+      <a class="sidebar-link"><span class="ico">📈</span>Reports</a>
+      <a class="sidebar-link" href="settings.html"><span class="ico">⚙️</span>Configuration</a>
+    </nav>
+  </aside>
+
+  <div class="admin-main">
+    <div class="admin-topbar"><strong>Dashboard</strong>
+      <div class="row gap-3">
+        <a class="btn btn-outline btn-sm" href="../platform-admin/dashboard.html">Switch to Platform View</a>
+        <div class="avatar" style="width:34px;height:34px;">PR</div>
+      </div>
+    </div>
+    <div class="admin-content">
+
+      <div class="row-between"><h1 class="h2">Welcome back, Priya</h1><a class="btn btn-primary" href="create-festival.html">+ Create Festival / Activity</a></div>
+
+      <div class="grid grid-4" style="margin-top:20px;">
+        <div class="card card-pad"><div class="text-sm text-muted">Active Members</div><div class="h2">340</div></div>
+        <div class="card card-pad"><div class="text-sm text-muted">Upcoming Activities</div><div class="h2">12</div></div>
+        <div class="card card-pad"><div class="text-sm text-muted">Registrations (30d)</div><div class="h2">486</div></div>
+        <div class="card card-pad"><div class="text-sm text-muted">Pending Approvals</div><div class="h2" style="color:var(--color-warning);">7</div></div>
+      </div>
+
+      <div class="grid grid-2" style="margin-top:24px;align-items:start;">
+        <div class="card card-pad">
+          <div class="row-between"><h3 class="h3">Volunteer requirements</h3><a class="text-sm" href="../member/volunteer-board.html" style="color:var(--color-primary);font-weight:700;">Manage</a></div>
+          <div class="stack gap-3" style="margin-top:12px;">
+            <div class="row-between text-sm"><span>Decoration Team</span><span class="chip chip-danger">4 needed</span></div>
+            <div class="row-between text-sm"><span>Prasad Distribution</span><span class="chip chip-warning">2 needed</span></div>
+          </div>
+        </div>
+        <div class="card card-pad">
+          <div class="row-between"><h3 class="h3">Sponsors</h3><a class="text-sm" href="../member/sponsorship-board.html" style="color:var(--color-primary);font-weight:700;">Manage</a></div>
+          <div class="stack gap-3" style="margin-top:12px;">
+            <div class="row-between text-sm"><span>Funds raised</span><strong>₹72,000 / ₹120,000</strong></div>
+            <div class="progress-track"><div class="progress-fill" style="width:60%;"></div></div>
+          </div>
+        </div>
+        <div class="card card-pad">
+          <h3 class="h3">Popular activities</h3>
+          <div class="stack gap-2" style="margin-top:12px;">
+            <div class="row-between text-sm"><span>Ganesh Festival 2026</span><span class="text-muted">312 interested</span></div>
+            <div class="row-between text-sm"><span>Garba Beginner Workshop</span><span class="text-muted">22 registered</span></div>
+            <div class="row-between text-sm"><span>Tree Plantation Drive</span><span class="text-muted">54 interested</span></div>
+          </div>
+        </div>
+        <div class="card card-pad">
+          <h3 class="h3">Pending approvals</h3>
+          <div class="stack gap-2" style="margin-top:12px;">
+            <div class="row-between text-sm"><span>New resident — D-402</span><button class="btn btn-outline btn-sm">Review</button></div>
+            <div class="row-between text-sm"><span>New resident — A-115</span><button class="btn btn-outline btn-sm">Review</button></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card card-pad" style="margin-top:24px;">
+        <h3 class="h3">Engagement (30 days)</h3>
+        <div style="height:120px;border-radius:var(--radius-md);background:var(--color-surface-alt);margin-top:12px;display:flex;align-items:center;justify-content:center;" class="text-sm text-muted">Engagement trend chart</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+<script src="../assets/app.js"></script>
+</body>
+</html>

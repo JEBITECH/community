@@ -7,6 +7,28 @@ import { LoginUserDto } from '../dto/user.dto';
 import { authValidationSchemas, validateRequest } from '../middlewares/validation';
 import { authRateLimiter } from '../middlewares/authRateLimiter';
 
+interface RequestOtpBody {
+  phone: string;
+}
+
+interface VerifyOtpBody {
+  phone: string;
+  code: string;
+}
+
+interface JoinCommunityBody {
+  otpVerifiedToken: string;
+  firstName: string;
+  lastName?: string;
+  unitIdentifier?: string;
+  organizationId?: number;
+  invitationCode?: string;
+}
+
+interface SwitchOrgBody {
+  organizationId: number;
+}
+
 @JsonController('/auth')
 export class AuthController {
   private authService: AuthService;
@@ -76,6 +98,129 @@ export class AuthController {
       });
     }
   };
+
+  @Post('/otp/request')
+  @UseBefore(authRateLimiter)
+  async requestOtp(@Body() body: RequestOtpBody, @Res() res: Response) {
+    try {
+      const result = await this.authService.requestOtp(body.phone);
+      return res.json(result);
+    } catch (error) {
+      return res.status(400).json({
+        error: error instanceof Error ? error.message : 'Failed to send OTP'
+      });
+    }
+  }
+
+  @Post('/otp/verify')
+  @UseBefore(authRateLimiter)
+  async verifyOtp(@Body() body: VerifyOtpBody, @Res() res: Response) {
+    try {
+      const result = await this.authService.verifyOtp(body.phone, body.code);
+
+      if (result.isNewUser) {
+        return res.json({
+          isNewUser: true,
+          otpVerifiedToken: result.otpVerifiedToken,
+        });
+      }
+
+      res.cookie('refreshToken', result.auth!.refreshToken, {
+        httpOnly: true,
+        secure: false,
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        path: '/',
+      });
+
+      return res.json({
+        isNewUser: false,
+        message: 'Login successful',
+        ...result.auth,
+      });
+    } catch (error) {
+      return res.status(400).json({
+        error: error instanceof Error ? error.message : 'OTP verification failed'
+      });
+    }
+  }
+
+  @Post('/join-community')
+  async joinCommunity(@Body() body: JoinCommunityBody, @Res() res: Response) {
+    try {
+      const result = await this.authService.joinCommunity(body);
+
+      if (result.status === 'pending') {
+        return res.json({
+          status: 'pending',
+          message: 'Your request has been submitted and is awaiting admin approval',
+          membership: result.membership,
+        });
+      }
+
+      res.cookie('refreshToken', result.auth!.refreshToken, {
+        httpOnly: true,
+        secure: false,
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        path: '/',
+      });
+
+      return res.json({
+        status: 'active',
+        message: 'Joined successfully',
+        ...result.auth,
+      });
+    } catch (error) {
+      return res.status(400).json({
+        error: error instanceof Error ? error.message : 'Failed to join community'
+      });
+    }
+  }
+
+  @Get('/me/memberships')
+  async getMyMemberships(@Req() req: AuthenticatedRequest, @Res() res: Response) {
+    try {
+      const userId = req.user?.id || req.user;
+      if (!userId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+      const memberships = await this.authService.getMemberships(userId);
+      return res.json({ memberships });
+    } catch (error) {
+      return res.status(400).json({
+        error: error instanceof Error ? error.message : 'Failed to fetch memberships'
+      });
+    }
+  }
+
+  @Post('/me/switch-org')
+  async switchOrg(@Req() req: AuthenticatedRequest, @Body() body: SwitchOrgBody, @Res() res: Response) {
+    try {
+      const userId = req.user?.id || req.user;
+      if (!userId) {
+        return res.status(401).json({ error: 'Not authenticated' });
+      }
+      const result = await this.authService.switchOrganization(userId, body.organizationId);
+
+      res.cookie('refreshToken', result.refreshToken, {
+        httpOnly: true,
+        secure: false,
+        sameSite: 'lax',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        path: '/',
+      });
+
+      return res.json({
+        message: 'Switched organization successfully',
+        ...result,
+      });
+    } catch (error) {
+      return res.status(400).json({
+        error: error instanceof Error ? error.message : 'Failed to switch organization'
+      });
+    }
+  }
 
   @Post('/refresh')
   async refresh(@Req() req: Request, @Res() res: Response) {

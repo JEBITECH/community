@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en" data-org="green-acres">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Organization Settings</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="proto-bar"><span><a href="../index.html">◀ All screens</a> <span class="proto-crumb">/ Org Admin / Settings, Branding, Roles, Modules, Membership, Forms</span></span></div>
+
+<div class="admin-shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo-mark">GA</div> Green Acres Society</div>
+    <nav class="stack gap-1">
+      <a class="sidebar-link" href="dashboard.html"><span class="ico">📊</span>Dashboard</a>
+      <a class="sidebar-link active" href="settings.html"><span class="ico">⚙️</span>Configuration</a>
+    </nav>
+  </aside>
+
+  <div class="admin-main">
+    <div class="admin-topbar"><strong>Configuration</strong><div class="avatar" style="width:34px;height:34px;">PR</div></div>
+    <div class="admin-content" data-tabs>
+      <div class="hscroll" style="border-bottom:1px solid var(--color-border);padding-bottom:4px;">
+        <button class="chip chip-primary" data-tab-btn="general">General</button>
+        <button class="chip" data-tab-btn="branding">Branding</button>
+        <button class="chip" data-tab-btn="domain">Domain</button>
+        <button class="chip" data-tab-btn="users">Admin Users</button>
+        <button class="chip" data-tab-btn="roles">Roles &amp; Permissions</button>
+        <button class="chip" data-tab-btn="membership">Membership</button>
+        <button class="chip" data-tab-btn="modules">Modules</button>
+        <button class="chip" data-tab-btn="forms">Forms / Custom Fields</button>
+        <button class="chip" data-tab-btn="subscription">Subscription</button>
+      </div>
+
+      <div data-tab-panel="general" style="padding-top:20px;max-width:560px;">
+        <h2 class="h3">General</h2>
+        <div class="field" style="margin-top:14px;"><label>Organization Name</label><input class="input" value="Green Acres Society"></div>
+        <div class="field"><label>Description</label><textarea class="input" rows="3">A 124-household residential community in Baner, Pune.</textarea></div>
+        <div class="field"><label>Address</label><input class="input" value="Baner Road, Pune, Maharashtra"></div>
+        <button class="btn btn-primary">Save Changes</button>
+      </div>
+
+      <div data-tab-panel="branding" class="hidden" style="padding-top:20px;max-width:560px;">
+        <h2 class="h3">Branding</h2>
+        <div class="grid grid-2" style="margin-top:14px;">
+          <div class="field"><label>Primary Color</label><div class="row gap-2"><div style="width:32px;height:32px;border-radius:8px;background:var(--color-primary);"></div><input class="input" value="#6D28D9"></div></div>
+          <div class="field"><label>Secondary Color</label><div class="row gap-2"><div style="width:32px;height:32px;border-radius:8px;background:var(--color-secondary);"></div><input class="input" value="#F97316"></div></div>
+        </div>
+        <div class="field"><label>Logo</label><div class="card card-pad" style="border:1.5px dashed var(--color-border);text-align:center;" class="text-sm text-muted">Upload logo</div></div>
+        <div class="field"><label>Login Background</label><div class="card card-pad" style="border:1.5px dashed var(--color-border);text-align:center;" class="text-sm text-muted">Upload image</div></div>
+        <button class="btn btn-primary">Save Branding</button>
+      </div>
+
+      <div data-tab-panel="domain" class="hidden" style="padding-top:20px;max-width:560px;">
+        <h2 class="h3">Domain</h2>
+        <div class="field" style="margin-top:14px;"><label>Platform subdomain</label><div class="row gap-2"><input class="input" value="green-acres" style="flex:1;"><span class="text-sm text-muted">.platform.com</span></div></div>
+        <div class="row-between" style="margin-top:6px;"><span class="text-sm">Custom domain</span><div class="switch" data-switch></div></div>
+        <button class="btn btn-primary" style="margin-top:10px;">Save</button>
+      </div>
+
+      <div data-tab-panel="users" class="hidden" style="padding-top:20px;">
+        <div class="row-between"><h2 class="h3">Admin Users</h2><button class="btn btn-primary btn-sm">+ Invite Admin</button></div>
+        <div class="card" style="margin-top:14px;overflow-x:auto;">
+          <table class="data-table">
+            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th></th></tr></thead>
+            <tbody>
+              <tr><td>Priya Rao</td><td>priya@greenacres.example</td><td><span class="chip chip-primary">Owner</span></td><td><a style="color:var(--color-primary);">Edit</a></td></tr>
+              <tr><td>Vikram Kale</td><td>vikram@greenacres.example</td><td><span class="chip">Event Manager</span></td><td><a style="color:var(--color-primary);">Edit</a></td></tr>
+              <tr><td>Meera Joshi</td><td>meera@greenacres.example</td><td><span class="chip">Content Manager</span></td><td><a style="color:var(--color-primary);">Edit</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div data-tab-panel="roles" class="hidden" style="padding-top:20px;max-width:560px;">
+        <h2 class="h3">Roles &amp; Permissions</h2>
+        <div class="stack gap-3" style="margin-top:14px;">
+          <div class="card card-pad"><strong class="text-sm">Event Manager</strong>
+            <div class="grid grid-2" style="gap:6px;margin-top:8px;">
+              <label class="row gap-2 text-sm"><input type="checkbox" checked>Create Activities</label>
+              <label class="row gap-2 text-sm"><input type="checkbox" checked>Manage Registrations</label>
+              <label class="row gap-2 text-sm"><input type="checkbox">Manage Payments</label>
+              <label class="row gap-2 text-sm"><input type="checkbox">Manage Admins</label>
+            </div>
+          </div>
+          <div class="card card-pad"><strong class="text-sm">Volunteer Manager</strong>
+            <div class="grid grid-2" style="gap:6px;margin-top:8px;">
+              <label class="row gap-2 text-sm"><input type="checkbox" checked>Manage Volunteer Board</label>
+              <label class="row gap-2 text-sm"><input type="checkbox">Create Activities</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div data-tab-panel="membership" class="hidden" style="padding-top:20px;max-width:560px;">
+        <h2 class="h3">Membership</h2>
+        <div class="stack gap-3" style="margin-top:14px;" data-option-group>
+          <div class="option-card selected" data-option>🔒 Private — invite/approval only</div>
+          <div class="option-card" data-option>🌐 Public — anyone can join</div>
+          <div class="option-card" data-option>🤝 Hybrid</div>
+        </div>
+      </div>
+
+      <div data-tab-panel="modules" class="hidden" style="padding-top:20px;">
+        <h2 class="h3">Modules</h2>
+        <div class="grid grid-4" style="gap:10px;margin-top:14px;">
+          <div class="module-card on"><span class="text-sm">Activities</span><div class="switch on" data-switch></div></div>
+          <div class="module-card on"><span class="text-sm">Calendar</span><div class="switch on" data-switch></div></div>
+          <div class="module-card"><span class="text-sm">Training</span><div class="switch" data-switch></div></div>
+          <div class="module-card on"><span class="text-sm">Competitions</span><div class="switch on" data-switch></div></div>
+          <div class="module-card on"><span class="text-sm">Sponsorship</span><div class="switch on" data-switch></div></div>
+          <div class="module-card on"><span class="text-sm">Volunteers</span><div class="switch on" data-switch></div></div>
+          <div class="module-card on"><span class="text-sm">Payments</span><div class="switch on" data-switch></div></div>
+          <div class="module-card on"><span class="text-sm">Households</span><div class="switch on" data-switch></div></div>
+          <div class="module-card"><span class="text-sm">Marketplace</span><div class="switch" data-switch></div></div>
+          <div class="module-card"><span class="text-sm">Lost &amp; Found</span><div class="switch on" data-switch></div></div>
+          <div class="module-card on"><span class="text-sm">Gallery</span><div class="switch on" data-switch></div></div>
+          <div class="module-card on"><span class="text-sm">Directory</span><div class="switch on" data-switch></div></div>
+        </div>
+      </div>
+
+      <div data-tab-panel="forms" class="hidden" style="padding-top:20px;max-width:560px;">
+        <h2 class="h3">Forms / Custom Fields</h2>
+        <p class="text-sm text-muted" style="margin-top:6px;">Fields added to registration forms across activities.</p>
+        <div class="stack gap-2" style="margin-top:14px;">
+          <div class="row-between card card-pad"><span class="text-sm">Emergency Contact</span><span class="chip chip-primary">Required</span></div>
+          <div class="row-between card card-pad"><span class="text-sm">T-Shirt Size</span><span class="chip">Optional</span></div>
+        </div>
+        <button class="btn btn-outline btn-sm" style="margin-top:12px;">+ Add Field</button>
+      </div>
+
+      <div data-tab-panel="subscription" class="hidden" style="padding-top:20px;max-width:560px;">
+        <h2 class="h3">Subscription</h2>
+        <div class="card card-pad" style="margin-top:14px;background:var(--color-primary-light);">
+          <div class="row-between"><strong>Community Plan</strong><span class="chip chip-primary">Active</span></div>
+          <div class="text-sm text-muted" style="margin-top:6px;">Up to 500 members · 10 admins · 50 GB storage</div>
+        </div>
+        <a class="btn btn-outline" style="margin-top:12px;" href="../platform-admin/subscription-plans.html">Compare Plans</a>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="../assets/app.js"></script>
+</body>
+</html>

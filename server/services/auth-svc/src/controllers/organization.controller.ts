@@ -1,14 +1,9 @@
 import { Request, Response } from "express";
 import { OrganizationService } from "../services/organization.service";
-import { Body, Delete, Get, HttpCode, JsonController, Param, Patch, Post, Req, Res, UseBefore } from "routing-controllers";
+import { Body, Get, JsonController, Param, Patch, Post, Req, Res } from "routing-controllers";
 import { OrganizationDto } from "../dto/organization.dto";
 import { ResponseSchema } from "routing-controllers-openapi";
-import { OrganizationPmsListDto } from "../dto/organizationpmslist.dto";
-import { OrganizationDetailDto } from "../dto/organizationdetail.dto";
-import { FranchiseListDto } from "../dto/franchise-list.dto";
-import { authMiddleware } from "../middlewares/authMiddleware";
-import { Paginate, PaginateQuery } from "@shared/common";
-// import { OpenAPI, ResponseSchema } from "routing-controllers-openapi";
+import { OrganizationListDto, OrganizationDetailDto } from "../dto/organizationdetail.dto";
 
 @JsonController('/auth/organizations')
 export class OrganizationController {
@@ -17,60 +12,54 @@ export class OrganizationController {
     constructor() {
         this.organizationService = new OrganizationService();
     }
+
     @Post()
     async create(@Body() dto: OrganizationDto, @Res() res: Response) {
         try {
             const result = await this.organizationService.create(dto);
-            return res.status(201).json({
-                message: 'Organization , User created and invited successfully',
-                user: result
-            });
+            if (!result.status) {
+                return res.status(400).json({ error: result.message });
+            }
+            return res.status(201).json(result);
         } catch (error) {
             return res.status(400).json({
-                error: error instanceof Error ? error.message : 'Organization cannot be add'
+                error: error instanceof Error ? error.message : 'Organization could not be created'
             });
         }
     }
 
-    @Get('/check-email/:email')
-    async checkEmailUnique(@Param('email') email: string, @Res() res: Response) {
+    @Get('/check-subdomain/:subdomain')
+    async checkSubdomainUnique(@Param('subdomain') subdomain: string, @Res() res: Response) {
         try {
-            const isUnique = await this.organizationService.isEmailUnique(email);
-            return res.status(200).json({
-                email,
-                isUnique
-            });
+            const isUnique = await this.organizationService.checkSubdomainUnique(subdomain);
+            return res.status(200).json({ subdomain, isUnique });
         } catch (err) {
             return res.status(400).json({
-                error: err instanceof Error ? err.message : 'Cannot check email uniqueness'
+                error: err instanceof Error ? err.message : 'Cannot check subdomain availability'
             });
+        }
+    }
+
+    @Get('/by-subdomain/:subdomain')
+    async findOrganizationBySubdomain(@Param('subdomain') subdomain: string, @Res() res: Response) {
+        try {
+            const organization = await this.organizationService.getOrganizationBySubdomain(subdomain);
+            return res.status(200).json(organization);
+        } catch (err) {
+            return res.status(404).json({ error: err instanceof Error ? err.message : 'Organization not found' });
         }
     }
 
     @Get()
-    @ResponseSchema(OrganizationPmsListDto)
+    @ResponseSchema(OrganizationListDto)
     async findAllOrganization(@Req() req: Request, @Res() res: Response) {
         try {
-            const user = JSON.parse(req.headers['x-user'] as string);
+            const headerUser = req.headers['x-user'];
+            const user = headerUser ? JSON.parse(headerUser as string) : (req as any).user;
             const organizationList = await this.organizationService.getAllOrganization(user);
-            return res.status(201).json(organizationList);
+            return res.status(200).json(organizationList);
         } catch (err) {
-            return res.status(400).json({ error: err.message });
-        }
-    }
-
-    @Get('/franchises/:franchisor_id')
-    @ResponseSchema(FranchiseListDto)
-    async getFranchiseesByFranchisorId(
-        @Param('franchisor_id') franchisorId: number,
-        @Paginate query: PaginateQuery,
-        @Res() res: Response,
-    ) {
-        try {
-            const result = await this.organizationService.getFranchiseesByFranchisorId(franchisorId, query);
-            return res.status(200).json(result);
-        } catch (err) {
-            return res.status(400).json({ error: err instanceof Error ? err.message : 'Failed to fetch franchisees' });
+            return res.status(400).json({ error: err instanceof Error ? err.message : 'Failed to fetch organizations' });
         }
     }
 
@@ -84,21 +73,7 @@ export class OrganizationController {
             }
             return res.status(200).json(organization);
         } catch (err) {
-            return res.status(400).json({ error: err.message });
-        }
-    }
-
-
-    @Get('/properties/:id')
-    async findPropertiesByOrganizationId(@Param("id") id: number, @Res() res: Response) {
-        try {
-            const organization = await this.organizationService.getPropertiesByOrganizationId(id);
-            if (!organization) {
-                return res.status(404).json({ message: "Not Found" });
-            }
-            return res.status(200).json(organization);
-        } catch (err) {
-            res.status(400).json({ error: err.message });
+            return res.status(400).json({ error: err instanceof Error ? err.message : 'Failed to fetch organization' });
         }
     }
 
@@ -106,22 +81,42 @@ export class OrganizationController {
     async updateOrganizationById(@Param('id') id: number, @Body() dto: OrganizationDto, @Res() res: Response) {
         try {
             const organization = await this.organizationService.updateOrganizationById(id, dto);
-            return res.status(201).json(organization);
+            return res.status(200).json(organization);
         } catch (err) {
-            return res.status(400).json({ error: err.message });
+            return res.status(400).json({ error: err instanceof Error ? err.message : 'Failed to update organization' });
         }
     }
-    
-    @Delete('/:id')
+
+    @Patch('/:id/suspend')
+    async suspendOrganization(@Param('id') id: number, @Res() res: Response) {
+        try {
+            const result = await this.organizationService.suspendOrganization(id);
+            return res.status(200).json(result);
+        } catch (err) {
+            return res.status(400).json({ error: err instanceof Error ? err.message : 'Failed to suspend organization' });
+        }
+    }
+
+    @Patch('/:id/reactivate')
+    async reactivateOrganization(@Param('id') id: number, @Res() res: Response) {
+        try {
+            const result = await this.organizationService.reactivateOrganization(id);
+            return res.status(200).json(result);
+        } catch (err) {
+            return res.status(400).json({ error: err instanceof Error ? err.message : 'Failed to reactivate organization' });
+        }
+    }
+
+    @Patch('/archive/:id')
     async deleteOrganizationById(@Param('id') id: number, @Res() res: Response) {
         try {
             const organization = await this.organizationService.deleteOrganization(id);
-            return res.status(201).json({
-                message: 'Organization , User created and invited successfully',
-                organization:organization
+            return res.status(200).json({
+                message: 'Organization archived successfully',
+                organization,
             });
         } catch (err) {
-            return res.status(400).json({ error: err.message });
+            return res.status(400).json({ error: err instanceof Error ? err.message : 'Failed to archive organization' });
         }
     }
 
@@ -129,17 +124,16 @@ export class OrganizationController {
     async restoreOrganizationById(@Param('id') id: number, @Res() res: Response) {
         try {
             const organization = await this.organizationService.restoreOrganization(id);
-            return res.status(201).json({
+            return res.status(200).json({
                 message: 'Organization restored successfully',
-                organization:organization
+                organization,
             });
         } catch (err) {
-            return res.status(400).json({ error: err.message });
+            return res.status(400).json({ error: err instanceof Error ? err.message : 'Failed to restore organization' });
         }
     }
 
     @Get('/modules-by-Organization/:id')
-    @ResponseSchema(OrganizationDetailDto)
     async findModulesByOrganizationId(@Param("id") id: number, @Res() res: Response) {
         try {
             const moduleList = await this.organizationService.getModulesByOrganizationId(id);
@@ -148,7 +142,7 @@ export class OrganizationController {
             }
             return res.status(200).json(moduleList);
         } catch (err) {
-            return res.status(400).json({ error: err.message });
+            return res.status(400).json({ error: err instanceof Error ? err.message : 'Failed to fetch modules' });
         }
     }
 }

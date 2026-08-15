@@ -1,13 +1,12 @@
 import { Column, Entity, JoinColumn, JoinTable, ManyToMany, OneToMany, OneToOne, PrimaryGeneratedColumn } from "typeorm";
 import { ModuleEntity as Module } from "./module.entity";
 import { Theme } from "./theme.entity";
-import { PmsConfig } from "./pms-config.entity";
 import { OrganizationModuleSubscription } from "./organization-module-subscription.entity";
-import { Generated } from "typeorm";
-export interface PropertyLocation {
-  property_name: string;
-  property_location: string;
-}
+
+export type OrganizationType = 'society' | 'educational_institution';
+export type OrganizationPlan = 'free' | 'community' | 'professional' | 'enterprise';
+export type MembershipModel = 'open' | 'approval_required' | 'invite_only';
+export type OrganizationStatus = 'pending' | 'active' | 'suspended';
 
 @Entity('organization')
 export class Organization {
@@ -37,8 +36,17 @@ export class Organization {
   @Column({ type: 'varchar', nullable: true })
   organization_contact_info!: string;
 
-  @Column({ type: 'json', nullable: true })
-  organization_property_locations!: PropertyLocation[];
+  @Column({ type: 'varchar' })
+  organization_type!: OrganizationType;
+
+  @Column({ type: 'varchar', unique: true })
+  subdomain!: string;
+
+  @Column({ type: 'varchar', default: 'free' })
+  plan!: OrganizationPlan;
+
+  @Column({ type: 'varchar', default: 'approval_required' })
+  membership_model!: MembershipModel;
 
   @Column({ type: "boolean", default: false })
   is_archived!: boolean;
@@ -64,29 +72,16 @@ export class Organization {
   @JoinColumn({ name: 'theme_config_id' })
   themeConfig!: Theme;
 
-  @OneToMany(() => PmsConfig, (pmsConfig) => pmsConfig.organization)
-  pmsConfigs!: PmsConfig[];
-
-
   @Column({ type: 'varchar', nullable: true, default: 'pending' })
-  organization_status!: string
+  organization_status!: OrganizationStatus;
 
   @Column({ type: 'text', nullable: true })
   organization_logo!: string;
 
-  @Column({ type: 'boolean', default: false })
-  is_franchisor!: boolean;
-
-  @Column({ type: 'int', nullable: true })
-  parent_org_id!: number | null;
-
   /**
-   * List of domains allowed to use this organization's booking widget embed.
-   * When set, the public-access-token will only be issued if the request
-   * Origin/Referer matches one of these domains.
-   * Empty array or null means no restriction (allow all — useful for development).
-   * 
-   * Example: ["thegrandhotel.com", "www.thegrandhotel.com", "booking.thegrandhotel.com"]
+   * List of domains allowed to use this organization's public embeds (e.g. a guest
+   * registration widget). Empty array or null means no restriction. Reserved for
+   * future custom-domain support — unused by the MVP subdomain-only flow.
    */
   @Column({ type: 'json', nullable: true, default: null })
   allowed_domains!: string[] | null;

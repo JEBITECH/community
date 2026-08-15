@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en" data-org="green-acres">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Join Community</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="proto-bar"><span><a href="../index.html">◀ All screens</a> <span class="proto-crumb">/ Auth / Join Organization</span></span></div>
+
+<header class="topbar"><div class="brand"><div class="logo-mark">GA</div> Green Acres Society</div><nav><a href="login.html">← Back to login</a></nav><div></div></header>
+
+<main class="container-narrow" style="padding-top:32px;padding-bottom:60px;max-width:480px;">
+  <h1 class="h2">Join Green Acres Society</h1>
+  <p class="text-muted" style="margin-top:6px;">Choose how you'd like to join.</p>
+
+  <div class="stack gap-3" style="margin-top:20px;" data-option-group>
+    <div class="option-card selected" data-option><span>🏠</span><div><strong>I'm a Resident</strong><div class="text-sm text-muted">Verify your house/flat to join</div></div></div>
+    <div class="option-card" data-option><span>🔑</span><div><strong>I have an Invitation Code</strong><div class="text-sm text-muted">Sent by an admin or resident</div></div></div>
+    <div class="option-card" data-option><span>🌐</span><div><strong>I'm a Guest / External Participant</strong><div class="text-sm text-muted">Just here for a specific activity</div></div></div>
+  </div>
+
+  <div class="card card-pad" style="margin-top:20px;">
+    <div class="field"><label>Full Name</label><input class="input" placeholder="Your name"></div>
+    <div class="field"><label>Mobile Number</label><input class="input" placeholder="+91 98xxxxxxxx"></div>
+    <div class="field"><label>House / Flat Number</label><input class="input" placeholder="e.g. B-304"></div>
+    <div class="field"><label>Owner / Tenant</label>
+      <select class="input"><option>Owner</option><option>Tenant</option></select>
+    </div>
+    <a class="btn btn-primary btn-block btn-lg" style="margin-top:10px;" href="#pending">Submit for Approval</a>
+  </div>
+
+  <div class="card card-pad" style="margin-top:16px;background:var(--color-info-light);" id="pending">
+    <div class="row gap-2"><span>⏳</span><div><strong class="text-sm">Admin Approval Pending</strong><div class="text-sm text-muted" style="margin-top:2px;">Once submitted, the society admin verifies your house details before activating your account. You'll be notified. Meanwhile you can <a href="switcher.html" style="color:var(--color-primary);font-weight:700;">explore other communities you belong to →</a></div></div></div>
+  </div>
+</main>
+<script src="../assets/app.js"></script>
+</body>
+</html>

@@ -1,5 +1,15 @@
 import { apiRequest } from "@/lib/queryClient";
-import { LoginInput, LoginResponse } from "./type";
+import {
+  LoginInput,
+  LoginResponse,
+  OtpRequestInput,
+  OtpRequestResponse,
+  OtpVerifyInput,
+  OtpVerifyResponse,
+  JoinCommunityInput,
+  JoinCommunityResponse,
+  OrganizationPreview,
+} from "./type";
 
 export async function loginUser(data: LoginInput): Promise<LoginResponse> {
   try {
@@ -12,6 +22,42 @@ export async function loginUser(data: LoginInput): Promise<LoginResponse> {
   } catch (error: any) {
     throw new Error(error.message || "Login failed");
   }
+}
+
+export async function requestOtp(data: OtpRequestInput): Promise<OtpRequestResponse> {
+  const res = await apiRequest("POST", "/auth/otp/request", data);
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData.error || "Failed to send OTP");
+  }
+  return res.json();
+}
+
+export async function verifyOtp(data: OtpVerifyInput): Promise<OtpVerifyResponse> {
+  const res = await apiRequest("POST", "/auth/otp/verify", data);
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData.error || "OTP verification failed");
+  }
+  return res.json();
+}
+
+export async function joinCommunity(data: JoinCommunityInput): Promise<JoinCommunityResponse> {
+  const res = await apiRequest("POST", "/auth/join-community", data);
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData.error || "Failed to join community");
+  }
+  return res.json();
+}
+
+export async function getOrganizationBySubdomain(subdomain: string): Promise<OrganizationPreview> {
+  const res = await apiRequest("GET", `/auth/organizations/by-subdomain/${encodeURIComponent(subdomain)}`);
+  if (!res.ok) {
+    const errorData = await res.json();
+    throw new Error(errorData.error || "Community not found");
+  }
+  return res.json();
 }
 
 export async function forgotPassword(data: { email: string }) {

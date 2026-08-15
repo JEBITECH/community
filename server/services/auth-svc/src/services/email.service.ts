@@ -44,6 +44,19 @@ export class EmailService {
   await transporter.sendMail(mailOptions);
   }
   
+  async sendOtpEmail(to: string, code: string) {
+    const transporter = this.createTransporter();
+
+    const mailOptions = {
+      from: process.env.SMTP_FROM || 'noreply@erp-system.com',
+      to,
+      subject: 'Your verification code',
+      html: `<p>Your one-time verification code is:</p><h2>${code}</h2><p>This code expires in 5 minutes.</p>`,
+    };
+
+    await transporter.sendMail(mailOptions);
+  }
+
   async sendResetPasswordEmail(to: string, token: string) {
     const transporter = this.createTransporter();
   

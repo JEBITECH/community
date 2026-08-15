@@ -232,6 +232,43 @@ if (process.env.NOTIFICATION_SERVICE_URL) {
   console.warn('NOTIFICATION_SERVICE_URL not defined, skipping /api/notifications proxy');
 }
 
+// ============================================================================
+// Community service proxy (events, days/components, participation, donations,
+// sponsorship, volunteering, comments, calendar, dashboards, reports). Chat's
+// Socket.io transport connects directly to COMMUNITY_SERVICE_URL from the
+// client rather than through this REST proxy — see community-svc's chat
+// gateway for the auth handshake.
+// ============================================================================
+if (process.env.COMMUNITY_SERVICE_URL) {
+  app.use(
+    "/api/community",
+    proxy(process.env.COMMUNITY_SERVICE_URL as string, {
+      proxyReqPathResolver: (req: Request) => `/api/community${req.url}`,
+      proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+        proxyReqOpts.headers = proxyReqOpts.headers || {};
+        proxyReqOpts.headers['service-name'] = MicroserviceNamesEnum.COMMUNITY_SERVICE;
+
+        if ((srcReq as any).user) {
+          const user = (srcReq as any).user;
+          const userToken = signUserContext(user);
+          if (userToken) {
+            proxyReqOpts.headers['x-user-token'] = userToken;
+          }
+          proxyReqOpts.headers['x-user-id'] = user.id;
+          proxyReqOpts.headers['x-user-email'] = user.email;
+          proxyReqOpts.headers['x-user-role'] = user.role;
+          if (user.organization_id) {
+            proxyReqOpts.headers['x-user-organization-id'] = user.organization_id.toString();
+          }
+        }
+        return proxyReqOpts;
+      },
+    })
+  );
+} else {
+  console.warn('COMMUNITY_SERVICE_URL not defined, skipping /api/community proxy');
+}
+
 // Error handler
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   logger.error(err);

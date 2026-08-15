@@ -13,8 +13,7 @@ import {
   UserCheck,
   Save
 } from 'lucide-react';
-import { useGetModulesWithInternal } from "../../organization-management/hooks/getAllModulesWithInternal";
-import { useOrganizations } from "../../organization-management/hooks/getOrganizations";
+import { useGetModulesWithInternal, useOrganizations } from "@/features/shared/hooks/useOrganizations";
 import { useOrganizationContext } from '@/contexts/OrganizationContext';
 import { capitalizeWords } from '@/utils/helper';
 import { useAddOrganiztionRole } from '../hooks/addOrgnizationRole';
@@ -130,7 +129,7 @@ const RoleAccessRights: React.FC = () => {
 
   // Check if current user is super admin
   const isSuperAdmin = (user as any)?.role === "super_admin";
-  const isMasterAdmin = (user as any)?.role === "platformOwner";
+  const isMasterAdmin = (user as any)?.role === "master_admin";
 
   useEffect(() => {
     if (isLoadingOrganizations || isLoadingModules) {

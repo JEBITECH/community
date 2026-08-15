@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useGetUserById, useInviteUser, useReInviteUser } from "../hooks/useCreateUsers";
 import { capitalizeWords } from "@/utils/helper";
 import { toast } from "@/hooks/use-toast";
-import { useOrganizations } from "../../organization-management";
+import { useOrganizations } from "@/features/shared/hooks/useOrganizations";
 import { useGetRolesByOrganization } from "../../acl-management";
 import { User, Mail, Shield, Phone, CheckCircle, XCircle, Plus, Building, Info, Loader2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -32,7 +32,7 @@ interface PaginationMeta {
 export default function UserTable(props: { userList: any[]; refetchUsers: () => void; isSuperAdmin: boolean; paginationMeta?: PaginationMeta; onPageChange?: (page: number) => void; selectedOrganizationId?: number | null; searchQuery?: string; onSearchChange?: (value: string) => void }) {
   const { user } = useAuth();
   const userWithOrg = user as unknown as UserWithOrganization;
-  const { userList, refetchUsers, isSuperAdmin, paginationMeta, onPageChange, searchQuery: searchQueryProp, onSearchChange } = props;
+  const { userList, refetchUsers, isSuperAdmin, paginationMeta, onPageChange, selectedOrganizationId, searchQuery: searchQueryProp, onSearchChange } = props;
   const navigate = useNavigate();
 
   const reInviteMutation = useReInviteUser();
@@ -56,12 +56,12 @@ export default function UserTable(props: { userList: any[]; refetchUsers: () => 
   useEffect(() => {
     if (!isLoadingOrganizations && organizationsList?.organization_list?.length > 0) {
       let filtered = organizationsList.organization_list;
-      if (userWithOrg?.role === "super_admin" && userWithOrg?.organization_id) {
-        filtered = organizationsList.organization_list.filter((org: any) => org.organization_id === userWithOrg.organization_id);
+      if (userWithOrg?.role === "super_admin" && selectedOrganizationId) {
+        filtered = organizationsList.organization_list.filter((org: any) => org.organization_id === selectedOrganizationId);
       }
       setOrganizationOptions(filtered);
     }
-  }, [isLoadingOrganizations, organizationsList, userWithOrg]);
+  }, [isLoadingOrganizations, organizationsList, userWithOrg, selectedOrganizationId]);
 
   useEffect(() => { if (selectedOrganization) refetchOrganizationRoles(); }, [selectedOrganization]);
 

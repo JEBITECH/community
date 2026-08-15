@@ -5,19 +5,16 @@ import { RegisterDto, UserService } from '../services/user.services';
 import { Body, Get, JsonController, Param, Patch, Post, Put, Res, Req, UseBefore } from 'routing-controllers';
 import { UserUpdateDto } from '../dto/userupdate.dto';
 import { AuthService } from '../services/auth.services';
-import { OrganizationService } from '../services/organization.service';
 import { Paginate, PaginateQuery } from '@shared/common';
 
 @JsonController('/auth/user')
 export class UserController {
   private userService: UserService;
   private authService: AuthService;
-  private organizationService: OrganizationService;
 
   constructor() {
     this.userService = new UserService();
     this.authService = new AuthService();
-    this.organizationService = new OrganizationService();
   }
 
   // Rate limiting for auth endpoints
@@ -105,14 +102,14 @@ async getUsersByOrganizationId(
   };
 
   @Post('/reset-password')
-  setUserAccountPassword = async (req: any, res: any) => {
+  async setUserAccountPassword(@Body() req: any, @Res() res: Response) {
     try {
-      const result = await this.userService.verifyAndSetPassword(req.body.token, req.body.newPassword);
-      res.json({
+      const result = await this.userService.verifyAndSetPassword(req.token, req.newPassword);
+      return res.json({
         result: result
       })
     } catch (error) {
-      res.status(500).json({
+      return res.status(400).json({
         error: error instanceof Error ? error.message : 'Failed to verify user'
       });
     }
@@ -121,11 +118,7 @@ async getUsersByOrganizationId(
   @Patch('/edit-user')
   async editUserDetail(@Body() req: any, @Res() res: any) {
     try {
-      const requestData = req;
-      const result = await this.userService.editUserAccountDetail(requestData);
-      if(result){
-        await this.organizationService.updateOrganizationStatus(result.organization_id, 'onboarded');
-      }
+      const result = await this.userService.editUserAccountDetail(req);
       return res.json({
         result: result
       })

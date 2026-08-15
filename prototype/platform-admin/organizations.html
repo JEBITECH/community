@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en" data-org="platform">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Organizations</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="proto-bar"><span><a href="../index.html">◀ All screens</a> <span class="proto-crumb">/ Platform Admin / Organization Management</span></span></div>
+
+<div class="admin-shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo-mark">⬢</div> Platform Admin</div>
+    <nav class="stack gap-1">
+      <a class="sidebar-link" href="dashboard.html"><span class="ico">📊</span>Dashboard</a>
+      <a class="sidebar-link active" href="organizations.html"><span class="ico">🏢</span>Organizations</a>
+      <a class="sidebar-link" href="subscription-plans.html"><span class="ico">💳</span>Subscription Plans</a>
+    </nav>
+  </aside>
+
+  <div class="admin-main">
+    <div class="admin-topbar"><strong>Organizations</strong><div class="avatar" style="width:34px;height:34px;">SA</div></div>
+    <div class="admin-content">
+      <div class="row-between"><h1 class="h2">148 Organizations</h1><a class="btn btn-primary" href="create-organization.html">+ Create Organization</a></div>
+      <input class="input" style="margin-top:14px;max-width:360px;" placeholder="Search organizations…">
+
+      <div class="card" style="margin-top:16px;overflow-x:auto;">
+        <table class="data-table">
+          <thead><tr><th>Organization</th><th>Type</th><th>Admin</th><th>Plan</th><th>Users</th><th>Domain</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="row gap-2"><div class="logo-mark" style="width:26px;height:26px;font-size:10px;">GA</div>Green Acres Society</td>
+              <td>Residential Society</td><td>Priya Rao</td><td><span class="chip chip-primary">Community</span></td><td>340</td><td>green-acres.platform.com</td>
+              <td><span class="chip chip-success">Active</span></td><td><a href="organization-detail.html" style="color:var(--color-primary);font-weight:700;">View</a></td>
+            </tr>
+            <tr>
+              <td class="row gap-2"><div class="logo-mark" style="width:26px;height:26px;font-size:10px;">RG</div>Rhythm Garba Academy</td>
+              <td>Trainer / Academy</td><td>Neha Shah</td><td><span class="chip chip-secondary">Professional</span></td><td>1,204</td><td>rhythm-garba.platform.com</td>
+              <td><span class="chip chip-success">Active</span></td><td><a href="organization-detail.html" style="color:var(--color-primary);font-weight:700;">View</a></td>
+            </tr>
+            <tr>
+              <td class="row gap-2"><div class="logo-mark" style="width:26px;height:26px;font-size:10px;">PC</div>Pune Cycling Club</td>
+              <td>Club</td><td>Arjun Deshmukh</td><td><span class="chip chip-primary">Community</span></td><td>380</td><td>pune-cycling.platform.com</td>
+              <td><span class="chip chip-success">Active</span></td><td><a href="organization-detail.html" style="color:var(--color-primary);font-weight:700;">View</a></td>
+            </tr>
+            <tr>
+              <td class="row gap-2"><div class="logo-mark" style="width:26px;height:26px;font-size:10px;">SB</div>Sunrise Bhajan Mandal</td>
+              <td>Cultural Group</td><td>Kiran Bhatt</td><td><span class="chip">Free</span></td><td>62</td><td>sunrise-bhajan.platform.com</td>
+              <td><span class="chip chip-warning">Trial</span></td><td><a href="organization-detail.html" style="color:var(--color-primary);font-weight:700;">View</a></td>
+            </tr>
+            <tr>
+              <td class="row gap-2"><div class="logo-mark" style="width:26px;height:26px;font-size:10px;">HH</div>Hopeful Hands NGO</td>
+              <td>NGO</td><td>Sana Ali</td><td><span class="chip">Free</span></td><td>140</td><td>hopeful-hands.platform.com</td>
+              <td><span class="chip chip-danger">Suspended</span></td><td><a href="organization-detail.html" style="color:var(--color-primary);font-weight:700;">View</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="../assets/app.js"></script>
+</body>
+</html>

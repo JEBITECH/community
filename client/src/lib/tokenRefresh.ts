@@ -1,5 +1,19 @@
 import { apiRequest } from '@/lib/queryClient';
 
+/**
+ * Decodes a JWT's payload without verifying its signature — safe only for
+ * UI-display decisions (e.g. which sidebar to render). The server is the one
+ * that actually verifies the signature and enforces authorization; this is
+ * never a substitute for that.
+ */
+export function decodeTokenPayload<T = any>(token: string): T | null {
+  try {
+    return JSON.parse(atob(token.split('.')[1]));
+  } catch {
+    return null;
+  }
+}
+
 export function isTokenExpired(token: string): boolean {
   try {
     const payload = JSON.parse(atob(token.split('.')[1]));

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en" data-org="green-acres">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create Festival</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="proto-bar"><span><a href="../index.html">◀ All screens</a> <span class="proto-crumb">/ Org Admin / Create Multi-Day Festival</span></span><span class="proto-crumb">Journey 8 · step 2</span></div>
+
+<div class="admin-shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo-mark">GA</div> Green Acres Society</div>
+    <nav class="stack gap-1">
+      <a class="sidebar-link" href="dashboard.html"><span class="ico">📊</span>Dashboard</a>
+      <a class="sidebar-link active" href="create-festival.html"><span class="ico">🎉</span>Activities</a>
+      <a class="sidebar-link" href="settings.html"><span class="ico">⚙️</span>Configuration</a>
+    </nav>
+  </aside>
+
+  <div class="admin-main">
+    <div class="admin-topbar"><strong>Create Festival</strong><div class="avatar" style="width:34px;height:34px;">PR</div></div>
+    <div class="admin-content" style="max-width:760px;">
+
+      <div data-wizard>
+        <div class="wizard-steps">
+          <div class="wizard-step" data-step="1"><div class="dot">1</div>Basics</div><div class="wizard-sep"></div>
+          <div class="wizard-step" data-step="2"><div class="dot">2</div>Days</div><div class="wizard-sep"></div>
+          <div class="wizard-step" data-step="3"><div class="dot">3</div>Organizers</div><div class="wizard-sep"></div>
+          <div class="wizard-step" data-step="4"><div class="dot">4</div>Volunteers &amp; Sponsors</div><div class="wizard-sep"></div>
+          <div class="wizard-step" data-step="5"><div class="dot">5</div>Publish</div>
+        </div>
+
+        <div class="card card-pad" data-wizard-panel="1">
+          <h2 class="h3">Festival basics</h2>
+          <div class="field" style="margin-top:14px;"><label>Festival Name</label><input class="input" value="Ganesh Festival 2026"></div>
+          <div class="grid grid-2">
+            <div class="field"><label>Start Date</label><input class="input" type="date" value="2026-09-20"></div>
+            <div class="field"><label>End Date</label><input class="input" type="date" value="2026-09-25"></div>
+          </div>
+          <div class="field"><label>Venue</label><input class="input" value="Clubhouse Grounds"></div>
+          <a class="btn btn-primary btn-block" style="margin-top:10px;" data-wizard-next>Continue</a>
+        </div>
+
+        <div class="card card-pad hidden" data-wizard-panel="2">
+          <div class="row-between"><h2 class="h3">Add days &amp; activities</h2><button class="btn btn-outline btn-sm">+ Add Day</button></div>
+          <div class="stack gap-3" style="margin-top:14px;">
+            <div class="card card-pad">
+              <strong class="text-sm">Day 1 — Sep 20</strong>
+              <div class="stack gap-2" style="margin-top:8px;">
+                <div class="row-between text-sm"><span>10:00 AM — Ganesh Arrival</span><span class="chip">Edit</span></div>
+                <div class="row-between text-sm"><span>7:30 PM — Aarti</span><span class="chip">Edit</span></div>
+              </div>
+              <button class="btn btn-ghost btn-sm" style="margin-top:6px;">+ Add Activity</button>
+            </div>
+            <div class="card card-pad">
+              <strong class="text-sm">Day 3 — Sep 22</strong>
+              <div class="stack gap-2" style="margin-top:8px;">
+                <div class="row-between text-sm"><span>4:00 PM — Kids Drawing Competition</span><span class="chip">Edit</span></div>
+              </div>
+              <button class="btn btn-ghost btn-sm" style="margin-top:6px;">+ Add Activity</button>
+            </div>
+          </div>
+          <div class="row gap-3" style="margin-top:16px;"><button class="btn btn-outline" data-wizard-back>Back</button><a class="btn btn-primary" style="flex:1;" data-wizard-next>Continue</a></div>
+        </div>
+
+        <div class="card card-pad hidden" data-wizard-panel="3">
+          <h2 class="h3">Assign organizers</h2>
+          <div class="stack gap-3" style="margin-top:14px;">
+            <div class="row gap-3 card card-pad"><div class="avatar" style="width:36px;height:36px;">PR</div><div><strong class="text-sm">Priya Rao</strong><div class="text-xs text-muted">Lead Organizer</div></div></div>
+            <div class="row gap-3 card card-pad"><div class="avatar" style="width:36px;height:36px;">VK</div><div><strong class="text-sm">Vikram Kale</strong><div class="text-xs text-muted">Logistics</div></div></div>
+            <div class="row gap-3 card card-pad"><div class="avatar" style="width:36px;height:36px;">MJ</div><div><strong class="text-sm">Meera Joshi</strong><div class="text-xs text-muted">Cultural Programs</div></div></div>
+          </div>
+          <button class="btn btn-outline btn-sm" style="margin-top:10px;">+ Add Organizer</button>
+          <div class="row gap-3" style="margin-top:16px;"><button class="btn btn-outline" data-wizard-back>Back</button><a class="btn btn-primary" style="flex:1;" data-wizard-next>Continue</a></div>
+        </div>
+
+        <div class="card card-pad hidden" data-wizard-panel="4">
+          <h2 class="h3">Request volunteers &amp; sponsors</h2>
+          <div class="field" style="margin-top:14px;"><label>Volunteer roles needed</label><input class="input" value="Decoration (4), Prasad Distribution (2), Photography (1), Stage Management (3)"></div>
+          <div class="field"><label>Sponsorship needs</label><input class="input" value="Kids Prizes (₹12,000), Photography (₹15,000), Prasad (₹20,000), Decoration (₹25,000)"></div>
+          <div class="row gap-3" style="margin-top:16px;"><button class="btn btn-outline" data-wizard-back>Back</button><a class="btn btn-primary" style="flex:1;" data-wizard-next>Continue</a></div>
+        </div>
+
+        <div class="card card-pad hidden" data-wizard-panel="5" style="text-align:center;">
+          <div class="icon-circle" style="background:var(--color-success-light);color:var(--color-success);width:64px;height:64px;font-size:28px;margin:0 auto;">✓</div>
+          <h2 class="h2" style="margin-top:14px;">Ganesh Festival 2026 is published!</h2>
+          <p class="text-muted text-sm" style="margin-top:6px;">6 days · 3 organizers · 10 volunteer roles · 4 sponsorship needs</p>
+          <div class="row gap-3" style="margin-top:20px;justify-content:center;">
+            <a class="btn btn-primary" href="../member/festival-overview.html">View Public Page</a>
+            <a class="btn btn-outline" href="dashboard.html">Back to Dashboard</a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+<script src="../assets/app.js"></script>
+</body>
+</html>

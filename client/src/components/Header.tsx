@@ -32,8 +32,9 @@ export default function Header({ title = "Dashboard Overview", subtitle = "Monit
         </div>
 
         <div className="flex items-center gap-3 flex-shrink-0">
-          {/* Organization Selector - dropdown for platform owner, read-only for others */}
-          {isMasterAdmin ? (
+          {/* Organization Selector - dropdown when there's a choice (master admin,
+              or a member belonging to more than one community), read-only otherwise */}
+          {isMasterAdmin || organizations.length > 1 ? (
             <Select
               value={selectedOrganizationId?.toString() || ""}
               onValueChange={(v) => setSelectedOrganizationId(parseInt(v))}

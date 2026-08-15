@@ -12,7 +12,7 @@ interface ActionPermissionGateProps {
   fallback?: React.ReactNode;
 }
 
-const FULL_ACCESS_ROLES = ["platformOwner", "super_admin"];
+const FULL_ACCESS_ROLES = ["master_admin", "super_admin"];
 
 function AccessDeniedView({ actionName }: { actionName: string }) {
   const navigate = useNavigate();

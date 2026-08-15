@@ -1,5 +1,0 @@
-export enum PostingDay {
-  FIRST_DAY = 'FIRST_DAY',
-  LAST_DAY = 'LAST_DAY',
-  DAY_BEFORE_LAST_DAY = 'DAY_BEFORE_LAST_DAY'
-}
