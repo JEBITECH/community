@@ -50,25 +50,11 @@ const DEFAULT_NOTIFICATION_CHANNEL_PREFERENCES: Record<NotificationChannel, bool
 };
 
 const DEFAULT_ROLE_EVENT_PREFERENCES: Record<string, boolean> = {
-  task_created: true,
-  task_updated: true,
-  task_assigned: true,
-  task_inspection_completed: true,
-  task_completed: true,
-  task_upcoming_24h: true,
-  task_upcoming_1h: true,
-  task_upcoming_15m: true,
-  task_overdue: true,
   reservation_created: true,
   auth_otp: true,
 };
 
 const ROLE_EVENT_KEY_ALIASES: Record<string, string[]> = {
-  task_created: ['receiveTaskCreationAlerts'],
-  task_updated: ['receiveTaskUpdateAlerts'],
-  task_assigned: ['receiveTaskAssignmentAlerts'],
-  task_inspection_completed: ['receiveInspectionAlerts'],
-  task_completed: ['receiveTaskCompletionAlerts'],
   reservation_created: ['receiveReservationAlerts'],
   auth_otp: ['receiveOtpAlerts'],
   marketing_promotion: ['receiveMarketingAlerts'],

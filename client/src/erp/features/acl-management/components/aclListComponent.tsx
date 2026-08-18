@@ -103,13 +103,6 @@ const RoleAccessRights: React.FC = () => {
   const [selectedSubActions, setSelectedSubActions] = useState<SelectedSubActions>({});
   const [selectedModules, setSelectedModules] = useState<Record<string, boolean>>({});
   const [companyChannels, setCompanyChannels] = useState<CompanyNotificationChannels>(companyChannelDefaults);
-  const [companySettings, setCompanySettings] = useState<{
-    notifyManagerForUpcomingTask?: boolean;
-    intervals?: number[];
-  }>({
-    notifyManagerForUpcomingTask: false,
-    intervals: [1440, 60, 15],
-  });
   const [isCompanySaving, setIsCompanySaving] = useState(false);
   const [isCompanyExpanded, setIsCompanyExpanded] = useState(false);
 
@@ -161,10 +154,6 @@ const RoleAccessRights: React.FC = () => {
   useEffect(() => {
     if (!organizationId || Number.isNaN(organizationId)) {
       setCompanyChannels(companyChannelDefaults);
-      setCompanySettings({
-        notifyManagerForUpcomingTask: false,
-        intervals: [1440, 60, 15],
-      });
       return;
     }
 
@@ -172,17 +161,9 @@ const RoleAccessRights: React.FC = () => {
       const data = (await getNotificationPreferences({ organizationId })) as {
         company?: {
           channels?: CompanyNotificationChannels;
-          settings?: {
-            notifyManagerForUpcomingTask?: boolean;
-            intervals?: number[];
-          };
         };
       };
       setCompanyChannels({ ...companyChannelDefaults, ...(data.company?.channels || {}) });
-      setCompanySettings({
-        notifyManagerForUpcomingTask: data.company?.settings?.notifyManagerForUpcomingTask ?? false,
-        intervals: data.company?.settings?.intervals || [1440, 60, 15],
-      });
     };
 
     loadCompanyPreferences().catch(() => {
@@ -444,22 +425,13 @@ const RoleAccessRights: React.FC = () => {
       await saveCompanyNotificationPreference({
         organizationId,
         channels: companyChannels,
-        settings: companySettings,
       });
       const data = (await getNotificationPreferences({ organizationId })) as {
         company?: {
           channels?: CompanyNotificationChannels;
-          settings?: {
-            notifyManagerForUpcomingTask?: boolean;
-            intervals?: number[];
-          };
         };
       };
       setCompanyChannels({ ...companyChannelDefaults, ...(data.company?.channels || {}) });
-      setCompanySettings({
-        notifyManagerForUpcomingTask: data.company?.settings?.notifyManagerForUpcomingTask ?? false,
-        intervals: data.company?.settings?.intervals || [1440, 60, 15],
-      });
       toast({
         title: "Success",
         description: "Company notification settings saved successfully.",
@@ -725,65 +697,6 @@ const RoleAccessRights: React.FC = () => {
                       />
                     </div>
                   ))}
-                </div>
-
-                <div className="border-t border-slate-100 dark:border-slate-800 px-4 py-4 space-y-4 bg-slate-50/30 dark:bg-slate-900/30">
-                  <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Task Reminder Settings</h4>
-
-                  <div className="flex items-center justify-between py-1">
-                    <div>
-                      <span className="text-sm font-medium text-foreground">Notify Managers & Admins</span>
-                      <p className="text-xs text-muted-foreground">Notify organization managers/admins of upcoming tasks.</p>
-                    </div>
-                    <SettingToggle
-                      checked={Boolean(companySettings.notifyManagerForUpcomingTask)}
-                      disabled={!organizationId || isCompanySaving}
-                      onChange={() =>
-                        setCompanySettings((prev) => ({
-                          ...prev,
-                          notifyManagerForUpcomingTask: !prev.notifyManagerForUpcomingTask,
-                        }))
-                      }
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <span className="text-sm font-medium text-foreground">Reminder Intervals</span>
-                    <p className="text-xs text-muted-foreground mb-2">Select the intervals at which reminders should be sent before task scheduled execution.</p>
-
-                    <div className="grid gap-2 sm:grid-cols-3">
-                      {[
-                        { label: "24 Hours (1440m)", value: 1440 },
-                        { label: "1 Hour (60m)", value: 60 },
-                        { label: "15 Minutes (15m)", value: 15 },
-                      ].map((item) => {
-                        const isChecked = companySettings.intervals?.includes(item.value);
-                        return (
-                          <label key={item.value} className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                            <input
-                              type="checkbox"
-                              checked={Boolean(isChecked)}
-                              disabled={!organizationId || isCompanySaving}
-                              onChange={() => {
-                                setCompanySettings((prev) => {
-                                  const currentIntervals = prev.intervals || [];
-                                  const newIntervals = currentIntervals.includes(item.value)
-                                    ? currentIntervals.filter((v) => v !== item.value)
-                                    : [...currentIntervals, item.value];
-                                  return {
-                                    ...prev,
-                                    intervals: newIntervals,
-                                  };
-                                });
-                              }}
-                              className="rounded border-slate-300 text-primary focus:ring-primary h-4 w-4 cursor-pointer"
-                            />
-                            <span className="text-sm font-medium text-foreground">{item.label}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
                 </div>
 
                 <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3">

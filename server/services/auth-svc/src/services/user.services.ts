@@ -197,10 +197,27 @@ export class UserService {
   async getAllUsers(query: PaginateQuery, currentUser?: any): Promise<Paginated<User>> {
     const selectQuery = this.userRepository.createQueryBuilder("user");
 
-    if (currentUser?.organization_id && currentUser.role !== Role.MASTER_ADMIN) {
+    const isMasterAdmin = currentUser?.role === Role.MASTER_ADMIN;
+
+    if (!isMasterAdmin && currentUser?.organization_id) {
+      // Non-master-admin callers are always scoped to their own org, from the
+      // verified JWT claim — never from client-supplied filters, so one org's
+      // admin can't view another org's users by tampering with the query.
       selectQuery
         .innerJoin(Membership, "membership", "membership.user_id = user.id")
         .andWhere("membership.organization_id = :orgId", { orgId: currentUser.organization_id });
+    } else if (isMasterAdmin) {
+      // Master Admin has no organization_id claim of its own (platform-level),
+      // so its org scoping comes entirely from the "view as org" filter the
+      // client sends (see OrganizationContext's selectedOrganizationId).
+      const rawFilter = query.filter?.organization_id;
+      const rawValue = Array.isArray(rawFilter) ? rawFilter[0] : rawFilter;
+      const orgId = rawValue ? parseInt(String(rawValue).replace(/^\$eq:/, ""), 10) : undefined;
+      if (orgId && !Number.isNaN(orgId)) {
+        selectQuery
+          .innerJoin(Membership, "membership", "membership.user_id = user.id")
+          .andWhere("membership.organization_id = :orgId", { orgId });
+      }
     }
 
     if (query.search?.trim()) {

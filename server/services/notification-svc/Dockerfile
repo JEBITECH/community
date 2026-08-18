@@ -1,5 +1,5 @@
 # Build context MUST be the monorepo ROOT — see auth-svc/Dockerfile for why.
-#   docker build -f server/platform/gateway/Dockerfile -t community-gateway .
+#   docker build -f server/services/notification-svc/Dockerfile -t community-notification-svc .
 FROM node:20-alpine
 
 WORKDIR /app
@@ -17,15 +17,17 @@ RUN npm install
 
 COPY server/platform/common server/platform/common
 COPY server/platform/shared-entities server/platform/shared-entities
-COPY server/platform/gateway server/platform/gateway
+COPY server/services/notification-svc server/services/notification-svc
 
-WORKDIR /app/server/platform/gateway
+WORKDIR /app/server/services/notification-svc
 
 ENV NODE_ENV=production
-EXPOSE 4000
+# HTTP API (bootstrap/preferences endpoints) and the TCP microservice
+# listener (auth-svc/community-svc send notification triggers here) are
+# two separate ports on the same hybrid app.
+EXPOSE 5011
+EXPOSE 6011
 
-# Runs from source via tsx, matching the proven-working `dev` script
-# (`tsx --watch src/index.ts`) minus the file-watcher — see
-# auth-svc/Dockerfile's comment for why plain `node dist/index.js` doesn't
-# work in this monorepo.
-CMD ["npx", "tsx", "src/index.ts"]
+# See auth-svc/Dockerfile's comment: runs from source via ts-node, matching
+# nodemon.json's proven-working `exec`.
+CMD ["npx", "ts-node", "-r", "tsconfig-paths/register", "--transpile-only", "src/main.ts"]

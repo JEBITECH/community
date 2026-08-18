@@ -30,15 +30,6 @@ export class NotificationBootstrapService {
   constructor(private readonly preferenceService: PreferenceService) { }
 
   private readonly defaultRoleEventPreferences: Record<string, boolean> = {
-    task_created: true,
-    task_updated: true,
-    task_assigned: true,
-    task_inspection_completed: true,
-    task_completed: true,
-    task_upcoming_24h: true,
-    task_upcoming_1h: true,
-    task_upcoming_15m: true,
-    task_overdue: true,
     reservation_created: true,
     auth_otp: true,
   };

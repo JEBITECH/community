@@ -32,7 +32,6 @@ export * from "./middlewares/paginate/paginate.decorator";
 export * from './roles.decorator';
 export * from './roles.guard';
 export * from './src/notifications/notification.constants';
-export * from './src/notifications/notification.defaults';
 export * from './src/notifications/notification.types';
 export * from './src/notifications/notification.enums';
 export * from './src/notifications/notification.queues';

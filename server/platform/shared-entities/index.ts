@@ -16,4 +16,3 @@ export * from './src/user-notification-preference.entity';
 export * from './src/company-notification-preference.entity';
 export * from './src/role-notification-preference.entity';
 export * from './src/device-token.entity';
-export * from './src/notification-reminder-log.entity';

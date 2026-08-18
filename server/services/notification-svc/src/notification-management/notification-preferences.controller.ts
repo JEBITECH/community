@@ -83,8 +83,6 @@ export class NotificationPreferencesController {
   @ApiQuery({ name: 'notifications_limit', required: false, type: Number })
   @ApiQuery({ name: 'delivery_page', required: false, type: Number })
   @ApiQuery({ name: 'delivery_limit', required: false, type: Number })
-  @ApiQuery({ name: 'reminders_page', required: false, type: Number })
-  @ApiQuery({ name: 'reminders_limit', required: false, type: Number })
   getLogs(
     @Query('organization_id') organizationId: string,
     @Query('page') page?: string,
@@ -93,8 +91,6 @@ export class NotificationPreferencesController {
     @Query('notifications_limit') notificationsLimit?: string,
     @Query('delivery_page') deliveryPage?: string,
     @Query('delivery_limit') deliveryLimit?: string,
-    @Query('reminders_page') remindersPage?: string,
-    @Query('reminders_limit') remindersLimit?: string,
   ) {
     const parseNumber = (value?: string) => (value === undefined ? undefined : Number(value));
 
@@ -109,10 +105,6 @@ export class NotificationPreferencesController {
       delivery: {
         page: parseNumber(deliveryPage),
         limit: parseNumber(deliveryLimit),
-      },
-      reminders: {
-        page: parseNumber(remindersPage),
-        limit: parseNumber(remindersLimit),
       },
     });
   }

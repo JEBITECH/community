@@ -1,0 +1,119 @@
+version: "3.9"
+
+# One-VM deployment: every service in this compose file, on one Docker
+# network, reachable from each other by service name. Copy .env.example to
+# .env and fill in real values before running `docker compose up -d --build`.
+#
+# community-svc is published on the host (not just internal) because the
+# client's live-chat Socket.io connection goes there DIRECTLY, bypassing
+# the gateway — see server/services/community-svc/Dockerfile's comment.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-community_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-change-me}
+      POSTGRES_DB: ${DB_DATABASE:-community_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-community_user} -d ${DB_DATABASE:-community_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  auth-svc:
+    build:
+      context: .
+      dockerfile: server/services/auth-svc/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: postgres
+      NOTIFICATION_MICROSERVICE_HOST: notification-svc
+    depends_on:
+      postgres:
+        condition: service_healthy
+    expose:
+      - "4001"
+
+  community-svc:
+    build:
+      context: .
+      dockerfile: server/services/community-svc/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: postgres
+      NOTIFICATION_MICROSERVICE_HOST: notification-svc
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "5021:5021"
+
+  notification-svc:
+    build:
+      context: .
+      dockerfile: server/services/notification-svc/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: postgres
+      REDIS_HOST: redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    expose:
+      - "5011"
+      - "6011"
+
+  gateway:
+    build:
+      context: .
+      dockerfile: server/platform/gateway/Dockerfile
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      AUTH_SERVICE_URL: http://auth-svc:4001
+      COMMUNITY_SERVICE_URL: http://community-svc:5021
+      NOTIFICATION_SERVICE_URL: http://notification-svc:5011
+      NOTIFICATION_MICROSERVICE_HOST: notification-svc
+    depends_on:
+      - auth-svc
+      - community-svc
+      - notification-svc
+    ports:
+      - "4000:4000"
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:4000/api}
+        VITE_COMMUNITY_WS_URL: ${VITE_COMMUNITY_WS_URL:-http://localhost:5021}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - gateway
+
+volumes:
+  postgres_data:
+  redis_data:

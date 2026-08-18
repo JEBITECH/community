@@ -1,7 +1,9 @@
+import { Link } from "react-router-dom";
 import Layout from "@/components/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ShieldCheck, Building2, Users, CalendarDays, Gift } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ShieldCheck, Building2, Users, CalendarDays, Gift, Plus } from "lucide-react";
 import { usePlatformSummary } from "../hooks/useDashboard";
 
 function StatCard({ label, value, icon: Icon, sub }: { label: string; value: string | number; icon: any; sub?: string }) {
@@ -26,7 +28,14 @@ export default function PlatformDashboard() {
 
   return (
     <Layout title="Platform Dashboard" subtitle="Across every community on the platform" icon={<ShieldCheck className="w-5 h-5" />}>
-      <div className="max-w-3xl mx-auto py-6 px-4">
+      <div className="max-w-3xl mx-auto py-6 px-4 space-y-4">
+        <div className="flex justify-end">
+          <Link to="/organizations/new">
+            <Button shape="pill" className="gap-1">
+              <Plus className="w-4 h-4" /> New Organization
+            </Button>
+          </Link>
+        </div>
         {isLoading || !summary ? (
           <div className="grid grid-cols-2 gap-3">
             {[1, 2, 3, 4].map((i) => (

@@ -83,15 +83,6 @@ export class UpsertUserNotificationPreferenceDto {
   doNotDisturb?: boolean;
 }
 
-export class CompanySettingsDto {
-  @IsOptional()
-  @IsBoolean()
-  notifyManagerForUpcomingTask?: boolean;
-
-  @IsOptional()
-  intervals?: number[]
-}
-
 export class UpsertCompanyNotificationPreferenceDto {
   @Type(() => Number)
   @IsInt()
@@ -99,10 +90,6 @@ export class UpsertCompanyNotificationPreferenceDto {
 
   @IsObject()
   channels!: CompanyChannelPreferencesDto;
-
-  @IsOptional()
-  @IsObject()
-  settings?: CompanySettingsDto;
 }
 
 export class UpsertRoleNotificationPreferenceDto {

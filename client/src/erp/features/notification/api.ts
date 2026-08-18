@@ -65,7 +65,6 @@ export type NotificationLogsRequestParams = {
   limit?: number;
   notifications?: NotificationLogPagination;
   delivery?: NotificationLogPagination;
-  reminders?: NotificationLogPagination;
 };
 
 export type NotificationLogsPaginationMeta = {
@@ -108,19 +107,6 @@ export type NotificationDeliveryLogItem = {
   } | null;
 };
 
-export type NotificationReminderLogItem = {
-  id: number;
-  taskId: number;
-  eventType: string;
-  recipientId: string;
-  sentAt: string;
-  createdAt: string;
-  recipient: NotificationRecipientPreview | null;
-  task: {
-    title: string;
-  } | null;
-};
-
 export type NotificationLogsResponse = {
   notifications: {
     data: NotificationLogItem[];
@@ -130,15 +116,11 @@ export type NotificationLogsResponse = {
     data: NotificationDeliveryLogItem[];
     meta: NotificationLogsPaginationMeta;
   };
-  reminderLogs: {
-    data: NotificationReminderLogItem[];
-    meta: NotificationLogsPaginationMeta;
-  };
 };
 
 const appendLogPagination = (
   query: URLSearchParams,
-  prefix: "notifications" | "delivery" | "reminders",
+  prefix: "notifications" | "delivery",
   pagination?: NotificationLogPagination,
   fallback?: NotificationLogPagination,
 ) => {
@@ -159,18 +141,12 @@ export const getNotificationLogs = (params: NotificationLogsRequestParams): Prom
   query.append("organization_id", String(params.organizationId));
   appendLogPagination(query, "notifications", params.notifications, { page: params.page, limit: params.limit });
   appendLogPagination(query, "delivery", params.delivery, { page: params.page, limit: params.limit });
-  appendLogPagination(query, "reminders", params.reminders, { page: params.page, limit: params.limit });
   return apiRequest("GET", `/notifications/notification-preferences/logs?${query.toString()}`).then(res => res.json());
 };
 
 export const saveCompanyNotificationPreference = (data: {
   organizationId: number;
   channels: CompanyNotificationChannels;
-  settings?: {
-    notifyManagerForUpcomingTask?: boolean;
-    intervals?: number[];
-    [key: string]: any;
-  };
 }) => apiRequest("POST", "/notifications/notification-preferences/company", data).then(res => res.json());
 
 export const saveUserNotificationPreference = (data: {

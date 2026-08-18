@@ -6,7 +6,6 @@ import { RoleNotificationPreferenceEntity } from '@shared/entities/src/role-noti
 import { UserNotificationPreferenceEntity } from '@shared/entities/src/user-notification-preference.entity';
 import { NotificationEntity } from '@shared/entities/src/notification.entity';
 import { NotificationDeliveryLogEntity } from '@shared/entities/src/notification-delivery-log.entity';
-import { NotificationReminderLogEntity } from '@shared/entities/src/notification-reminder-log.entity';
 import { NotificationTemplateEntity } from '@shared/entities';
 import { User } from '@shared/entities/src/user.entity';
 
@@ -19,7 +18,6 @@ import { User } from '@shared/entities/src/user.entity';
       UserNotificationPreferenceEntity,
       NotificationEntity,
       NotificationDeliveryLogEntity,
-      NotificationReminderLogEntity,
       NotificationTemplateEntity,
       User,
     ]),

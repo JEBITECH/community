@@ -105,6 +105,7 @@ export class OrganizationService {
                     organization_type: (organizationDto.organization_type as any) || 'society',
                     subdomain,
                     membership_model: (organizationDto.membership_model as any) || 'approval_required',
+                    plan: (organizationDto.plan as any) || 'free',
                     organization_logo: organizationDto.organization_logo || null,
                     organization_status: 'active',
                 });
@@ -383,6 +384,7 @@ export class OrganizationService {
         organization.organization_contact_info = dto.organization_contact_info ?? organization.organization_contact_info;
         if (dto.organization_type !== undefined) organization.organization_type = dto.organization_type as any;
         if (dto.membership_model !== undefined) organization.membership_model = dto.membership_model as any;
+        if (dto.plan !== undefined) organization.plan = dto.plan as any;
         if (dto.organization_logo !== undefined) organization.organization_logo = dto.organization_logo;
 
         await this.organizationRepo.save(organization);

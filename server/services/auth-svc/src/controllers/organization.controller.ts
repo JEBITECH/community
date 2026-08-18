@@ -4,6 +4,17 @@ import { Body, Get, JsonController, Param, Patch, Post, Req, Res } from "routing
 import { OrganizationDto } from "../dto/organization.dto";
 import { ResponseSchema } from "routing-controllers-openapi";
 import { OrganizationListDto, OrganizationDetailDto } from "../dto/organizationdetail.dto";
+import { Role } from "@shared/common";
+
+/**
+ * Reads the caller's role off the gateway-forwarded x-user-role header (set
+ * by RequestContext.middleware.ts from the verified JWT) — no signature
+ * re-verification here since the gateway already did that; this is purely
+ * "which role is this request acting as".
+ */
+function callerRole(req: Request): string | undefined {
+    return req.headers['x-user-role'] as string | undefined;
+}
 
 @JsonController('/auth/organizations')
 export class OrganizationController {
@@ -14,7 +25,10 @@ export class OrganizationController {
     }
 
     @Post()
-    async create(@Body() dto: OrganizationDto, @Res() res: Response) {
+    async create(@Req() req: Request, @Body() dto: OrganizationDto, @Res() res: Response) {
+        if (callerRole(req) !== Role.MASTER_ADMIN) {
+            return res.status(403).json({ error: 'Only the platform admin can onboard a new organization' });
+        }
         try {
             const result = await this.organizationService.create(dto);
             if (!result.status) {

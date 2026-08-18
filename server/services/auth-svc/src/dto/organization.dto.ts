@@ -42,6 +42,10 @@ export class OrganizationDto {
     membership_model?: string;
 
     @IsOptional()
+    @IsIn(['free', 'community', 'professional', 'enterprise'])
+    plan?: string;
+
+    @IsOptional()
     @IsObject()
     super_admin?: OrganizationUserDto;
 
