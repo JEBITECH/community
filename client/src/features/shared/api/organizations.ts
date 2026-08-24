@@ -18,6 +18,7 @@ export interface ThemeConfigInput {
 }
 
 export interface CreateOrganizationInput {
+  organization_id: number;
   organization_name: string;
   organization_email?: string;
   organization_location?: string;

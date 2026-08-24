@@ -92,7 +92,10 @@ export class OrganizationController {
     }
 
     @Patch('/:id')
-    async updateOrganizationById(@Param('id') id: number, @Body() dto: OrganizationDto, @Res() res: Response) {
+    async updateOrganizationById(@Req() req: Request, @Param('id') id: number, @Body() dto: OrganizationDto, @Res() res: Response) {
+        if (callerRole(req) !== Role.MASTER_ADMIN) {
+            return res.status(403).json({ error: 'Only the platform admin can update an organization' });
+        }
         try {
             const organization = await this.organizationService.updateOrganizationById(id, dto);
             return res.status(200).json(organization);
@@ -102,7 +105,10 @@ export class OrganizationController {
     }
 
     @Patch('/:id/suspend')
-    async suspendOrganization(@Param('id') id: number, @Res() res: Response) {
+    async suspendOrganization(@Req() req: Request, @Param('id') id: number, @Res() res: Response) {
+        if (callerRole(req) !== Role.MASTER_ADMIN) {
+            return res.status(403).json({ error: 'Only the platform admin can suspend an organization' });
+        }
         try {
             const result = await this.organizationService.suspendOrganization(id);
             return res.status(200).json(result);
@@ -112,7 +118,10 @@ export class OrganizationController {
     }
 
     @Patch('/:id/reactivate')
-    async reactivateOrganization(@Param('id') id: number, @Res() res: Response) {
+    async reactivateOrganization(@Req() req: Request, @Param('id') id: number, @Res() res: Response) {
+        if (callerRole(req) !== Role.MASTER_ADMIN) {
+            return res.status(403).json({ error: 'Only the platform admin can reactivate an organization' });
+        }
         try {
             const result = await this.organizationService.reactivateOrganization(id);
             return res.status(200).json(result);
@@ -122,7 +131,10 @@ export class OrganizationController {
     }
 
     @Patch('/archive/:id')
-    async deleteOrganizationById(@Param('id') id: number, @Res() res: Response) {
+    async deleteOrganizationById(@Req() req: Request, @Param('id') id: number, @Res() res: Response) {
+        if (callerRole(req) !== Role.MASTER_ADMIN) {
+            return res.status(403).json({ error: 'Only the platform admin can archive an organization' });
+        }
         try {
             const organization = await this.organizationService.deleteOrganization(id);
             return res.status(200).json({
@@ -135,7 +147,10 @@ export class OrganizationController {
     }
 
     @Patch('/restore/:id')
-    async restoreOrganizationById(@Param('id') id: number, @Res() res: Response) {
+    async restoreOrganizationById(@Req() req: Request, @Param('id') id: number, @Res() res: Response) {
+        if (callerRole(req) !== Role.MASTER_ADMIN) {
+            return res.status(403).json({ error: 'Only the platform admin can restore an organization' });
+        }
         try {
             const organization = await this.organizationService.restoreOrganization(id);
             return res.status(200).json({
@@ -146,7 +161,6 @@ export class OrganizationController {
             return res.status(400).json({ error: err instanceof Error ? err.message : 'Failed to restore organization' });
         }
     }
-
     @Get('/modules-by-Organization/:id')
     async findModulesByOrganizationId(@Param("id") id: number, @Res() res: Response) {
         try {

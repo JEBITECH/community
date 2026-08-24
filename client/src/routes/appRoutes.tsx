@@ -26,7 +26,7 @@ const OrgDashboard = lazy(() => import("@/features/member/pages/orgDashboard"));
 const PlatformDashboard = lazy(() => import("@/features/member/pages/platformDashboard"));
 const CreateOrganization = lazy(() => import("@/features/member/pages/createOrganization"));
 const Reports = lazy(() => import("@/features/member/pages/reports"));
-
+const OrganizationSettings=lazy(()=> import("@/features/member/pages/organizationSettings"))
 const GuestLanding = lazy(() => import("@/features/guest/pages/GuestLanding"));
 const GuestActivity = lazy(() => import("@/features/guest/pages/GuestActivity"));
 const GuestConfirmation = lazy(() => import("@/features/guest/pages/GuestConfirmation"));
@@ -71,6 +71,7 @@ const AppRouter = () => {
             <Route path="/calendar" element={<CommunityCalendar />} />
             <Route path="/org-dashboard" element={<OrgDashboard />} />
             <Route path="/platform-dashboard" element={<PlatformDashboard />} />
+            <Route path="/organizations/:id/edit" element={<OrganizationSettings />} />
             <Route path="/organizations/new" element={<CreateOrganization />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/users" element={<UserManagement />} />
