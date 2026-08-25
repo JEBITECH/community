@@ -10,14 +10,14 @@ import { AuditLogSubscriber } from './audit-logging/audit-log.subscriber';
 import {
   Country,
   OrganizationModuleSubscription,
-  PmsConfig,
-  PmsMaster,
   Theme,
   User,
   UserAddress,
   UserBankAccount,
   ModuleEntity,
   Organization,
+  Membership,
+  InvitationCode,
 } from "@shared/entities";
 import { ApiLogs, AuditLogs, AuditTransaction, AuditConfig, AuditLogService, auditService } from "@shared/common";
 
@@ -40,13 +40,13 @@ synchronize: false,
   entities: [
     User,
     Organization,
-    PmsMaster,
+    Membership,
+    InvitationCode,
     Action,
     SubAction,
     Roles,
     RoleModuleAccess,
     Theme,
-    PmsConfig,
     ModuleEntity,
     OrganizationModuleSubscription,
     AuditLogs,

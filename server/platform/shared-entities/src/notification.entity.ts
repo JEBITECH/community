@@ -9,9 +9,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { NormalizedReservation } from './normalized-reservation';
 import { Organization } from './organization.entity';
-import { Task } from './task.entity';
 import { User } from './user.entity';
 import { NotificationDeliveryLogEntity } from './notification-delivery-log.entity';
 import { NotificationTemplateEntity } from './notification-template.entity';
@@ -20,8 +18,6 @@ import { NotificationTemplateEntity } from './notification-template.entity';
 @Index(['eventType', 'recipientId'])
 @Index(['status', 'channel'])
 @Index(['organizationId', 'eventType'])
-@Index(['taskId'])
-@Index(['reservationId'])
 export class NotificationEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -66,20 +62,6 @@ export class NotificationEntity {
   @ManyToOne(() => Organization, { nullable: true, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'organization_id' })
   organization?: Organization | null;
-
-  @Column({ name: 'task_id', type: 'int4', nullable: true })
-  taskId?: number | null;
-
-  @ManyToOne(() => Task, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'task_id' })
-  task?: Task | null;
-
-  @Column({ name: 'reservation_id', type: 'int4', nullable: true })
-  reservationId?: number | null;
-
-  @ManyToOne(() => NormalizedReservation, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'reservation_id' })
-  reservation?: NormalizedReservation | null;
 
   @Column({ name: 'template_id', type: 'int4', nullable: true })
   templateId?: number | null;

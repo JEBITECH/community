@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en" data-org="green-acres">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log In — Green Acres Society</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body style="background:var(--color-primary);min-height:100vh;">
+<div class="proto-bar"><span><a href="../index.html">◀ All screens</a> <span class="proto-crumb">/ Auth / Login (org-branded)</span></span><span class="proto-crumb">Journey 2 · step 1</span></div>
+
+<main style="display:flex;align-items:center;justify-content:center;padding:60px 20px;">
+  <div class="card" style="max-width:420px;width:100%;overflow:hidden;">
+    <div class="hero" style="border-radius:0;padding:36px 28px;text-align:center;">
+      <div class="hero-pattern"></div>
+      <div style="position:relative;">
+        <div class="logo-mark" style="margin:0 auto;background:rgba(255,255,255,.2);">GA</div>
+        <div class="h3" style="color:#fff;margin-top:12px;">Green Acres Society</div>
+      </div>
+    </div>
+    <div class="card-pad">
+      <h1 class="h2">Welcome back</h1>
+      <p class="text-muted text-sm" style="margin-top:4px;">Log in to see what's happening in your community.</p>
+
+      <div class="field" style="margin-top:20px;"><label>Mobile Number</label><input class="input" placeholder="+91 98xxxxxxxx"></div>
+      <button class="btn btn-primary btn-block" id="sendOtp">Send OTP</button>
+
+      <div class="row gap-3" style="margin:18px 0;align-items:center;">
+        <div style="flex:1;height:1px;background:var(--color-border);"></div><span class="text-xs text-faint">or continue with</span><div style="flex:1;height:1px;background:var(--color-border);"></div>
+      </div>
+      <div class="grid grid-2" style="gap:10px;">
+        <button class="btn btn-outline">🔵 Google</button>
+        <button class="btn btn-outline"> Apple</button>
+      </div>
+      <div class="row gap-2" style="margin-top:10px;">
+        <button class="btn btn-outline btn-block">✉️ Email Login</button>
+      </div>
+
+      <div class="row-between" style="margin-top:20px;">
+        <a class="text-sm" style="color:var(--color-primary);font-weight:700;" href="#">Forgot password?</a>
+        <a class="text-sm" style="color:var(--color-primary);font-weight:700;" href="join-community.html">Create account</a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="overlay hidden" id="otpModal">
+  <div class="modal">
+    <h3 class="h3">Enter OTP</h3>
+    <p class="text-sm text-muted" style="margin-top:6px;">We sent a 6-digit code to +91 98xxxxxxxx</p>
+    <div class="row gap-2" style="margin-top:16px;">
+      <input class="input" style="text-align:center;" maxlength="1">
+      <input class="input" style="text-align:center;" maxlength="1">
+      <input class="input" style="text-align:center;" maxlength="1">
+      <input class="input" style="text-align:center;" maxlength="1">
+      <input class="input" style="text-align:center;" maxlength="1">
+      <input class="input" style="text-align:center;" maxlength="1">
+    </div>
+    <a class="btn btn-primary btn-block" style="margin-top:18px;" href="switcher.html">Verify &amp; Continue</a>
+  </div>
+</div>
+
+<script src="../assets/app.js"></script>
+<script>document.getElementById('sendOtp').addEventListener('click',()=>document.getElementById('otpModal').classList.remove('hidden'));</script>
+</body>
+</html>

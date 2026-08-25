@@ -5,8 +5,6 @@ import { RoleNotificationPreferenceEntity } from '@shared/entities/src/role-noti
 import { NotificationTemplateEntity } from '@shared/entities/src/notification-template.entity';
 import { NotificationDeliveryLogEntity } from '@shared/entities/src/notification-delivery-log.entity';
 import { DeviceTokenEntity } from '@shared/entities/src/device-token.entity';
-import { NotificationReminderLogEntity } from '@shared/entities/src/notification-reminder-log.entity';
-import { Task } from '@shared/entities/src/task.entity';
 
 export {
   NotificationEntity,
@@ -16,8 +14,6 @@ export {
   NotificationTemplateEntity,
   NotificationDeliveryLogEntity,
   DeviceTokenEntity,
-  NotificationReminderLogEntity,
-  Task,
 };
 
 export const NOTIFICATION_ENTITIES = [
@@ -28,6 +24,4 @@ export const NOTIFICATION_ENTITIES = [
   NotificationTemplateEntity,
   NotificationDeliveryLogEntity,
   DeviceTokenEntity,
-  NotificationReminderLogEntity,
-  Task,
 ];

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en" data-org="platform">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Platform Admin Dashboard</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="proto-bar"><span><a href="../index.html">◀ All screens</a> <span class="proto-crumb">/ Platform Admin / Dashboard (the SaaS operator's view)</span></span><span class="proto-crumb">Journey 7 · step 1</span></div>
+
+<div class="admin-shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo-mark">⬢</div> Platform Admin</div>
+    <nav class="stack gap-1">
+      <div class="sidebar-section-label">Platform</div>
+      <a class="sidebar-link active" href="dashboard.html"><span class="ico">📊</span>Dashboard</a>
+      <a class="sidebar-link" href="organizations.html"><span class="ico">🏢</span>Organizations</a>
+      <a class="sidebar-link" href="subscription-plans.html"><span class="ico">💳</span>Subscription Plans</a>
+      <a class="sidebar-link"><span class="ico">🧩</span>Feature Configuration</a>
+      <a class="sidebar-link"><span class="ico">📈</span>Reports</a>
+    </nav>
+  </aside>
+
+  <div class="admin-main">
+    <div class="admin-topbar"><strong>Platform Dashboard</strong>
+      <div class="row gap-3"><a class="btn btn-outline btn-sm" href="../org-admin/dashboard.html">Switch to Org View</a><div class="avatar" style="width:34px;height:34px;">SA</div></div>
+    </div>
+    <div class="admin-content">
+      <div class="row-between"><h1 class="h2">Platform Overview</h1><a class="btn btn-primary" href="create-organization.html">+ Create Organization</a></div>
+
+      <div class="grid grid-4" style="margin-top:20px;">
+        <div class="card card-pad"><div class="text-sm text-muted">Total Organizations</div><div class="h2">148</div></div>
+        <div class="card card-pad"><div class="text-sm text-muted">Active Organizations</div><div class="h2">136</div></div>
+        <div class="card card-pad"><div class="text-sm text-muted">Total Users</div><div class="h2">24,910</div></div>
+        <div class="card card-pad"><div class="text-sm text-muted">Monthly Active Users</div><div class="h2">18,204</div></div>
+        <div class="card card-pad"><div class="text-sm text-muted">Activities Created</div><div class="h2">3,842</div></div>
+        <div class="card card-pad"><div class="text-sm text-muted">Registrations (30d)</div><div class="h2">9,120</div></div>
+        <div class="card card-pad"><div class="text-sm text-muted">Revenue (MRR)</div><div class="h2">₹8.4L</div></div>
+        <div class="card card-pad"><div class="text-sm text-muted">Storage Used</div><div class="h2">1.2 TB</div></div>
+      </div>
+
+      <div class="grid grid-2" style="margin-top:24px;align-items:start;">
+        <div class="card card-pad">
+          <div class="row-between"><h3 class="h3">Recently onboarded</h3><a class="text-sm" href="organizations.html" style="color:var(--color-primary);font-weight:700;">View all</a></div>
+          <div class="stack gap-3" style="margin-top:12px;">
+            <a class="row-between text-sm" href="organization-detail.html"><span>Green Acres Society</span><span class="chip chip-success">Active</span></a>
+            <a class="row-between text-sm" href="organization-detail.html"><span>Rhythm Garba Academy</span><span class="chip chip-success">Active</span></a>
+            <a class="row-between text-sm" href="organization-detail.html"><span>Pune Cycling Club</span><span class="chip chip-success">Active</span></a>
+          </div>
+        </div>
+        <div class="card card-pad">
+          <h3 class="h3">Organizations by type</h3>
+          <div class="stack gap-2" style="margin-top:12px;">
+            <div class="row-between text-sm"><span>Residential Societies</span><span class="text-muted">62</span></div>
+            <div class="row-between text-sm"><span>Trainers / Academies</span><span class="text-muted">41</span></div>
+            <div class="row-between text-sm"><span>Clubs</span><span class="text-muted">28</span></div>
+            <div class="row-between text-sm"><span>NGOs / Others</span><span class="text-muted">17</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="../assets/app.js"></script>
+</body>
+</html>

@@ -1,10 +1,8 @@
-import { PmsMasterDto } from "./pmsmaster.dto";
-import { IsString, IsArray, IsObject, IsOptional, ValidateNested, IsBoolean, IsNumber, MaxLength } from 'class-validator'
+import { IsString, IsArray, IsObject, IsOptional, ValidateNested, IsIn, MaxLength } from 'class-validator'
 import { OrganizationUserDto } from "./organizationuser.dto";
 import { Type } from "class-transformer";
 import { ThemeConfigDto } from "./themeConfig.dto";
 import { OrganizationModuleSubscriptionDto } from "./OrganizationModuleSubscription.dto";
-import { PropertyLocationDto } from "./PropertyLocation.dto";
 
 export class OrganizationDto {
 
@@ -12,9 +10,11 @@ export class OrganizationDto {
     @MaxLength(50)
     organization_name?: string;
 
+    @IsOptional()
     @IsString()
     organization_email?: string;
 
+    @IsOptional()
     @IsString()
     @MaxLength(50)
     organization_location?: string;
@@ -28,26 +28,36 @@ export class OrganizationDto {
     @MaxLength(50)
     organization_contact_info?: string;
 
+    @IsOptional()
+    @IsIn(['society', 'educational_institution'])
+    organization_type?: string;
+
+    @IsOptional()
+    @IsString()
+    @MaxLength(63)
+    subdomain?: string;
+
+    @IsOptional()
+    @IsIn(['open', 'approval_required', 'invite_only'])
+    membership_model?: string;
+
+    @IsOptional()
+    @IsIn(['free', 'community', 'professional', 'enterprise'])
+    plan?: string;
+
+    @IsOptional()
     @IsObject()
     super_admin?: OrganizationUserDto;
 
+    @IsOptional()
     @IsArray()
-    pms_master: PmsMasterDto[];
-
-    @IsArray()
-    module_ids: number[];
+    module_ids?: number[];
 
     @IsOptional()
     @IsArray()
     @ValidateNested({ each: true })
     @Type(() => OrganizationModuleSubscriptionDto)
-    module_subscriptions: OrganizationModuleSubscriptionDto[];
-
-    @IsOptional()
-    @IsArray()
-    @ValidateNested({ each: true })
-    @Type(() => PropertyLocationDto)
-    organization_property_locations?: PropertyLocationDto[];
+    module_subscriptions?: OrganizationModuleSubscriptionDto[];
 
     @IsOptional()
     @ValidateNested()
@@ -58,13 +68,4 @@ export class OrganizationDto {
     @IsString()
     organization_logo?: string;
 
-    @IsOptional()
-    @IsBoolean()
-    is_franchisor?: boolean;
-
-    @IsOptional()
-    @IsNumber()
-    parent_org_id?: number | null;
-
 }
-

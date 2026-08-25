@@ -1,10 +1,12 @@
 import jwt, { SignOptions } from 'jsonwebtoken';
-import { User } from '@shared/entities';
+import { User, Membership } from '@shared/entities';
+
 export interface JwtPayload {
   userId: string;
   email: string;
   role: string;
-  organizationId: number;
+  organizationId: number | null;
+  membershipId: string | null;
 }
 
 export class JwtService {
@@ -25,18 +27,23 @@ export class JwtService {
     this.refreshTokenExpiry = process.env.JWT_REFRESH_EXPIRY || '7d';
   }
 
-  generateAccessToken(user: User): string {
+  /**
+   * `membership` is the caller's currently-active org membership. Master Admin
+   * accounts (platform-level, not org-scoped) pass null/undefined.
+   */
+  generateAccessToken(user: User, membership?: Membership | null): string {
     const payload: JwtPayload = {
-      userId: user.id,
+      userId: user.id!,
       email: user.email,
-      role: user.role,
-      organizationId: user.organization_id
+      role: membership ? membership.role : user.role,
+      organizationId: membership ? membership.organization_id : null,
+      membershipId: membership ? membership.id : null,
     };
 
     return jwt.sign(payload, this.accessTokenSecret, {
       expiresIn: this.accessTokenExpiry,
       issuer: 'auth-service',
-      audience: 'erp-system'
+      audience: 'community-system'
     } as SignOptions);
   }
 
@@ -49,7 +56,7 @@ export class JwtService {
     return jwt.sign(payload, this.refreshTokenSecret, {
       expiresIn: this.refreshTokenExpiry,
       issuer: 'auth-service',
-      audience: 'erp-system'
+      audience: 'community-system'
     } as SignOptions);
   }
 
@@ -69,9 +76,9 @@ export class JwtService {
     }
   }
 
-  generateTokenPair(user: User): { accessToken: string; refreshToken: string } {
+  generateTokenPair(user: User, membership?: Membership | null): { accessToken: string; refreshToken: string } {
     return {
-      accessToken: this.generateAccessToken(user),
+      accessToken: this.generateAccessToken(user, membership),
       refreshToken: this.generateRefreshToken(user)
     };
   }

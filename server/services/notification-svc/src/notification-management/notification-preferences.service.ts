@@ -6,9 +6,7 @@ import { RoleNotificationPreferenceEntity } from '@shared/entities/src/role-noti
 import { UserNotificationPreferenceEntity } from '@shared/entities/src/user-notification-preference.entity';
 import { NotificationEntity } from '@shared/entities/src/notification.entity';
 import { NotificationDeliveryLogEntity } from '@shared/entities/src/notification-delivery-log.entity';
-import { NotificationReminderLogEntity } from '@shared/entities/src/notification-reminder-log.entity';
 import { User } from '@shared/entities/src/user.entity';
-import { Task } from '@shared/entities/src/task.entity';
 import { Repository, IsNull, In } from 'typeorm';
 import {
   UpdateDeviceTokenDto,
@@ -63,23 +61,9 @@ export interface NotificationDeliveryLogItem {
   } | null;
 }
 
-export interface NotificationReminderLogItem {
-  id: number;
-  taskId: number;
-  eventType: string;
-  recipientId: string;
-  sentAt: Date;
-  createdAt: Date;
-  recipient: NotificationRecipientPreview | null;
-  task: {
-    title: string;
-  } | null;
-}
-
 export interface NotificationLogsResponse {
   notifications: PaginatedSection<NotificationLogItem>;
   deliveryLogs: PaginatedSection<NotificationDeliveryLogItem>;
-  reminderLogs: PaginatedSection<NotificationReminderLogItem>;
 }
 
 export interface NotificationLogPagination {
@@ -93,7 +77,6 @@ export interface GetNotificationLogsParams {
   limit?: number;
   notifications?: NotificationLogPagination;
   delivery?: NotificationLogPagination;
-  reminders?: NotificationLogPagination;
 }
 
 const DEFAULT_LOG_PAGE = 1;
@@ -154,12 +137,8 @@ export class NotificationPreferencesService {
     private readonly notificationsRepo: Repository<NotificationEntity>,
     @InjectRepository(NotificationDeliveryLogEntity)
     private readonly deliveryLogsRepo: Repository<NotificationDeliveryLogEntity>,
-    @InjectRepository(NotificationReminderLogEntity)
-    private readonly reminderLogsRepo: Repository<NotificationReminderLogEntity>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
-    @InjectRepository(Task)
-    private readonly taskRepo: Repository<Task>,
   ) { }
 
   async getPreferences(params: {
@@ -216,7 +195,6 @@ export class NotificationPreferencesService {
       {
         organizationId: dto.organizationId,
         channels: dto.channels,
-        settings: (dto.settings as any) || {},
       },
       { conflictPaths: ['organizationId'] },
     );
@@ -320,10 +298,8 @@ export class NotificationPreferencesService {
     const notificationsLimit = normalizeLimit(params.notifications?.limit ?? params.limit, DEFAULT_LOG_LIMIT);
     const deliveryPage = normalizePositiveInteger(params.delivery?.page ?? params.page, DEFAULT_LOG_PAGE);
     const deliveryLimit = normalizeLimit(params.delivery?.limit ?? params.limit, DEFAULT_LOG_LIMIT);
-    const remindersPage = normalizePositiveInteger(params.reminders?.page ?? params.page, DEFAULT_LOG_PAGE);
-    const remindersLimit = normalizeLimit(params.reminders?.limit ?? params.limit, DEFAULT_LOG_LIMIT);
 
-    const [notificationsResult, deliveryResult, tasks] = await Promise.all([
+    const [notificationsResult, deliveryResult] = await Promise.all([
       this.notificationsRepo.findAndCount({
         where: { organizationId: params.organizationId },
         relations: { recipient: true } as any,
@@ -370,59 +346,10 @@ export class NotificationPreferencesService {
         skip: (deliveryPage - 1) * deliveryLimit,
         take: deliveryLimit,
       }),
-      this.taskRepo.find({
-        where: { organization_id: params.organizationId },
-        select: ['id', 'task_title'],
-      }),
     ]);
 
     const [notifications, notificationsTotal] = notificationsResult;
     const [deliveryLogs, deliveryTotal] = deliveryResult;
-    const taskIds = tasks.map((task) => task.id);
-
-    let reminderLogs: NotificationReminderLogItem[] = [];
-    let reminderTotal = 0;
-
-    if (taskIds.length > 0) {
-      const [logs, total] = await this.reminderLogsRepo.findAndCount({
-        where: { taskId: In(taskIds) as any },
-        select: ['id', 'taskId', 'eventType', 'recipientId', 'sentAt', 'createdAt'],
-        order: { createdAt: 'DESC' },
-        skip: (remindersPage - 1) * remindersLimit,
-        take: remindersLimit,
-      });
-
-      reminderTotal = total;
-
-      if (logs.length > 0) {
-        const recipientIds = [...new Set(logs.map((log) => log.recipientId).filter(Boolean))];
-        const users = recipientIds.length > 0
-          ? await this.userRepo.find({
-              where: { id: In(recipientIds) },
-              select: ['id', 'firstName', 'lastName', 'email'],
-            })
-          : [];
-
-        const userMap = new Map(users.map((user) => [user.id, user]));
-        const taskMap = new Map(tasks.map((task) => [task.id, task]));
-
-        reminderLogs = logs.map((log) => {
-          const user = userMap.get(log.recipientId) || null;
-          const task = taskMap.get(log.taskId) || null;
-
-          return {
-            id: log.id,
-            taskId: log.taskId,
-            eventType: log.eventType,
-            recipientId: log.recipientId,
-            sentAt: log.sentAt,
-            createdAt: log.createdAt,
-            recipient: mapRecipientPreview(user),
-            task: task ? { title: task.task_title } : null,
-          };
-        });
-      }
-    }
 
     const notificationLogs = notifications.map((notification) => ({
       id: notification.id,
@@ -453,7 +380,6 @@ export class NotificationPreferencesService {
     return {
       notifications: buildPaginatedSection(notificationLogs, notificationsTotal, notificationsPage, notificationsLimit),
       deliveryLogs: buildPaginatedSection(deliveryLogItems, deliveryTotal, deliveryPage, deliveryLimit),
-      reminderLogs: buildPaginatedSection(reminderLogs, reminderTotal, remindersPage, remindersLimit),
     };
   }
 }

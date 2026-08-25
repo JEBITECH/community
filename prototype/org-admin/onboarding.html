@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en" data-org="platform">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Organization Onboarding</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="proto-bar"><span><a href="../index.html">◀ All screens</a> <span class="proto-crumb">/ Org Admin / Onboarding Wizard</span></span></div>
+
+<main class="container-narrow" style="padding-top:32px;padding-bottom:60px;max-width:680px;">
+  <h1 class="h2">Set up your community</h1>
+  <p class="text-muted text-sm" style="margin-top:4px;">Nine quick steps and you're live.</p>
+
+  <div data-wizard style="margin-top:20px;">
+    <div class="wizard-steps">
+      <div class="wizard-step" data-step="1"><div class="dot">1</div>Type</div><div class="wizard-sep"></div>
+      <div class="wizard-step" data-step="2"><div class="dot">2</div>Details</div><div class="wizard-sep"></div>
+      <div class="wizard-step" data-step="3"><div class="dot">3</div>Branding</div><div class="wizard-sep"></div>
+      <div class="wizard-step" data-step="4"><div class="dot">4</div>Domain</div><div class="wizard-sep"></div>
+      <div class="wizard-step" data-step="5"><div class="dot">5</div>Admins</div><div class="wizard-sep"></div>
+      <div class="wizard-step" data-step="6"><div class="dot">6</div>Membership</div><div class="wizard-sep"></div>
+      <div class="wizard-step" data-step="7"><div class="dot">7</div>Modules</div><div class="wizard-sep"></div>
+      <div class="wizard-step" data-step="8"><div class="dot">8</div>Review</div><div class="wizard-sep"></div>
+      <div class="wizard-step" data-step="9"><div class="dot">9</div>Launch</div>
+    </div>
+
+    <div class="card card-pad" data-wizard-panel="1">
+      <h2 class="h3">What kind of organization is this?</h2>
+      <div class="grid grid-3" style="gap:12px;margin-top:16px;" data-option-group>
+        <div class="option-card selected" data-option>🏘️ Residential Society</div>
+        <div class="option-card" data-option>🧑‍🏫 Trainer</div>
+        <div class="option-card" data-option>🎓 Academy</div>
+        <div class="option-card" data-option>🚴 Club</div>
+        <div class="option-card" data-option>🎭 Cultural Group</div>
+        <div class="option-card" data-option>🏫 School Community</div>
+        <div class="option-card" data-option>🤝 NGO</div>
+        <div class="option-card" data-option>✨ Other</div>
+      </div>
+      <a class="btn btn-primary btn-block" style="margin-top:20px;" data-wizard-next>Continue</a>
+    </div>
+
+    <div class="card card-pad hidden" data-wizard-panel="2">
+      <h2 class="h3">Organization details</h2>
+      <div class="field" style="margin-top:14px;"><label>Name</label><input class="input" value="Green Acres Society"></div>
+      <div class="field"><label>Description</label><textarea class="input" rows="3">A 124-household residential community in Baner, Pune.</textarea></div>
+      <div class="grid grid-2">
+        <div class="field"><label>City</label><input class="input" value="Pune"></div>
+        <div class="field"><label>Country</label><input class="input" value="India"></div>
+      </div>
+      <div class="field"><label>Timezone</label><select class="input"><option>Asia/Kolkata (IST)</option></select></div>
+      <div class="row gap-3" style="margin-top:16px;"><button class="btn btn-outline" data-wizard-back>Back</button><a class="btn btn-primary" style="flex:1;" data-wizard-next>Continue</a></div>
+    </div>
+
+    <div class="card card-pad hidden" data-wizard-panel="3">
+      <h2 class="h3">Branding</h2>
+      <div class="field" style="margin-top:14px;"><label>Logo</label><div class="card card-pad" style="border:1.5px dashed var(--color-border);text-align:center;" class="text-sm text-muted">Upload logo</div></div>
+      <div class="grid grid-2">
+        <div class="field"><label>Primary Color</label><div class="row gap-2"><div style="width:32px;height:32px;border-radius:8px;background:#6D28D9;"></div><input class="input" value="#6D28D9"></div></div>
+        <div class="field"><label>Secondary Color</label><div class="row gap-2"><div style="width:32px;height:32px;border-radius:8px;background:#F97316;"></div><input class="input" value="#F97316"></div></div>
+      </div>
+      <div class="field"><label>Cover Image</label><div class="card card-pad" style="border:1.5px dashed var(--color-border);text-align:center;" class="text-sm text-muted">Upload cover image</div></div>
+      <div class="row gap-3" style="margin-top:16px;"><button class="btn btn-outline" data-wizard-back>Back</button><a class="btn btn-primary" style="flex:1;" data-wizard-next>Continue</a></div>
+    </div>
+
+    <div class="card card-pad hidden" data-wizard-panel="4">
+      <h2 class="h3">Domain</h2>
+      <div class="field" style="margin-top:14px;"><label>Your community's address</label>
+        <div class="row gap-2"><input class="input" value="green-acres" style="flex:1;"><span class="text-sm text-muted">.platform.com</span></div>
+      </div>
+      <div class="row-between" style="margin-top:6px;"><span class="text-sm">Use a custom domain?</span><div class="switch" data-switch></div></div>
+      <div class="row gap-3" style="margin-top:16px;"><button class="btn btn-outline" data-wizard-back>Back</button><a class="btn btn-primary" style="flex:1;" data-wizard-next>Continue</a></div>
+    </div>
+
+    <div class="card card-pad hidden" data-wizard-panel="5">
+      <h2 class="h3">Admin users</h2>
+      <div class="grid grid-3" style="margin-top:14px;">
+        <div class="field"><label>Name</label><input class="input" value="Priya Rao"></div>
+        <div class="field"><label>Email</label><input class="input" value="priya@greenacres.example"></div>
+        <div class="field"><label>Role</label><select class="input"><option>Organization Owner</option></select></div>
+      </div>
+      <button class="btn btn-outline btn-sm">+ Add another admin</button>
+      <div class="row gap-3" style="margin-top:16px;"><button class="btn btn-outline" data-wizard-back>Back</button><a class="btn btn-primary" style="flex:1;" data-wizard-next>Continue</a></div>
+    </div>
+
+    <div class="card card-pad hidden" data-wizard-panel="6">
+      <h2 class="h3">Membership</h2>
+      <div class="stack gap-3" style="margin-top:14px;" data-option-group>
+        <div class="option-card selected" data-option>🔒 Private — invite/approval only</div>
+        <div class="option-card" data-option>🌐 Public — anyone can join</div>
+        <div class="option-card" data-option>🤝 Hybrid — public activities, private roster</div>
+      </div>
+      <div class="row gap-3" style="margin-top:16px;"><button class="btn btn-outline" data-wizard-back>Back</button><a class="btn btn-primary" style="flex:1;" data-wizard-next>Continue</a></div>
+    </div>
+
+    <div class="card card-pad hidden" data-wizard-panel="7">
+      <h2 class="h3">Modules</h2>
+      <div class="grid grid-2" style="gap:10px;margin-top:14px;">
+        <div class="module-card on"><span class="text-sm">Activities &amp; Calendar</span><div class="switch on" data-switch></div></div>
+        <div class="module-card on"><span class="text-sm">Households</span><div class="switch on" data-switch></div></div>
+        <div class="module-card on"><span class="text-sm">Sponsorship</span><div class="switch on" data-switch></div></div>
+        <div class="module-card on"><span class="text-sm">Volunteers</span><div class="switch on" data-switch></div></div>
+        <div class="module-card"><span class="text-sm">Training / Batches</span><div class="switch" data-switch></div></div>
+        <div class="module-card on"><span class="text-sm">Competitions</span><div class="switch on" data-switch></div></div>
+        <div class="module-card on"><span class="text-sm">Gallery</span><div class="switch on" data-switch></div></div>
+        <div class="module-card"><span class="text-sm">Payments</span><div class="switch on" data-switch></div></div>
+      </div>
+      <div class="row gap-3" style="margin-top:16px;"><button class="btn btn-outline" data-wizard-back>Back</button><a class="btn btn-primary" style="flex:1;" data-wizard-next>Continue</a></div>
+    </div>
+
+    <div class="card card-pad hidden" data-wizard-panel="8">
+      <h2 class="h3">Review</h2>
+      <div class="card card-pad" style="background:var(--color-surface-alt);margin-top:14px;">
+        <div class="row gap-3"><div class="logo-mark">GA</div><div><strong>Green Acres Society</strong><div class="text-sm text-muted">Residential Society · Pune, India</div></div></div>
+        <div class="stack gap-1" style="margin-top:10px;">
+          <div class="text-sm text-muted">🌐 green-acres.platform.com</div>
+          <div class="text-sm text-muted">👤 Admin: Priya Rao</div>
+          <div class="text-sm text-muted">🔒 Private membership</div>
+          <div class="text-sm text-muted">🧩 7 modules enabled</div>
+        </div>
+      </div>
+      <div class="row gap-3" style="margin-top:16px;"><button class="btn btn-outline" data-wizard-back>Back</button><a class="btn btn-primary" style="flex:1;" data-wizard-next>Continue</a></div>
+    </div>
+
+    <div class="card card-pad hidden" data-wizard-panel="9" style="text-align:center;">
+      <div class="icon-circle" style="background:var(--color-success-light);color:var(--color-success);width:64px;height:64px;font-size:28px;margin:0 auto;">✓</div>
+      <h2 class="h2" style="margin-top:14px;">Green Acres Society is live!</h2>
+      <p class="text-muted text-sm" style="margin-top:6px;">Your community page is ready at green-acres.platform.com</p>
+      <a class="btn btn-primary btn-block btn-lg" style="margin-top:20px;" href="dashboard.html">Go to Dashboard</a>
+    </div>
+  </div>
+</main>
+<script src="../assets/app.js"></script>
+</body>
+</html>

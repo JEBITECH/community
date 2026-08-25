@@ -11,7 +11,7 @@ interface ModulePermissionGateProps {
   fallback?: React.ReactNode;
 }
 
-const FULL_ACCESS_ROLES = ["platformOwner"];
+const FULL_ACCESS_ROLES = ["master_admin"];
 
 function AccessDeniedView({ moduleName }: { moduleName: string }) {
   const navigate = useNavigate();

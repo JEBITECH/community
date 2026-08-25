@@ -115,7 +115,6 @@ export class OrchestratorService {
           subject: rendered.subject,
           content: rendered.content,
           templateId: rendered.templateId || null,
-          taskId: this.resolveTaskId(request),
           reservationId: this.resolveReservationId(request),
         };
 
@@ -292,26 +291,11 @@ export class OrchestratorService {
   }
 
   private resolveEntityType(request: SendNotificationRequest): string | undefined {
-    if (
-      request.eventType.startsWith('virtual-inspect.task.') ||
-      request.eventType.startsWith('task.')
-    ) {
-      return 'task';
-    }
-
     if (request.eventType.startsWith('reservation.')) {
       return 'reservation';
     }
 
     return undefined;
-  }
-
-  private resolveTaskId(request: SendNotificationRequest): number | undefined {
-    if (this.resolveEntityType(request) !== 'task') {
-      return undefined;
-    }
-
-    return this.parseOptionalNumber(request.entityId);
   }
 
   private resolveReservationId(request: SendNotificationRequest): number | undefined {

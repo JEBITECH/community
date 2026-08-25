@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en" data-org="platform">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create Organization</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="proto-bar"><span><a href="../index.html">◀ All screens</a> <span class="proto-crumb">/ Platform Admin / Create Organization</span></span><span class="proto-crumb">Journey 7 · step 2</span></div>
+
+<div class="admin-shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo-mark">⬢</div> Platform Admin</div>
+    <nav class="stack gap-1">
+      <a class="sidebar-link" href="dashboard.html"><span class="ico">📊</span>Dashboard</a>
+      <a class="sidebar-link active" href="organizations.html"><span class="ico">🏢</span>Organizations</a>
+      <a class="sidebar-link" href="subscription-plans.html"><span class="ico">💳</span>Subscription Plans</a>
+    </nav>
+  </aside>
+
+  <div class="admin-main">
+    <div class="admin-topbar"><strong>Create Organization</strong><div class="avatar" style="width:34px;height:34px;">SA</div></div>
+    <div class="admin-content" style="max-width:640px;">
+      <h1 class="h2">Onboard a new organization</h1>
+      <p class="text-muted text-sm" style="margin-top:4px;">As the platform owner, spin up a new tenant without touching code.</p>
+
+      <div class="card card-pad" style="margin-top:20px;">
+        <h3 class="h3">Organization Type</h3>
+        <div class="grid grid-3" style="gap:10px;margin-top:10px;" data-option-group>
+          <div class="option-card selected" data-option>🏘️ Residential Society</div>
+          <div class="option-card" data-option>🧑‍🏫 Trainer / Academy</div>
+          <div class="option-card" data-option>🚴 Club</div>
+        </div>
+
+        <h3 class="h3" style="margin-top:20px;">Organization Template</h3>
+        <div class="grid grid-3" style="gap:10px;margin-top:10px;" data-option-group>
+          <div class="option-card selected" data-option>Residential Society Template</div>
+          <div class="option-card" data-option>Trainer / Academy Template</div>
+          <div class="option-card" data-option>Club Template</div>
+        </div>
+
+        <div class="field" style="margin-top:20px;"><label>Organization Name</label><input class="input" placeholder="e.g. Sunrise Enclave"></div>
+        <div class="field"><label>Subscription Plan</label><select class="input"><option>Community</option><option>Free</option><option>Professional</option><option>Enterprise</option></select></div>
+        <div class="field"><label>Primary Admin</label><input class="input" placeholder="Name, email"></div>
+        <div class="field"><label>Domain</label><div class="row gap-2"><input class="input" placeholder="sunrise-enclave" style="flex:1;"><span class="text-sm text-muted">.platform.com</span></div></div>
+
+        <h3 class="h3" style="margin-top:16px;">Modules</h3>
+        <div class="grid grid-2" style="gap:8px;margin-top:8px;">
+          <div class="module-card on"><span class="text-sm">Activities &amp; Calendar</span><div class="switch on" data-switch></div></div>
+          <div class="module-card on"><span class="text-sm">Households</span><div class="switch on" data-switch></div></div>
+          <div class="module-card"><span class="text-sm">Training</span><div class="switch" data-switch></div></div>
+          <div class="module-card on"><span class="text-sm">Sponsorship</span><div class="switch on" data-switch></div></div>
+        </div>
+
+        <a class="btn btn-primary btn-block btn-lg" style="margin-top:20px;" href="organization-detail.html">Launch Organization</a>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="../assets/app.js"></script>
+</body>
+</html>

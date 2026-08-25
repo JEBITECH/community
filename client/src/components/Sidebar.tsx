@@ -17,7 +17,8 @@ import { Badge } from "@/components/ui/badge";
 import { useState, useEffect, useRef, useLayoutEffect } from "react";
 import { ModuleAccess } from "@/erp/features/auth/type";
 import { allMenuItems } from "@/constants/menuItems";
-import { getMenusByRole } from "@/config/roleAccess";
+import { getMenusByRole, Role } from "@/config/roleAccess";
+import { decodeTokenPayload } from "@/lib/tokenRefresh";
 
 type MenuItem = {
   path: string;
@@ -30,9 +31,18 @@ type MenuItem = {
 
 
 
+const KNOWN_ROLES: Role[] = [
+  "master_admin",
+  "super_admin",
+  "manager",
+  "core_committee",
+  "internal_member",
+  "external_member",
+];
+
 export default function Sidebar() {
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -99,16 +109,13 @@ export default function Sidebar() {
     }
   }, [location.pathname, isMobile]);
 
-  type Role = "master_admin" | "super_admin" | "manager" | "custom_role";
-
-  const currentRole: Role =
-    (user as any)?.role === "platformOwner"
-      ? "master_admin"
-      : (user as any)?.role === "super_admin"
-      ? "super_admin"
-      : (user as any)?.role === "manager"
-      ? "manager"
-      : "custom_role";
+  // The JWT's `role` claim is the currently-active membership's role (kept
+  // correct across org switches for users with multiple memberships), unlike
+  // the raw User.role field which is just whatever role the account was
+  // created with and never changes.
+  const tokenRole = token ? decodeTokenPayload<{ role?: string }>(token)?.role : undefined;
+  const effectiveRole = tokenRole ?? (user as any)?.role;
+  const currentRole: Role = KNOWN_ROLES.includes(effectiveRole) ? (effectiveRole as Role) : "custom_role";
 
 
   const handleScroll = () => {
@@ -369,7 +376,7 @@ export default function Sidebar() {
             </div>
             {!isCollapsed && (
               <div>
-                <h1 className="text-heading-3 font-bold text-sidebar-foreground">ERP System</h1>
+                <h1 className="text-heading-3 font-bold text-sidebar-foreground">Community</h1>
                 <p className="text-ui-caption text-sidebar-foreground/70">Admin Dashboard</p>
               </div>
             )}

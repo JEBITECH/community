@@ -4,169 +4,172 @@
 @tailwind utilities;
 
 :root {
-  /* Base colors */
-  --background: 180 6.6667% 97.0588%;
-  --foreground: 210 25% 7.8431%;
-  
+  /* Base colors — warm off-white, not the cool corporate-blue-on-gray of a
+     generic admin panel. This is the community app's own identity; an
+     individual organization's branding (see BrandingContext) overrides the
+     primary/secondary tokens at runtime on top of this base. */
+  --background: 36 33% 97%;
+  --foreground: 20 20% 12%;
+
   /* Card colors */
   --card: 0 0% 100%;
-  --card-foreground: 210 25% 7.8431%;
-  
+  --card-foreground: 20 20% 12%;
+
   /* Popover colors */
   --popover: 0 0% 100%;
-  --popover-foreground: 210 25% 7.8431%;
-  
-  /* Primary colors - Blue theme */
-  --primary: 210 83% 53%;
-  --primary-dark: 211 85% 45%;
-  --primary-light: 207 73% 57%;
-  --primary-foreground: 0 0% 100%;
-  --primary-button-bg: linear-gradient(90deg, #3B82F6 0%, #1D4ED8 100%);
-  --primary-bg: 210 83% 53%;
-  --primary-hover: #2563EB;
+  --popover-foreground: 20 20% 12%;
 
-  /* Secondary colors - Green theme */
-  --secondary: 142 76% 36%;
-  --secondary-dark: 142 85% 25%;
+  /* Primary colors — warm marigold/terracotta, festival-appropriate */
+  --primary: 22 87% 47%;
+  --primary-dark: 18 80% 38%;
+  --primary-light: 28 90% 60%;
+  --primary-foreground: 0 0% 100%;
+  --primary-button-bg: linear-gradient(90deg, #E0620A 0%, #B8460A 100%);
+  --primary-bg: 22 87% 47%;
+  --primary-hover: #C2540A;
+
+  /* Secondary colors — deep teal, complements the warm primary */
+  --secondary: 173 62% 27%;
+  --secondary-dark: 174 68% 18%;
   --secondary-foreground: 0 0% 100%;
-  
+
   /* Muted colors */
-  --muted: 210 40% 96%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  
+  --muted: 33 24% 93%;
+  --muted-foreground: 25 12% 42%;
+
   /* Accent colors */
-  --accent: 210 40% 96%;
-  --accent-foreground: 210 83% 53%;
-  
+  --accent: 33 30% 92%;
+  --accent-foreground: 22 87% 40%;
+
   /* Status colors */
-  --destructive: 0 84.2% 60.2%;
+  --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 100%;
   --warning: 38 92% 50%;
   --warning-foreground: 0 0% 100%;
-  --error: 0 84.2% 60.2%;
+  --error: 0 72% 51%;
   --error-foreground: 0 0% 100%;
-  --success: 142 76% 36%;
+  --success: 152 55% 32%;
   --success-foreground: 0 0% 100%;
-  
+
   /* Border and input colors */
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 210 83% 53%;
-  
+  --border: 30 18% 87%;
+  --input: 30 18% 87%;
+  --ring: 22 87% 47%;
+
   /* Surface colors */
   --surface: 0 0% 100%;
-  --surface-variant: 210 17% 96%;
-  
+  --surface-variant: 33 24% 94%;
+
   /* Chart colors */
-  --chart-1: 210 83% 53%;
-  --chart-2: 142 76% 36%;
+  --chart-1: 22 87% 47%;
+  --chart-2: 173 62% 27%;
   --chart-3: 38 92% 50%;
-  --chart-4: 147 78% 42%;
-  --chart-5: 340 75% 51%;
-  
+  --chart-4: 264 45% 52%;
+  --chart-5: 340 70% 50%;
+
   /* Sidebar colors */
   --sidebar: 0 0% 100%;
-  --sidebar-foreground: 210 25% 7.8431%;
-  --sidebar-primary: 210 83% 53%;
+  --sidebar-foreground: 20 20% 12%;
+  --sidebar-primary: 22 87% 47%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 210 40% 96%;
-  --sidebar-accent-foreground: 210 25% 7.8431%;
-  --sidebar-border: 214.3 31.8% 91.4%;
-  --sidebar-ring: 210 83% 53%;
-  
+  --sidebar-accent: 33 30% 92%;
+  --sidebar-accent-foreground: 20 20% 12%;
+  --sidebar-border: 30 18% 87%;
+  --sidebar-ring: 22 87% 47%;
+
   /* Typography */
   --font-sans: 'Inter', system-ui, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: 'Roboto Mono', monospace;
-  
+
   /* Border radius */
-  --radius: 0.5rem;
-  
+  --radius: 0.75rem;
+
   /* Shadows */
-  --shadow-primary: 0px 0px 3.6px 4px rgba(59, 130, 246, 0.15);
+  --shadow-primary: 0px 0px 3.6px 4px rgba(224, 98, 10, 0.15);
 }
 
 .dark {
-  /* Base colors */
-  --background: 222.2 84% 4.9%;
-  --foreground: 210 40% 98%;
-  
+  /* Base colors — warm-tinted charcoal, not slate-blue */
+  --background: 20 18% 7%;
+  --foreground: 33 20% 94%;
+
   /* Card colors */
-  --card: 222.2 84% 6.5%;
-  --card-foreground: 210 40% 98%;
-  
+  --card: 20 16% 10%;
+  --card-foreground: 33 20% 94%;
+
   /* Popover colors */
-  --popover: 222.2 84% 4.9%;
-  --popover-foreground: 210 40% 98%;
-  
-  /* Primary colors - Blue theme */
-  --primary: 210 83% 53%;
-  --primary-dark: 211 85% 45%;
-  --primary-light: 207 73% 57%;
-  --primary-foreground: 0 0% 100%;
-  --primary-button-bg: linear-gradient(90deg, #3B82F6 0%, #1D4ED8 100%);
-  --primary-bg: 210 83% 53%;
-  --primary-hover: #2563EB;
-  
-  /* Secondary colors - Green theme */
-  --secondary: 142 76% 36%;
-  --secondary-dark: 142 85% 25%;
+  --popover: 20 16% 9%;
+  --popover-foreground: 33 20% 94%;
+
+  /* Primary colors — warm marigold/terracotta, brightened for dark bg */
+  --primary: 24 90% 58%;
+  --primary-dark: 20 80% 46%;
+  --primary-light: 28 92% 68%;
+  --primary-foreground: 20 20% 10%;
+  --primary-button-bg: linear-gradient(90deg, #F0742A 0%, #D9600F 100%);
+  --primary-bg: 24 90% 58%;
+  --primary-hover: #F0742A;
+
+  /* Secondary colors — deep teal, brightened for dark bg */
+  --secondary: 172 50% 42%;
+  --secondary-dark: 174 55% 28%;
   --secondary-foreground: 0 0% 100%;
-  
+
   /* Muted colors */
-  --muted: 217.2 32.6% 17.5%;
-  --muted-foreground: 215 20.2% 65.1%;
-  
+  --muted: 20 14% 16%;
+  --muted-foreground: 30 12% 68%;
+
   /* Accent colors */
-  --accent: 217.2 32.6% 17.5%;
-  --accent-foreground: 210 40% 98%;
-  
+  --accent: 20 14% 18%;
+  --accent-foreground: 28 90% 70%;
+
   /* Status colors */
-  --destructive: 0 75% 55%;
+  --destructive: 0 70% 58%;
   --destructive-foreground: 0 0% 100%;
-  --warning: 38 92% 50%;
-  --warning-foreground: 0 0% 100%;
-  --error: 0 75% 55%;
+  --warning: 38 92% 55%;
+  --warning-foreground: 20 20% 10%;
+  --error: 0 70% 58%;
   --error-foreground: 0 0% 100%;
-  --success: 142 76% 36%;
-  --success-foreground: 0 0% 100%;
-  
+  --success: 152 48% 45%;
+  --success-foreground: 20 20% 10%;
+
   /* Border and input colors */
-  --border: 217.2 32.6% 17.5%;
-  --input: 217.2 32.6% 17.5%;
-  --ring: 210 83% 53%;
-  
+  --border: 20 14% 20%;
+  --input: 20 14% 20%;
+  --ring: 24 90% 58%;
+
   /* Surface colors */
-  --surface: 222.2 84% 4.9%;
-  --surface-variant: 217.2 32.6% 17.5%;
-  
+  --surface: 20 16% 10%;
+  --surface-variant: 20 14% 16%;
+
   /* Chart colors */
-  --chart-1: 210 83% 53%;
-  --chart-2: 142 76% 36%;
-  --chart-3: 38 92% 50%;
-  --chart-4: 147 78% 42%;
-  --chart-5: 340 75% 51%;
-  
+  --chart-1: 24 90% 58%;
+  --chart-2: 172 50% 42%;
+  --chart-3: 38 92% 55%;
+  --chart-4: 264 55% 65%;
+  --chart-5: 340 70% 60%;
+
   /* Sidebar colors */
-  --sidebar: 222.2 84% 4.9%;
-  --sidebar-foreground: 210 40% 98%;
-  --sidebar-primary: 210 83% 53%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 217.2 32.6% 17.5%;
-  --sidebar-accent-foreground: 210 40% 98%;
-  --sidebar-border: 217.2 32.6% 17.5%;
-  --sidebar-ring: 210 83% 53%;
-  
+  --sidebar: 20 16% 9%;
+  --sidebar-foreground: 33 20% 94%;
+  --sidebar-primary: 24 90% 58%;
+  --sidebar-primary-foreground: 20 20% 10%;
+  --sidebar-accent: 20 14% 18%;
+  --sidebar-accent-foreground: 33 20% 94%;
+  --sidebar-border: 20 14% 20%;
+  --sidebar-ring: 24 90% 58%;
+
   /* Typography */
   --font-sans: 'Inter', system-ui, sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: 'Roboto Mono', monospace;
-  
+
   /* Border radius */
-  --radius: 0.5rem;
-  
+  --radius: 0.75rem;
+
   /* Shadows */
-  --shadow-primary: 0px 0px 3.6px 4px rgba(59, 130, 246, 0.25);
+  --shadow-primary: 0px 0px 3.6px 4px rgba(240, 116, 42, 0.25);
 }
 
 
@@ -462,6 +465,3 @@
   }
 }
 
-.bg-erp-gradient {
-  background: linear-gradient(90deg, #20A4C4 0%, rgba(244, 192, 37, 0.65) 100%);
-}

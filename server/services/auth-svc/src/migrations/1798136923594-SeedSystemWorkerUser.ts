@@ -76,7 +76,7 @@ export class SeedSystemWorkerUser1798136923594 implements MigrationInterface {
         "System", // firstName
         "Worker", // lastName
         email,
-        "0000000000",
+        null, // phone — must not collide with CreateDefaultAdminUser's "0000000000"; unique constraint allows multiple NULLs
         password,
         roleName,
         null,

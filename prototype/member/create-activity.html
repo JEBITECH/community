@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en" data-org="green-acres">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create Activity</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body class="page-member">
+<div class="proto-bar"><span><a href="../index.html">◀ All screens</a> <span class="proto-crumb">/ Member / Create Activity Wizard</span></span><span class="proto-crumb">Journey 3 · step 1</span></div>
+
+<header class="topbar">
+  <div class="brand"><div class="logo-mark">GA</div> Green Acres Society</div>
+  <nav><a href="dashboard.html">Home</a><a href="explore.html">Explore</a><a href="calendar.html">Calendar</a><a href="feed.html">Community</a></nav>
+  <div class="topbar-actions"><a href="profile.html"><div class="avatar" style="width:36px;height:36px;">JB</div></a></div>
+</header>
+
+<main class="container-narrow" style="padding-top:24px;padding-bottom:60px;max-width:640px;">
+  <h1 class="h2">Create Activity</h1>
+
+  <div data-wizard style="margin-top:20px;">
+    <div class="wizard-steps">
+      <div class="wizard-step" data-step="1"><div class="dot">1</div>Type</div><div class="wizard-sep"></div>
+      <div class="wizard-step" data-step="2"><div class="dot">2</div>Details</div><div class="wizard-sep"></div>
+      <div class="wizard-step" data-step="3"><div class="dot">3</div>Date</div><div class="wizard-sep"></div>
+      <div class="wizard-step" data-step="4"><div class="dot">4</div>Audience</div><div class="wizard-sep"></div>
+      <div class="wizard-step" data-step="5"><div class="dot">5</div>Participation</div><div class="wizard-sep"></div>
+      <div class="wizard-step" data-step="6"><div class="dot">6</div>Volunteers</div><div class="wizard-sep"></div>
+      <div class="wizard-step" data-step="7"><div class="dot">7</div>Sponsors</div><div class="wizard-sep"></div>
+      <div class="wizard-step" data-step="8"><div class="dot">8</div>Review</div>
+    </div>
+
+    <!-- Step 1 -->
+    <div class="card card-pad" data-wizard-panel="1">
+      <h2 class="h3">What would you like to organize?</h2>
+      <div class="grid grid-2" style="gap:12px;margin-top:16px;" data-option-group>
+        <div class="option-card" data-option><span>🎉</span>Festival Activity</div>
+        <div class="option-card" data-option><span>🎓</span>Training</div>
+        <div class="option-card" data-option><span>🛠️</span>Workshop</div>
+        <div class="option-card selected" data-option><span>🏆</span>Competition</div>
+        <div class="option-card" data-option><span>⚽</span>Sports</div>
+        <div class="option-card" data-option><span>🎊</span>Social Gathering</div>
+        <div class="option-card" data-option><span>🌱</span>Community Service</div>
+        <div class="option-card" data-option><span>📋</span>Meeting</div>
+        <div class="option-card" data-option><span>✨</span>Other</div>
+      </div>
+      <a class="btn btn-primary btn-block" style="margin-top:20px;" data-wizard-next>Continue</a>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="card card-pad hidden" data-wizard-panel="2">
+      <h2 class="h3">Activity details</h2>
+      <div class="field" style="margin-top:14px;"><label>Activity Name</label><input class="input" value="Rangoli Competition"></div>
+      <div class="field"><label>Description</label><textarea class="input" rows="4">A friendly rangoli-making competition for all age groups during the festival week.</textarea></div>
+      <div class="field"><label>Category</label><select class="input"><option>Culture</option><option>Sports</option><option>Kids</option></select></div>
+      <div class="row gap-3" style="margin-top:16px;"><button class="btn btn-outline" data-wizard-back>Back</button><a class="btn btn-primary" style="flex:1;" data-wizard-next>Continue</a></div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="card card-pad hidden" data-wizard-panel="3">
+      <h2 class="h3">Date &amp; time</h2>
+      <div class="grid grid-2" style="margin-top:14px;">
+        <div class="field"><label>Date</label><input class="input" type="date" value="2026-09-23"></div>
+        <div class="field"><label>Time</label><input class="input" type="time" value="17:00"></div>
+      </div>
+      <div class="field"><label>Location</label><input class="input" value="Community Hall"></div>
+      <div class="card card-pad" style="background:var(--color-warning-light);margin-top:6px;">
+        <div class="row gap-2"><span>⚠️</span><div class="text-sm">2 other activities are already happening around this time — <a href="calendar-day.html" style="color:var(--color-primary);font-weight:700;">view conflicts →</a></div></div>
+      </div>
+      <div class="row gap-3" style="margin-top:16px;"><button class="btn btn-outline" data-wizard-back>Back</button><a class="btn btn-primary" style="flex:1;" data-wizard-next>Continue</a></div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="card card-pad hidden" data-wizard-panel="4">
+      <h2 class="h3">Who can participate?</h2>
+      <div class="stack gap-3" style="margin-top:14px;" data-option-group>
+        <div class="option-card selected" data-option><span>🏠</span>Residents Only</div>
+        <div class="option-card" data-option><span>🤝</span>Residents + Guests</div>
+        <div class="option-card" data-option><span>🌐</span>Public — Open to Everyone</div>
+        <div class="option-card" data-option><span>✉️</span>Invite Only</div>
+      </div>
+      <div class="row gap-3" style="margin-top:16px;"><button class="btn btn-outline" data-wizard-back>Back</button><a class="btn btn-primary" style="flex:1;" data-wizard-next>Continue</a></div>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="card card-pad hidden" data-wizard-panel="5">
+      <h2 class="h3">Participation settings</h2>
+      <div class="row-between" style="margin-top:14px;"><span class="text-sm">Registration required?</span><div class="switch on" data-switch></div></div>
+      <div class="field" style="margin-top:14px;"><label>Maximum participants</label><input class="input" value="60"></div>
+      <div class="row-between" style="margin-top:10px;"><span class="text-sm">Free or paid?</span>
+        <select class="input" style="width:auto;"><option>Free</option><option>Paid</option></select>
+      </div>
+      <div class="row gap-3" style="margin-top:16px;"><button class="btn btn-outline" data-wizard-back>Back</button><a class="btn btn-primary" style="flex:1;" data-wizard-next>Continue</a></div>
+    </div>
+
+    <!-- Step 6 -->
+    <div class="card card-pad hidden" data-wizard-panel="6">
+      <h2 class="h3">Volunteers needed?</h2>
+      <div class="row-between" style="margin-top:14px;"><span class="text-sm">Request volunteers</span><div class="switch on" data-switch></div></div>
+      <div class="field" style="margin-top:14px;"><label>Roles needed</label>
+        <input class="input" value="Judges (3), Setup Crew (2)">
+      </div>
+      <div class="row gap-3" style="margin-top:16px;"><button class="btn btn-outline" data-wizard-back>Back</button><a class="btn btn-primary" style="flex:1;" data-wizard-next>Continue</a></div>
+    </div>
+
+    <!-- Step 7 -->
+    <div class="card card-pad hidden" data-wizard-panel="7">
+      <h2 class="h3">Sponsorship required?</h2>
+      <div class="row-between" style="margin-top:14px;"><span class="text-sm">Request sponsors</span><div class="switch on" data-switch></div></div>
+      <div class="field" style="margin-top:14px;"><label>Amount needed</label><input class="input" value="₹8,000 — for prizes &amp; supplies"></div>
+      <div class="row gap-3" style="margin-top:16px;"><button class="btn btn-outline" data-wizard-back>Back</button><a class="btn btn-primary" style="flex:1;" data-wizard-next>Continue</a></div>
+    </div>
+
+    <!-- Step 8 -->
+    <div class="card card-pad hidden" data-wizard-panel="8">
+      <h2 class="h3">Review &amp; publish</h2>
+      <div class="card card-pad" style="background:var(--color-surface-alt);margin-top:14px;">
+        <div class="h3">Rangoli Competition</div>
+        <div class="stack gap-1" style="margin-top:8px;">
+          <div class="text-sm text-muted">📅 Sep 23, 2026 · 5:00 PM · Community Hall</div>
+          <div class="text-sm text-muted">🏠 Residents Only · Free · Max 60</div>
+          <div class="text-sm text-muted">🙋 Judges (3), Setup Crew (2)</div>
+          <div class="text-sm text-muted">💰 ₹8,000 sponsorship requested</div>
+        </div>
+      </div>
+      <a class="btn btn-primary btn-block btn-lg" style="margin-top:18px;" href="duplicate-detection.html">Publish Activity</a>
+      <button class="btn btn-outline btn-block" style="margin-top:10px;" data-wizard-back>Back to edit</button>
+    </div>
+  </div>
+</main>
+<script src="../assets/app.js"></script>
+</body>
+</html>

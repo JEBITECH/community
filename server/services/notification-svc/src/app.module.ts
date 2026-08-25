@@ -7,7 +7,6 @@ import { BootstrapModule } from './bootstrap/bootstrap.module';
 import { PreferenceModule } from './preference/preference.module';
 import { TemplateModule } from './template/template.module';
 import { NotificationTcpController } from './tcp/notification-tcp.controller';
-import { SchedulerModule } from './scheduler/scheduler.module';
 import { NotificationManagementModule } from './notification-management/notification-management.module';
 
 const SHARED_ENTITY_GLOB =
@@ -38,7 +37,6 @@ const SHARED_ENTITY_GLOB =
     BootstrapModule,
     PreferenceModule,
     TemplateModule,
-    SchedulerModule,
     NotificationManagementModule,
   ],
   controllers: [AppController, NotificationTcpController],

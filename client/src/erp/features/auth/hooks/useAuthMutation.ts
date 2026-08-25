@@ -1,11 +1,11 @@
 // src/features/auth/hooks/useAuthMutations.ts
 
 import { useMutation } from "@tanstack/react-query";
-import { forgotPassword, loginUser, resetPassword, updateUserAccountDetail, userProfileByToken } from "../api";
+import { forgotPassword, loginUser, resetPassword, updateUserAccountDetail, userProfileByToken, requestOtp, verifyOtp, joinCommunity } from "../api";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
-import { LoginInput, LoginResponse } from "../type";
+import { LoginInput, LoginResponse, OtpRequestInput, OtpVerifyInput, OtpVerifyResponse, JoinCommunityInput, JoinCommunityResponse } from "../type";
 
 export function useLoginMutation() {
   const { login } = useAuth();
@@ -33,6 +33,72 @@ export function useLoginMutation() {
       },
      }
     );
+}
+
+export function useRequestOtpMutation() {
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (values: OtpRequestInput) => await requestOtp(values),
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send OTP",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useVerifyOtpMutation() {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  return useMutation<OtpVerifyResponse, Error, OtpVerifyInput>({
+    mutationFn: async (values: OtpVerifyInput) => await verifyOtp(values),
+    onSuccess: (data) => {
+      if (data.isNewUser) {
+        return;
+      }
+      login({ user: data.user, module_list_access_by_user: data.module_list_access_by_user, accessToken: data.accessToken, refreshToken: data.refreshToken });
+      navigate("/");
+      toast({ title: "Success", description: "Logged in successfully" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "OTP verification failed",
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useJoinCommunityMutation() {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  return useMutation<JoinCommunityResponse, Error, JoinCommunityInput>({
+    mutationFn: async (values: JoinCommunityInput) => await joinCommunity(values),
+    onSuccess: (data) => {
+      if (data.status === "pending") {
+        toast({ title: "Request submitted", description: data.message });
+        return;
+      }
+      login({ user: data.user, module_list_access_by_user: data.module_list_access_by_user, accessToken: data.accessToken, refreshToken: data.refreshToken });
+      navigate("/");
+      toast({ title: "Welcome!", description: data.message });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to join community",
+        variant: "destructive",
+      });
+    },
+  });
 }
 
 export function useForgotPasswordMutation() {

@@ -93,7 +93,6 @@ export default {
       },
       backgroundImage: {
         "primary-gradient": "var(--primary-button-bg)",
-        "erp-gradient": "linear-gradient(90deg, #20A4C4 0%, rgba(244, 192, 37, 0.65) 100%)",
       },
       boxShadow: {
         primary: "var(--shadow-primary)",

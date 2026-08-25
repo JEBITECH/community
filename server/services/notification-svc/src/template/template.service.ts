@@ -179,16 +179,7 @@ export class TemplateService {
       candidates.add(normalized.replace(/^virtual-inspect\./, ''));
     }
 
-    if (normalized.startsWith('task.')) {
-      candidates.add(`virtual-inspect.${normalized}`);
-    }
-
     const aliases: Record<string, string[]> = {
-      'task.created': ['virtual-inspect.task.created'],
-      'task.updated': ['virtual-inspect.task.updated'],
-      'task.assigned': ['virtual-inspect.task.assigned'],
-      'task.inspection.completed': ['virtual-inspect.inspection.completed'],
-      'task.completed': [],
       'reservation.created': [],
       'auth.otp': [],
       'marketing.promotion': [],

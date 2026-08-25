@@ -32,13 +32,6 @@ export class CompanyNotificationPreferenceEntity {
     allowInApp?: boolean;
   };
 
-  @Column({ type: 'jsonb', default: {} })
-  settings!: {
-    notifyManagerForUpcomingTask?: boolean;
-    intervals?: number[];
-    [key: string]: any;
-  };
-
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 

@@ -12,7 +12,7 @@ export default function StatsCards() {
 
   const cards = [
     {
-      title: "Active Imports",
+      title: "Total members",
       value: (stats as any)?.activeImports || 0,
       change: "+12% from yesterday",
       icon: Download,
@@ -21,7 +21,7 @@ export default function StatsCards() {
       changePositive: true,
     },
     {
-      title: "PMS Connected",
+      title: "Activity",
       value: (stats as any)?.connectedPMS || 0,
       change: "All systems online",
       icon: Plug,
@@ -30,7 +30,7 @@ export default function StatsCards() {
       changePositive: true,
     },
     {
-      title: "Records Processed",
+      title: "Ongoing Events",
       value: (stats as any)?.recordsProcessed ? `${((stats as any).recordsProcessed / 1000000).toFixed(1)}M` : "0",
       change: "+8.2% this week",
       icon: Database,

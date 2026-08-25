@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en" data-org="pune-cycling">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pune Cycling Club</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="proto-bar"><span><a href="../index.html">◀ All screens</a> <span class="proto-crumb">/ Guest / Public Landing — Pune Cycling Club (sports club config)</span></span><span class="proto-crumb">Same components, third tenant type</span></div>
+
+<header class="topbar">
+  <div class="brand"><div class="logo-mark">PC</div> Pune Cycling Club</div>
+  <nav>
+    <a class="active" href="#">Rides &amp; Events</a>
+    <a href="../member/calendar.html">Calendar</a>
+    <a href="../member/directory.html">Members</a>
+    <a href="#about">About</a>
+  </nav>
+  <div class="topbar-actions">
+    <a class="btn btn-outline btn-sm" href="../auth/login.html">Log In</a>
+    <a class="btn btn-primary btn-sm" href="../auth/join-community.html">Join Club</a>
+  </div>
+</header>
+
+<section class="hero" style="margin:24px;border-radius:24px;">
+  <div class="hero-pattern"></div>
+  <div class="container" style="position:relative;padding:64px 24px;color:#fff;">
+    <div class="chip" style="background:rgba(255,255,255,.2);color:#fff;">380 riders · est. 2016</div>
+    <h1 class="h1" style="margin-top:14px;font-size:40px;">Every weekend, someone's riding. Join the next one.</h1>
+    <p style="max-width:560px;margin-top:10px;opacity:.92;">Sunday hill rides, monthly century challenges, and the annual Pune-to-Lonavala tour — all in one calendar.</p>
+    <div class="row gap-3" style="margin-top:24px;">
+      <a class="btn btn-white" href="../member/explore.html">See upcoming rides</a>
+      <a class="btn btn-outline" style="border-color:rgba(255,255,255,.6);color:#fff;" href="../member/competitions.html">Race calendar</a>
+    </div>
+  </div>
+</section>
+
+<main class="container">
+
+  <section class="section">
+    <div class="section-head"><h2 class="h2">Upcoming rides &amp; events</h2><a class="text-sm" href="../member/explore.html" style="color:var(--color-primary);font-weight:700;">View all →</a></div>
+    <div class="hscroll">
+      <a class="card card-hover activity-card" href="../member/activity-detail.html">
+        <div class="activity-banner" style="background-color:#CCFBF1;background-image:linear-gradient(135deg,#5EEAD4,#0D9488);"><span class="chip">Weekly Ride</span></div>
+        <div class="card-pad">
+          <div class="h3">Sunday Hill Climb — Sinhagad</div>
+          <div class="entity-meta" style="margin-top:6px;">📅 Every Sun, 5:30 AM · 📍 Sinhagad Rd</div>
+          <div class="row-between" style="margin-top:10px;"><span class="text-sm text-muted">42 riding</span><span class="chip chip-success">Free</span></div>
+        </div>
+      </a>
+      <a class="card card-hover activity-card" href="../member/competition-detail.html">
+        <div class="activity-banner" style="background-color:#DBEAFE;background-image:linear-gradient(135deg,#93C5FD,#2563EB);"><span class="chip">Race</span></div>
+        <div class="card-pad">
+          <div class="h3">Monthly Century Challenge</div>
+          <div class="entity-meta" style="margin-top:6px;">📅 Aug 30, 5:00 AM · 📍 Mulshi Loop</div>
+          <div class="row-between" style="margin-top:10px;"><span class="text-sm text-muted">67 registered</span><span class="chip chip-info">Open to Everyone</span></div>
+        </div>
+      </a>
+      <a class="card card-hover activity-card" href="../member/sponsorship-board.html">
+        <div class="activity-banner" style="background-color:#FFEDD5;background-image:linear-gradient(135deg,#FDBA74,#EA580C);"><span class="chip">Annual Tour</span></div>
+        <div class="card-pad">
+          <div class="h3">Pune → Lonavala Tour</div>
+          <div class="entity-meta" style="margin-top:6px;">📅 Oct 12, 4:30 AM · 📍 Club HQ</div>
+          <div class="row-between" style="margin-top:10px;"><span class="text-sm text-muted">Sponsors needed</span><span class="chip chip-warning">Fundraising</span></div>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head"><h2 class="h2">Club groups</h2></div>
+    <div class="grid grid-3">
+      <div class="card card-pad row gap-3"><div class="avatar" style="width:48px;height:48px;">🚵</div><div><strong>MTB Trail Group</strong><div class="text-sm text-muted">Sat · 6:00 AM · 30 riders</div></div></div>
+      <div class="card card-pad row gap-3"><div class="avatar" style="width:48px;height:48px;">🏁</div><div><strong>Race Training Squad</strong><div class="text-sm text-muted">Tue/Thu · 6:00 AM · 18 riders</div></div></div>
+      <div class="card card-pad row gap-3"><div class="avatar" style="width:48px;height:48px;">👨‍👩‍👧</div><div><strong>Family Sunday Ride</strong><div class="text-sm text-muted">Sun · 7:00 AM · 22 riders</div></div></div>
+    </div>
+  </section>
+
+  <section class="section" id="about">
+    <div class="card card-pad row-between">
+      <div>
+        <h2 class="h2">About Pune Cycling Club</h2>
+        <p class="text-muted" style="max-width:600px;margin-top:8px;">A sports club — no households, no maintenance billing. Just rides, memberships, competitions and gallery.</p>
+      </div>
+      <a class="btn btn-primary" href="../member/gallery.html">View Gallery</a>
+    </div>
+  </section>
+
+</main>
+
+<footer style="border-top:1px solid var(--color-border);padding:24px;text-align:center;" class="text-sm text-muted">
+  Pune Cycling Club · Powered by the Community Platform · <a href="landing-green-acres.html" style="color:var(--color-primary);">See a society's page →</a> · <a href="landing-rhythm-garba.html" style="color:var(--color-primary);">See a trainer's page →</a>
+</footer>
+
+<script src="../assets/app.js"></script>
+</body>
+</html>

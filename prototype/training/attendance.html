@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en" data-org="rhythm-garba">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attendance — Batch A</title>
+<link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<div class="proto-bar"><span><a href="../index.html">◀ All screens</a> <span class="proto-crumb">/ Training / Attendance Check-In</span></span><span class="proto-crumb">Journey 6 · step 4 — final</span></div>
+
+<div class="admin-shell">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo-mark">RG</div> Rhythm Garba</div>
+    <nav class="stack gap-1">
+      <div class="sidebar-section-label">Manage</div>
+      <a class="sidebar-link" href="../org-admin/dashboard.html"><span class="ico">📊</span>Dashboard</a>
+      <a class="sidebar-link" href="batch.html"><span class="ico">🎓</span>Batches</a>
+      <a class="sidebar-link active" href="attendance.html"><span class="ico">✅</span>Attendance</a>
+      <a class="sidebar-link" href="../org-admin/settings.html"><span class="ico">⚙️</span>Settings</a>
+    </nav>
+  </aside>
+
+  <div class="admin-main">
+    <div class="admin-topbar"><strong>Attendance — Session 6, Aug 13</strong><div class="avatar" style="width:34px;height:34px;">NS</div></div>
+    <div class="admin-content">
+      <div class="grid grid-3" style="margin-bottom:20px;">
+        <button class="btn btn-primary card-pad" style="justify-content:center;">📷 QR Scan</button>
+        <button class="btn btn-outline card-pad" style="justify-content:center;">🔍 Search Participant</button>
+        <button class="btn btn-outline card-pad" style="justify-content:center;">✍️ Manual Check-In</button>
+      </div>
+
+      <div class="grid grid-4" style="margin-bottom:20px;">
+        <div class="card card-pad" style="text-align:center;"><div class="h2">40</div><div class="text-sm text-muted">Registered</div></div>
+        <div class="card card-pad" style="text-align:center;color:var(--color-success);"><div class="h2">31</div><div class="text-sm text-muted">Checked In</div></div>
+        <div class="card card-pad" style="text-align:center;color:var(--color-danger);"><div class="h2">9</div><div class="text-sm text-muted">Absent</div></div>
+        <div class="card card-pad" style="text-align:center;color:var(--color-info);"><div class="h2">2</div><div class="text-sm text-muted">Walk-ins</div></div>
+      </div>
+
+      <div class="card" style="overflow-x:auto;">
+        <table class="data-table">
+          <thead><tr><th>Participant</th><th>Status</th><th>Check-in Time</th><th></th></tr></thead>
+          <tbody>
+            <tr><td class="row gap-2"><div class="avatar" style="width:28px;height:28px;font-size:10px;">KI</div>Kavya Iyer</td><td><span class="chip chip-success">Checked In</span></td><td>6:02 PM</td><td></td></tr>
+            <tr><td class="row gap-2"><div class="avatar" style="width:28px;height:28px;font-size:10px;">RS</div>Rhea Sanghvi</td><td><span class="chip chip-success">Checked In</span></td><td>6:05 PM</td><td></td></tr>
+            <tr><td class="row gap-2"><div class="avatar" style="width:28px;height:28px;font-size:10px;">MP</div>Mihir Patel</td><td><span class="chip chip-danger">Absent</span></td><td>—</td><td><button class="btn btn-outline btn-sm">Mark Present</button></td></tr>
+            <tr><td class="row gap-2"><div class="avatar" style="width:28px;height:28px;font-size:10px;">JB</div>Jay Bhatt</td><td><span class="chip chip-success">Checked In</span></td><td>5:58 PM</td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="../assets/app.js"></script>
+</body>
+</html>
