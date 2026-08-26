@@ -11,7 +11,7 @@ import { CreateParticipationDto } from './dto/create-participation.dto';
 import { CreatePublicParticipationDto } from './dto/create-public-participation.dto';
 import { RequestUser } from '../common/middleware/user-context.middleware';
 import { assertTenantMatch } from '../common/helpers/tenant.helper';
-import { assertGuestAudienceAllowed } from '../common/helpers/audience.helper';
+import { assertGuestAudienceAllowed, resolveEffectiveAudience } from '../common/helpers/audience.helper';
 import { MembershipResolverService } from '../common/services/membership-resolver.service';
 import { GuestMembershipResolverService } from '../common/services/guest-membership-resolver.service';
 
@@ -41,7 +41,7 @@ export class ParticipationsService {
 
   async createGuest(dto: CreatePublicParticipationDto): Promise<Participation> {
     const { event, component } = await this.loadEventAndComponent(dto.event_id, dto.event_component_id);
-    assertGuestAudienceAllowed(component?.audience ?? event.audience);
+    assertGuestAudienceAllowed(resolveEffectiveAudience(event, component?.eventDay, component));
     const membership = await this.guestMembershipResolver.resolve(event.organization_id, dto.guest);
     return this.createForMembership(membership, event, component, dto.type, dto.seats_requested);
   }
@@ -57,7 +57,9 @@ export class ParticipationsService {
 
     let component: EventComponent | null = null;
     if (componentId) {
-      component = await this.componentRepo.findOne({ where: { id: componentId } });
+      // relations: ['eventDay'] is required here so resolveEffectiveAudience()
+      // can fall back to the parent day's audience override when the component itself doesn't set one.
+      component = await this.componentRepo.findOne({ where: { id: componentId }, relations: ['eventDay'] });
       if (!component) {
         throw new ApiError('Component not found', 404, 'NOT_FOUND');
       }

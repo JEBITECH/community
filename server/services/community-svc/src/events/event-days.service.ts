@@ -51,13 +51,14 @@ export class EventDaysService {
       title: dto.title,
       description: dto.description,
       sequence: dto.sequence ?? dto.day_number,
+      audience: dto.audience as EventDay['audience'],
     });
     return this.eventDayRepo.save(day);
   }
 
   async update(dayId: string, user: RequestUser, dto: UpdateEventDayDto): Promise<EventDay> {
     const day = await this.loadDay(dayId, user);
-    Object.assign(day, dto);
+    Object.assign(day, dto, { audience: (dto.audience as EventDay['audience']) ?? day.audience });
     return this.eventDayRepo.save(day);
   }
 

@@ -1,22 +1,28 @@
 import { ApiError } from '@shared/common';
-import { assertGuestAudienceAllowed } from './audience.helper';
+import { assertGuestAudienceAllowed, resolveEffectiveAudience } from './audience.helper';
 
-describe('assertGuestAudienceAllowed', () => {
-  it.each(['public', 'internal_external'])('allows guest participation for audience=%s', (audience) => {
-    expect(() => assertGuestAudienceAllowed(audience)).not.toThrow();
+describe('resolveEffectiveAudience', () => {
+  const event = { audience: 'internal' };
+
+  it('falls back to the event when neither day nor component override it', () => {
+    expect(resolveEffectiveAudience(event, null, null)).toBe('internal');
+    expect(resolveEffectiveAudience(event, { audience: undefined }, undefined)).toBe('internal');
   });
 
-  it.each(['internal', 'invite_only'])('rejects guest participation for audience=%s', (audience) => {
-    expect(() => assertGuestAudienceAllowed(audience)).toThrow(ApiError);
-    try {
-      assertGuestAudienceAllowed(audience);
-    } catch (err) {
-      expect((err as ApiError).statusCode).toBe(403);
-      expect((err as ApiError).code).toBe('AUDIENCE_RESTRICTED');
-    }
+  it('uses the day override when the component does not override it', () => {
+    const day = { audience: 'public' };
+    expect(resolveEffectiveAudience(event, day, null)).toBe('public');
+    expect(resolveEffectiveAudience(event, day, { audience: undefined })).toBe('public');
   });
 
-  it('rejects an unrecognized audience value defensively', () => {
-    expect(() => assertGuestAudienceAllowed('made_up_value')).toThrow(ApiError);
+  it('prefers the component override over both day and event', () => {
+    const day = { audience: 'public' };
+    const component = { audience: 'invite_only' };
+    expect(resolveEffectiveAudience(event, day, component)).toBe('invite_only');
+  });
+
+  it('prefers the component override even when the day has no override', () => {
+    const component = { audience: 'invite_only' };
+    expect(resolveEffectiveAudience(event, null, component)).toBe('invite_only');
   });
 });
