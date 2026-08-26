@@ -39,7 +39,7 @@ const domainCache = new SimpleTTLCache({ max: 500, ttl: 60_000 });
 const PLATFORM_ALLOWED_DOMAINS = [
   '*.virtueinspect.com',
   'virtueinspect.com',
-  'localhost',
+  '*.localhost',
   '127.0.0.1',
 ];
 

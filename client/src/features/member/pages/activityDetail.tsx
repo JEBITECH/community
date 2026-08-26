@@ -13,6 +13,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import ProgressMeter from "@/components/reusable ui/ProgressMeter";
 import {
@@ -70,11 +71,21 @@ import {
 } from "../hooks/useVolunteers";
 import { useEventComments, useCreateComment, useUpdateComment, useDeleteComment, useReportComment, useModerateComment } from "../hooks/useComments";
 import { useEventChat } from "../hooks/useChat";
-import { EventComponent } from "../api/events";
+import { EventComponent, EventAudience } from "../api/events";
 import { Participation } from "../api/participations";
 import { SponsorshipNeed } from "../api/donations";
 import { VolunteerRole } from "../api/volunteers";
 import { EventComment } from "../api/comments";
+
+const INHERIT_AUDIENCE = "inherit" as const;
+
+const DAY_AUDIENCE_OPTIONS: { value: EventAudience | typeof INHERIT_AUDIENCE; label: string }[] = [
+  { value: INHERIT_AUDIENCE, label: "Same as event" },
+  { value: "internal", label: "Residents Only" },
+  { value: "internal_external", label: "Residents + Guests" },
+  { value: "public", label: "Public" },
+  { value: "invite_only", label: "Invite Only" },
+];
 
 export default function ActivityDetail() {
   const { id } = useParams<{ id: string }>();
@@ -89,7 +100,11 @@ export default function ActivityDetail() {
   const createComponent = useCreateEventComponent(id!);
 
   const [dayDialogOpen, setDayDialogOpen] = useState(false);
-  const [dayForm, setDayForm] = useState({ title: "", date: "" });
+  const [dayForm, setDayForm] = useState<{ title: string; date: string; audience: EventAudience | typeof INHERIT_AUDIENCE }>({
+    title: "",
+    date: "",
+    audience: INHERIT_AUDIENCE,
+  });
 
   const [componentDialogFor, setComponentDialogFor] = useState<string | null>(null);
   const [componentForm, setComponentForm] = useState({ name: "" });
@@ -258,8 +273,13 @@ export default function ActivityDetail() {
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium text-foreground">
+                      <p className="font-medium text-foreground flex items-center gap-2">
                         Day {day.day_number} · {day.title}
+                        {day.audience && (
+                          <Badge variant="outline" className="capitalize">
+                            {DAY_AUDIENCE_OPTIONS.find((a) => a.value === day.audience)?.label ?? day.audience}
+                          </Badge>
+                        )}
                       </p>
                       <p className="text-xs text-muted-foreground">{day.date}</p>
                     </div>
@@ -745,17 +765,44 @@ export default function ActivityDetail() {
                 onChange={(e) => setDayForm((f) => ({ ...f, date: e.target.value }))}
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Who can participate this day?</label>
+              <Select
+                value={dayForm.audience}
+                onValueChange={(v) => setDayForm((f) => ({ ...f, audience: v as EventAudience | typeof INHERIT_AUDIENCE }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DAY_AUDIENCE_OPTIONS.map((a) => (
+                    <SelectItem key={a.value} value={a.value}>
+                      {a.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Only set this if this day should be more or less open than the rest of the event — e.g. a
+                residents-only day within an otherwise public festival.
+              </p>
+            </div>
           </div>
           <DialogFooter>
             <Button
               disabled={!dayForm.title || !dayForm.date || createDay.isPending}
               onClick={() =>
                 createDay.mutate(
-                  { day_number: nextDayNumber, date: dayForm.date, title: dayForm.title },
+                  {
+                    day_number: nextDayNumber,
+                    date: dayForm.date,
+                    title: dayForm.title,
+                    audience: dayForm.audience === INHERIT_AUDIENCE ? undefined : dayForm.audience,
+                  },
                   {
                     onSuccess: () => {
                       setDayDialogOpen(false);
-                      setDayForm({ title: "", date: "" });
+                      setDayForm({ title: "", date: "", audience: INHERIT_AUDIENCE });
                     },
                   }
                 )
