@@ -24,8 +24,10 @@ RUN npm run build
 # ---- Production Stage ----
 FROM nginx:stable-alpine
 
-# Copy build files to nginx
-COPY --from=build /app/dist /usr/share/nginx/html
+# vite.config.ts sets build.outDir to "../dist/client" (relative to this
+# package), so from this stage's WORKDIR /app that lands at /dist/client,
+# not the /app/dist Vite would use by default.
+COPY --from=build /dist/client /usr/share/nginx/html
 
 # Copy default nginx config (for SPA routing)
 COPY nginx.conf /etc/nginx/conf.d/default.conf
