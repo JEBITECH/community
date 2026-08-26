@@ -1,0 +1,18 @@
+societyhub.virtueinspect.com {
+	# Socket.io mounts at NestJS's default /socket.io/ regardless of namespace
+	# (community-svc's chat gateway uses namespace "/community/chat", not a
+	# custom HTTP path) — routing this one prefix to community-svc is what
+	# lets the client's direct chat connection ride the same domain and
+	# certificate as everything else, instead of needing its own subdomain.
+	handle /socket.io/* {
+		reverse_proxy community-svc:5021
+	}
+
+	handle /api/* {
+		reverse_proxy gateway:4000
+	}
+
+	handle {
+		reverse_proxy client:80
+	}
+}

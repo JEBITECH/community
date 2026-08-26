@@ -4,9 +4,12 @@ version: "3.9"
 # network, reachable from each other by service name. Copy .env.example to
 # .env and fill in real values before running `docker compose up -d --build`.
 #
-# community-svc is published on the host (not just internal) because the
-# client's live-chat Socket.io connection goes there DIRECTLY, bypassing
-# the gateway — see server/services/community-svc/Dockerfile's comment.
+# Caddy is the only thing published on the host (80/443) — it terminates TLS
+# and fans out by path to client/gateway/community-svc, all of which are
+# otherwise internal-only now. Socket.io's client connects directly to
+# community-svc (bypassing the gateway) by hitting /socket.io/* on the same
+# domain — see the Caddyfile's comment for why that one path is routed
+# straight to community-svc instead of the gateway.
 
 services:
   postgres:
@@ -62,8 +65,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    ports:
-      - "5021:5021"
+    expose:
+      - "5021"
 
   notification-svc:
     build:
@@ -98,8 +101,8 @@ services:
       - auth-svc
       - community-svc
       - notification-svc
-    ports:
-      - "4000:4000"
+    expose:
+      - "4000"
 
   client:
     build:
@@ -109,11 +112,28 @@ services:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:4000/api}
         VITE_COMMUNITY_WS_URL: ${VITE_COMMUNITY_WS_URL:-http://localhost:5021}
     restart: unless-stopped
-    ports:
-      - "80:80"
+    expose:
+      - "80"
     depends_on:
       - gateway
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - client
+      - gateway
+      - community-svc
 
 volumes:
   postgres_data:
   redis_data:
+  caddy_data:
+  caddy_config:
