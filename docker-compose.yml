@@ -93,6 +93,13 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
+      # Without these two overrides, gateway inherits the shared .env's
+      # PORT=4001 (meant for auth-svc — gateway's own index.ts checks
+      # process.env.PORT before GATEWAY_PORT) and DB_HOST=localhost
+      # (meant for native dev, not this container) — see the commit that
+      # added this comment for the exact symptoms both cause.
+      PORT: 4000
+      DB_HOST: postgres
       AUTH_SERVICE_URL: http://auth-svc:4001
       COMMUNITY_SERVICE_URL: http://community-svc:5021
       NOTIFICATION_SERVICE_URL: http://notification-svc:5011
