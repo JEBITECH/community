@@ -9,7 +9,7 @@ import {
   UpdateDateColumn,
   Index,
 } from 'typeorm';
-import { Event } from './event.entity';
+import { Event, EventAudience } from './event.entity';
 import { EventComponent } from './event-component.entity';
 
 @Entity('event_day')
@@ -39,6 +39,9 @@ export class EventDay {
 
   @Column({ type: 'int', default: 1 })
   sequence!: number;
+
+  @Column({ type: 'varchar', nullable: true })
+  audience?: EventAudience;
 
   @OneToMany(() => EventComponent, (component) => component.eventDay, { cascade: true })
   components?: EventComponent[];

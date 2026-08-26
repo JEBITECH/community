@@ -46,6 +46,7 @@ export interface EventDay {
   title: string;
   description?: string;
   sequence: number;
+  audience?: EventAudience;
   components?: EventComponent[];
 }
 
@@ -99,6 +100,7 @@ export interface CreateEventDayInput {
   title: string;
   description?: string;
   sequence?: number;
+  audience?: EventAudience;
 }
 
 export interface CreateEventComponentInput {

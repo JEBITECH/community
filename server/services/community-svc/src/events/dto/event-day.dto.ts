@@ -1,4 +1,6 @@
-import { IsDateString, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsDateString, IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
+
+const AUDIENCES = ['internal', 'internal_external', 'public', 'invite_only'];
 
 export class CreateEventDayDto {
   @IsInt()
@@ -18,6 +20,10 @@ export class CreateEventDayDto {
   @IsOptional()
   @IsInt()
   sequence?: number;
+
+  @IsOptional()
+  @IsIn(AUDIENCES)
+  audience?: string;
 }
 
 export class UpdateEventDayDto {
@@ -41,4 +47,8 @@ export class UpdateEventDayDto {
   @IsOptional()
   @IsInt()
   sequence?: number;
+
+  @IsOptional()
+  @IsIn(AUDIENCES)
+  audience?: string;
 }

@@ -13,7 +13,7 @@ import { CreatePublicSponsorshipDto } from './dto/create-public-sponsorship.dto'
 import { RecordPaymentDto } from './dto/record-payment.dto';
 import { RequestUser } from '../common/middleware/user-context.middleware';
 import { assertTenantMatch } from '../common/helpers/tenant.helper';
-import { assertGuestAudienceAllowed } from '../common/helpers/audience.helper';
+import { assertGuestAudienceAllowed, resolveEffectiveAudience } from '../common/helpers/audience.helper';
 import { assertValidPaymentTransition, generateReceiptNumber } from '../common/helpers/payment-state.helper';
 import { MembershipResolverService } from '../common/services/membership-resolver.service';
 import { GuestMembershipResolverService } from '../common/services/guest-membership-resolver.service';
@@ -92,12 +92,13 @@ export class SponsorshipsService {
     if (!event) {
       throw new ApiError('Event not found', 404, 'NOT_FOUND');
     }
-    let audience = event.audience;
+    let component: EventComponent | null = null;
     if (need.event_component_id) {
-      const component = await this.componentRepo.findOne({ where: { id: need.event_component_id } });
-      audience = component?.audience ?? audience;
+      // relations: ['eventDay'] lets resolveEffectiveAudience() fall back to
+      // the parent day's audience override when the component doesn't set one.
+      component = await this.componentRepo.findOne({ where: { id: need.event_component_id }, relations: ['eventDay'] });
     }
-    assertGuestAudienceAllowed(audience);
+    assertGuestAudienceAllowed(resolveEffectiveAudience(event, component?.eventDay, component));
     const membership = await this.guestMembershipResolver.resolve(need.organization_id, dto.guest);
     return this.createForMembership(membership, need, dto.amount_pledged);
   }
