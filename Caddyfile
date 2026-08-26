@@ -1,4 +1,4 @@
-societyhub.virtueinspect.com {
+societyhub.jebitech.com {
 	# Socket.io mounts at NestJS's default /socket.io/ regardless of namespace
 	# (community-svc's chat gateway uses namespace "/community/chat", not a
 	# custom HTTP path) — routing this one prefix to community-svc is what
