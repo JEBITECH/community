@@ -1,0 +1,3069 @@
+{
+  "info": {
+    "_postman_id": "5e4441c2-dc14-4515-880a-adcbaff5ec2d",
+    "name": "Community App API",
+    "description": "Complete API collection for the Community App platform — auth-svc, community-svc, and notification-svc, all reached through the gateway.\n\nSetup:\n1. Select/import the companion environment and set `baseUrl` (e.g. http://localhost:4000 for local dev, or https://societyhub.jebitech.com for the deployed droplet).\n2. Set `masterAdminEmail`/`masterAdminPassword` in the environment.\n3. Run Auth > Login once — it captures `accessToken` into a collection variable that every other request inherits as a Bearer token automatically.\n4. The gateway derives x-user-role/x-user-token/x-user-organization-id from that JWT itself when proxying to each service — you never need to set those headers manually.\n5. Requests under 'Public (Guest)' and 'Internal (Service-to-Service)' are explicitly marked — the latter need `internalServiceKey` set to match each service's INTERNAL_SERVICE_KEY env var, and represent service-to-service calls not normally reached through the public gateway.\n6. Most create/list requests auto-capture IDs (organizationId, eventId, ...) into collection variables via test scripts, so you can run folders top-to-bottom without manually copying IDs.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "otpVerifiedToken",
+      "value": ""
+    },
+    {
+      "key": "internalServiceKey",
+      "value": ""
+    },
+    {
+      "key": "userId",
+      "value": ""
+    },
+    {
+      "key": "organizationId",
+      "value": ""
+    },
+    {
+      "key": "roleId",
+      "value": ""
+    },
+    {
+      "key": "moduleId",
+      "value": ""
+    },
+    {
+      "key": "actionId",
+      "value": ""
+    },
+    {
+      "key": "subActionId",
+      "value": ""
+    },
+    {
+      "key": "addressId",
+      "value": ""
+    },
+    {
+      "key": "bankAccountId",
+      "value": ""
+    },
+    {
+      "key": "eventId",
+      "value": ""
+    },
+    {
+      "key": "eventDayId",
+      "value": ""
+    },
+    {
+      "key": "eventComponentId",
+      "value": ""
+    },
+    {
+      "key": "participationId",
+      "value": ""
+    },
+    {
+      "key": "donationId",
+      "value": ""
+    },
+    {
+      "key": "sponsorshipNeedId",
+      "value": ""
+    },
+    {
+      "key": "sponsorshipId",
+      "value": ""
+    },
+    {
+      "key": "volunteerRoleId",
+      "value": ""
+    },
+    {
+      "key": "volunteerAssignmentId",
+      "value": ""
+    },
+    {
+      "key": "commentId",
+      "value": ""
+    },
+    {
+      "key": "membershipId",
+      "value": ""
+    },
+    {
+      "key": "templateId",
+      "value": ""
+    },
+    {
+      "key": "deviceTokenId",
+      "value": ""
+    },
+    {
+      "key": "notificationId",
+      "value": ""
+    },
+    {
+      "key": "qrCodeToken",
+      "value": ""
+    },
+    {
+      "key": "emailVerificationToken",
+      "value": ""
+    },
+    {
+      "key": "resetToken",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "description": "",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Public. Logs in with email/password, sets refreshToken cookie, returns accessToken. Test script saves accessToken/refreshToken to collection variables for every other request to reuse.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{masterAdminEmail}}\",\n  \"password\": \"{{masterAdminPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
+                  "  if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                  "  if (json.user && json.user.id) pm.collectionVariables.set('userId', json.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Request OTP",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/otp/request",
+            "description": "Public. Sends a 6-digit OTP to the given phone number.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"9998887770\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Verify OTP",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/otp/verify",
+            "description": "Public. If the phone belongs to an existing user, logs in directly (sets refresh cookie). If new, returns { isNewUser: true, otpVerifiedToken } to continue into Join Community.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"9998887770\",\n  \"code\": \"123456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.otpVerifiedToken) pm.collectionVariables.set('otpVerifiedToken', json.otpVerifiedToken);",
+                  "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Join Community",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/join-community",
+            "description": "Public. Completes signup after OTP verification — creates a pending membership (approval-required orgs) or logs the user straight in.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"otpVerifiedToken\": \"{{otpVerifiedToken}}\",\n  \"firstName\": \"New\",\n  \"lastName\": \"Member\",\n  \"unitIdentifier\": \"A-101\",\n  \"organizationId\": \"{{organizationId}}\",\n  \"invitationCode\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Get My Memberships",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/me/memberships",
+            "description": "Requires auth. Returns the current user's organization memberships (backs the org switcher)."
+          }
+        },
+        {
+          "name": "Switch Organization",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/me/switch-org",
+            "description": "Requires auth. Switches the caller's active organization; issues new tokens.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"organizationId\": \"{{organizationId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/refresh",
+            "description": "Rotates access/refresh tokens. Falls back to the refreshToken cookie if not sent in the body.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.accessToken) pm.collectionVariables.set('accessToken', json.accessToken);",
+                  "  if (json.refreshToken) pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/logout",
+            "description": "Logs out the current user and clears the refresh cookie."
+          }
+        },
+        {
+          "name": "Get All Users (legacy)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/all-user",
+            "description": "Returns all users in the system, no pagination/org filter. Prefer GET /auth/user/all-user instead."
+          }
+        },
+        {
+          "name": "Get My Profile (legacy)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/user-profile",
+            "description": "Returns the current user's profile from the request context."
+          }
+        },
+        {
+          "name": "Request Password Reset",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/reset-password",
+            "description": "Public. Triggers the forgot-password email flow.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Confirm Password Reset",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/confirm-password-reset",
+            "description": "Public. Confirms a reset token and sets the new password.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"password\": \"NewP@ssw0rd123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Organizations",
+      "description": "",
+      "item": [
+        {
+          "name": "Create Organization",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/organizations",
+            "description": "Requires master_admin (enforced via the JWT-derived role, no manual header needed when going through the gateway). Onboards a new organization + super_admin user + module grants.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"organization_name\": \"Green Valley Society\",\n  \"organization_email\": \"admin@greenvalley.example.com\",\n  \"organization_location\": \"Pune, India\",\n  \"organization_timezone\": \"Asia/Kolkata\",\n  \"organization_contact_info\": \"+91-9998887770\",\n  \"organization_type\": \"society\",\n  \"subdomain\": \"greenvalley\",\n  \"membership_model\": \"approval_required\",\n  \"plan\": \"free\",\n  \"super_admin\": {\n    \"first_name\": \"Priya\",\n    \"last_name\": \"Sharma\",\n    \"email\": \"priya@greenvalley.example.com\",\n    \"phone\": \"9998887771\"\n  },\n  \"module_ids\": [\n    11,\n    12,\n    13,\n    19,\n    21\n  ],\n  \"themeConfig\": {\n    \"primary_color\": \"#2563eb\",\n    \"secondary_color\": \"#7c3aed\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.organizationId) pm.collectionVariables.set('organizationId', json.organizationId);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Check Subdomain Available",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/organizations/check-subdomain/greenvalley",
+            "description": "Public. Returns { subdomain, isUnique }.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Get Organization By Subdomain",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/organizations/by-subdomain/greenvalley",
+            "description": "Public. Looks up an org by its subdomain.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "List Organizations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/organizations",
+            "description": "Lists organizations, scoped by caller's identity (master_admin sees all)."
+          }
+        },
+        {
+          "name": "Get Organization By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/organizations/{{organizationId}}",
+            "description": "Fetch one organization's full detail."
+          }
+        },
+        {
+          "name": "Update Organization",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/organizations/{{organizationId}}",
+            "description": "Requires master_admin. Partial update of organization fields/branding/plan.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"organization_location\": \"Mumbai, India\",\n  \"plan\": \"community\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Suspend Organization",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/organizations/{{organizationId}}/suspend",
+            "description": "Requires master_admin."
+          }
+        },
+        {
+          "name": "Reactivate Organization",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/organizations/{{organizationId}}/reactivate",
+            "description": "Requires master_admin."
+          }
+        },
+        {
+          "name": "Archive Organization",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/organizations/archive/{{organizationId}}",
+            "description": "Requires master_admin. Soft-deletes the organization."
+          }
+        },
+        {
+          "name": "Restore Organization",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/organizations/restore/{{organizationId}}",
+            "description": "Requires master_admin."
+          }
+        },
+        {
+          "name": "Get Organization's Modules",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/organizations/modules-by-Organization/{{organizationId}}",
+            "description": "Lists modules subscribed/assigned to the organization."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "description": "",
+      "item": [
+        {
+          "name": "Invite User",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/user/invite-user",
+            "description": "Admin invites a new member into an organization; sends an invite email.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Ravi\",\n  \"lastName\": \"Kumar\",\n  \"email\": \"ravi.kumar@example.com\",\n  \"phone\": \"9998887772\",\n  \"organizationId\": \"{{organizationId}}\",\n  \"roleId\": \"{{roleId}}\",\n  \"memberType\": \"internal\",\n  \"unitIdentifier\": \"B-204\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List All Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/user/all-user?page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "user",
+                "all-user"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": false
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Paginated user listing, scoped to caller's org (master_admin can filter by organization_id via filter query, see notes in docs). Requires the request's x-user context, which the gateway sets automatically."
+          }
+        },
+        {
+          "name": "List Users By Organization",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/user/organization/{{organizationId}}",
+            "description": "Lists users belonging to a given organization."
+          }
+        },
+        {
+          "name": "Get User By Token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/user/user-by-token",
+            "description": "Public. Resolves a user's profile from an invite/verification token (used by the set-account-detail screen).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{emailVerificationToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/user/profile",
+            "description": "Returns the current user's profile from the request context.",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Set Password From Invite Token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/user/reset-password",
+            "description": "Public. Consumes an invite/reset token and sets the account password.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{emailVerificationToken}}\",\n  \"newPassword\": \"Welcome@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Edit User Account Detail",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/user/edit-user",
+            "description": "Public pre-auth endpoint reached via the invite email link (gated by emailVerificationToken).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{emailVerificationToken}}\",\n  \"firstName\": \"Ravi\",\n  \"lastName\": \"Kumar\",\n  \"phone\": \"9998887772\",\n  \"password\": \"Welcome@123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Reinvite User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/user/reinvite-user/{{userId}}",
+            "description": "Re-sends the invitation email to a pending user."
+          }
+        },
+        {
+          "name": "Update FCM Token",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/user/fcm-token",
+            "description": "Saves/updates the caller's push-notification device token.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fcm_token\": \"example-fcm-device-token\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/user/{{userId}}",
+            "description": "Updates a user's details, including nested module/action/sub-action access grants. Requires Authorization: Bearer header (verified in-controller, separate from the gateway's own context).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Ravi\",\n  \"lastName\": \"Kumar\",\n  \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get User By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/user/{{userId}}",
+            "description": "Fetch a single user by id."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Roles & ACL",
+      "description": "",
+      "item": [
+        {
+          "name": "Create Role",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/roles",
+            "description": "Creates a role scoped to an organization.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"core_committee\",\n  \"status\": true,\n  \"organization_id\": \"{{organizationId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List All Roles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/roles",
+            "description": "Lists all roles across organizations."
+          }
+        },
+        {
+          "name": "List Roles By Organization",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/roles/{{organizationId}}",
+            "description": "Lists roles for one organization."
+          }
+        },
+        {
+          "name": "Update Role",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/roles/{{roleId}}",
+            "description": "Updates a role by id.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"core_committee\",\n  \"status\": true,\n  \"organization_id\": \"{{organizationId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Assign Role Module Access",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/role-module-access",
+            "description": "Assigns a module/action/sub-action access matrix to a role within an organization.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role_id\": \"{{roleId}}\",\n  \"organization_id\": \"{{organizationId}}\",\n  \"assign_modules\": [\n    {\n      \"module_id\": 11,\n      \"action_list\": [\n        {\n          \"action_id\": 1,\n          \"sub_action_list\": [\n            {\n              \"sub_action_id\": null\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Role Module Access",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/role-module-access/{{organizationId}}/{{roleId}}",
+            "description": "Returns the module access grid for one organization+role."
+          }
+        },
+        {
+          "name": "List Modules",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/modules?include_internal=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "modules"
+              ],
+              "query": [
+                {
+                  "key": "include_internal",
+                  "value": "true",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Lists all modules. Client filters status===true && !is_internal for the real selectable set."
+          }
+        },
+        {
+          "name": "Create Module",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/modules",
+            "description": "Creates a new module.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Custom Module\",\n  \"status\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Update Module",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/modules/{{moduleId}}",
+            "description": "Updates a module by id.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Custom Module\",\n  \"status\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Create Action",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/action",
+            "description": "Creates an action under a module.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"View\",\n  \"status\": true,\n  \"module_id\": \"{{moduleId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Update Action",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/action/{{actionId}}",
+            "description": "Updates an action by id.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"View\",\n  \"status\": true,\n  \"module_id\": \"{{moduleId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Create Sub-Action",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/sub-action",
+            "description": "Creates a sub-action under a module+action.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Export\",\n  \"status\": true,\n  \"module_id\": \"{{moduleId}}\",\n  \"action_id\": \"{{actionId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Update Sub-Action",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/sub-action/{{subActionId}}",
+            "description": "Updates a sub-action by id.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Export\",\n  \"status\": true,\n  \"module_id\": \"{{moduleId}}\",\n  \"action_id\": \"{{actionId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "User Address & Bank Account",
+      "description": "",
+      "item": [
+        {
+          "name": "Create User Address",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/user-address",
+            "description": "Creates an address record.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"address_type\": \"home\",\n  \"full\": \"12 MG Road\",\n  \"street\": \"MG Road\",\n  \"city\": \"Pune\",\n  \"province\": \"Maharashtra\",\n  \"zip_code\": \"411001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List User Addresses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/user-address?page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "user-address"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": false
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Paginated address listing."
+          }
+        },
+        {
+          "name": "Get User Address By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/user-address/{{addressId}}",
+            "description": "Fetch one address."
+          }
+        },
+        {
+          "name": "Update User Address",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/user-address/{{addressId}}",
+            "description": "Updates an address by id.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{addressId}}\",\n  \"city\": \"Mumbai\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete User Address",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/user-address/{{addressId}}",
+            "description": "Deletes an address by id."
+          }
+        },
+        {
+          "name": "Create User Bank Account",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/user-bank-account",
+            "description": "Creates a bank account record.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bank_owner_name\": \"Ravi Kumar\",\n  \"bank_account_number\": \"0001112223334\",\n  \"bank_account_code\": \"HDFC0000123\",\n  \"is_active\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List User Bank Accounts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/user-bank-account?page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "user-bank-account"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": false
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Paginated bank account listing."
+          }
+        },
+        {
+          "name": "Get User Bank Account By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/user-bank-account/{{bankAccountId}}",
+            "description": "Fetch one bank account."
+          }
+        },
+        {
+          "name": "Update User Bank Account",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/user-bank-account/{{bankAccountId}}",
+            "description": "Updates a bank account by id.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{bankAccountId}}\",\n  \"is_active\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete User Bank Account",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/user-bank-account/{{bankAccountId}}",
+            "description": "Deletes a bank account by id."
+          }
+        }
+      ]
+    },
+    {
+      "name": "File Upload",
+      "description": "",
+      "item": [
+        {
+          "name": "Upload File to Firebase",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/firebase/upload",
+            "description": "multipart/form-data. Uploads a file (e.g. profile picture) to Firebase Storage and updates the user's record.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                },
+                {
+                  "key": "user_id",
+                  "type": "text",
+                  "value": "{{userId}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Community / Events",
+      "description": "",
+      "item": [
+        {
+          "name": "Create Event",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/events",
+            "description": "Requires super_admin/core_committee. Creates a new event/festival.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ganesh Chaturthi Festival\",\n  \"description\": \"Annual community festival\",\n  \"event_type\": \"festival\",\n  \"is_multi_day\": true,\n  \"start_date\": \"2026-09-05\",\n  \"end_date\": \"2026-09-07\",\n  \"venue\": \"Community Hall\",\n  \"audience\": \"internal_external\",\n  \"registration_required\": true,\n  \"booking_enabled\": false,\n  \"donation_enabled\": true,\n  \"volunteer_enabled\": true,\n  \"sponsorship_enabled\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.id) pm.collectionVariables.set('eventId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Events",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/community/events?status=published&event_type=festival",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "community",
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "published",
+                  "disabled": true
+                },
+                {
+                  "key": "event_type",
+                  "value": "festival",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Lists events, scoped to caller's org."
+          }
+        },
+        {
+          "name": "Get Event By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/events/{{eventId}}",
+            "description": "Get single event detail."
+          }
+        },
+        {
+          "name": "Get Event Schedule",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/events/{{eventId}}/schedule",
+            "description": "Full day/component schedule tree for a multi-day event."
+          }
+        },
+        {
+          "name": "Update Event",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/events/{{eventId}}",
+            "description": "Requires super_admin/core_committee.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"venue\": \"Main Auditorium\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Publish Event",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/events/{{eventId}}/publish",
+            "description": "Requires super_admin/core_committee. Publishes a draft event."
+          }
+        },
+        {
+          "name": "Cancel Event",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/events/{{eventId}}",
+            "description": "Requires super_admin/core_committee. Cancels the event."
+          }
+        },
+        {
+          "name": "Add Event Day",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/events/{{eventId}}/days",
+            "description": "Requires super_admin/core_committee. Adds a day to a multi-day event.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"day_number\": 1,\n  \"date\": \"2026-09-05\",\n  \"title\": \"Day 1 — Sthapana\",\n  \"description\": \"Idol installation\",\n  \"audience\": \"internal\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.id) pm.collectionVariables.set('eventDayId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Community / Event Days & Components",
+      "description": "",
+      "item": [
+        {
+          "name": "Update Event Day",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/days/{{eventDayId}}",
+            "description": "Requires super_admin/core_committee. Includes the new per-day audience override.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Day 1 — Sthapana (updated)\",\n  \"audience\": \"internal_external\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete Event Day",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/days/{{eventDayId}}",
+            "description": "Requires super_admin/core_committee."
+          }
+        },
+        {
+          "name": "Add Component To Day",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/days/{{eventDayId}}/components",
+            "description": "Requires super_admin/core_committee. Adds an activity/session to a specific day.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Morning Aarti\",\n  \"description\": \"Community prayer session\",\n  \"component_type\": \"activity\",\n  \"start_time\": \"07:00\",\n  \"end_time\": \"08:00\",\n  \"requires_booking\": false,\n  \"audience\": \"internal\",\n  \"registration_enabled\": true,\n  \"donation_enabled\": false,\n  \"sponsorship_enabled\": false,\n  \"volunteer_enabled\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.id) pm.collectionVariables.set('eventComponentId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Component",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/components/{{eventComponentId}}",
+            "description": "Requires super_admin/core_committee.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"capacity\": 100,\n  \"price_internal\": 0,\n  \"price_external\": 200\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete Component",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/components/{{eventComponentId}}",
+            "description": "Requires super_admin/core_committee."
+          }
+        },
+        {
+          "name": "Get Component Availability",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/components/{{eventComponentId}}/availability",
+            "description": "Remaining capacity for a bookable component."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Community / Participations",
+      "description": "",
+      "item": [
+        {
+          "name": "Join / Book Event",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/participations",
+            "description": "Authenticated member joins/books an event or component.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_id\": \"{{eventId}}\",\n  \"event_component_id\": \"{{eventComponentId}}\",\n  \"type\": \"join\",\n  \"seats_requested\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.id) pm.collectionVariables.set('participationId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My Participations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/community/participations/me?type=join",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "community",
+                "participations",
+                "me"
+              ],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "join",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Current user's own participations."
+          }
+        },
+        {
+          "name": "Cancel Participation",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/participations/{{participationId}}/cancel",
+            "description": "Cancel own participation/booking."
+          }
+        },
+        {
+          "name": "Scan Attendance (QR)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/participations/attend",
+            "description": "Requires super_admin/core_committee. Staff scans a participant's QR code to mark attendance.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qr_code_token\": \"{{qrCodeToken}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Guest Join / Book (Public)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/public/participations",
+            "description": "Public. Guest RSVPs for a public event without an account.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_id\": \"{{eventId}}\",\n  \"type\": \"join\",\n  \"guest\": {\n    \"first_name\": \"Guest\",\n    \"last_name\": \"User\",\n    \"phone\": \"9998887770\",\n    \"email\": \"guest@example.com\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Community / Donations",
+      "description": "",
+      "item": [
+        {
+          "name": "Create Donation",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/donations",
+            "description": "Authenticated member pledges a donation.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_id\": \"{{eventId}}\",\n  \"amount\": 501,\n  \"purpose\": \"event\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.id) pm.collectionVariables.set('donationId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My Donations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/donations/me",
+            "description": "Current user's own donations."
+          }
+        },
+        {
+          "name": "Record Donation Payment",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/donations/{{donationId}}/record-payment",
+            "description": "Requires super_admin/core_committee.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_status\": \"recorded\",\n  \"payment_method\": \"upi\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List Event Donations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/events/{{eventId}}/donations",
+            "description": "Requires super_admin/core_committee. Finance view of all donations for an event."
+          }
+        },
+        {
+          "name": "Guest Donate (Public)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/public/donations",
+            "description": "Public. Guest creates a donation pledge without an account.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_id\": \"{{eventId}}\",\n  \"amount\": 251,\n  \"purpose\": \"general\",\n  \"guest\": {\n    \"first_name\": \"Guest\",\n    \"last_name\": \"User\",\n    \"phone\": \"9998887770\",\n    \"email\": \"guest@example.com\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Community / Sponsorships",
+      "description": "",
+      "item": [
+        {
+          "name": "Create Sponsorship Need",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/sponsorship-needs",
+            "description": "Requires super_admin/core_committee. Creates a fundraising target for an event/component.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_id\": \"{{eventId}}\",\n  \"title\": \"Stage & Sound System\",\n  \"description\": \"Sponsor the main stage setup\",\n  \"target_amount\": 25000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.id) pm.collectionVariables.set('sponsorshipNeedId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Event Sponsorship Needs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/events/{{eventId}}/sponsorship-needs",
+            "description": "List sponsorship needs for an event."
+          }
+        },
+        {
+          "name": "List Event Sponsorships",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/events/{{eventId}}/sponsorships",
+            "description": "Requires super_admin/core_committee. Finance view of pledges."
+          }
+        },
+        {
+          "name": "Create Sponsorship Pledge",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/sponsorships",
+            "description": "Authenticated member pledges a sponsorship.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sponsorship_need_id\": \"{{sponsorshipNeedId}}\",\n  \"amount_pledged\": 5000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.id) pm.collectionVariables.set('sponsorshipId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My Sponsorships",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/sponsorships/me",
+            "description": "Current user's own sponsorship pledges."
+          }
+        },
+        {
+          "name": "Record Sponsorship Payment",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/sponsorships/{{sponsorshipId}}/record-payment",
+            "description": "Requires super_admin/core_committee.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_status\": \"recorded\",\n  \"payment_method\": \"bank_transfer\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Guest Sponsor (Public)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/public/sponsorships",
+            "description": "Public. Guest pledges a sponsorship without an account.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sponsorship_need_id\": \"{{sponsorshipNeedId}}\",\n  \"amount_pledged\": 1000,\n  \"guest\": {\n    \"first_name\": \"Guest\",\n    \"last_name\": \"User\",\n    \"phone\": \"9998887770\",\n    \"email\": \"guest@example.com\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Guest: List Sponsorship Needs (Public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/public/events/{{eventId}}/sponsorship-needs",
+            "description": "Public. Sponsorship needs for a published public event.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Community / Volunteers",
+      "description": "",
+      "item": [
+        {
+          "name": "Create Volunteer Role",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/volunteer-roles",
+            "description": "Requires super_admin/core_committee. Creates a volunteer slot for an event.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"event_id\": \"{{eventId}}\",\n  \"title\": \"Registration Desk Volunteer\",\n  \"description\": \"Help check in guests\",\n  \"slot_start\": \"09:00\",\n  \"slot_end\": \"12:00\",\n  \"headcount_needed\": 4\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.id) pm.collectionVariables.set('volunteerRoleId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Event Volunteer Roles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/events/{{eventId}}/volunteer-roles",
+            "description": "List volunteer roles open for an event."
+          }
+        },
+        {
+          "name": "List Role Assignments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/volunteer-roles/{{volunteerRoleId}}/assignments",
+            "description": "Requires super_admin/core_committee. Volunteers signed up for a role."
+          }
+        },
+        {
+          "name": "Sign Up For Volunteer Role",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/volunteer-assignments",
+            "description": "Member signs up for a volunteer role.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"volunteer_role_id\": \"{{volunteerRoleId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.id) pm.collectionVariables.set('volunteerAssignmentId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My Volunteer Assignments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/volunteer-assignments/me",
+            "description": "Current user's own volunteer sign-ups."
+          }
+        },
+        {
+          "name": "Cancel Volunteer Assignment",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/volunteer-assignments/{{volunteerAssignmentId}}/cancel",
+            "description": "Cancel own volunteer assignment."
+          }
+        },
+        {
+          "name": "Approve Volunteer Assignment",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/volunteer-assignments/{{volunteerAssignmentId}}/approve",
+            "description": "Requires super_admin/core_committee."
+          }
+        },
+        {
+          "name": "Reject Volunteer Assignment",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/volunteer-assignments/{{volunteerAssignmentId}}/reject",
+            "description": "Requires super_admin/core_committee."
+          }
+        },
+        {
+          "name": "Reassign Volunteer",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/volunteer-assignments/{{volunteerAssignmentId}}/reassign",
+            "description": "Requires super_admin/core_committee.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"volunteer_role_id\": \"{{volunteerRoleId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Community / Comments",
+      "description": "",
+      "item": [
+        {
+          "name": "List Event Comments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/community/events/{{eventId}}/comments?event_component_id={{eventComponentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "community",
+                "events",
+                "{{eventId}}",
+                "comments"
+              ],
+              "query": [
+                {
+                  "key": "event_component_id",
+                  "value": "{{eventComponentId}}",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List comments for an event."
+          }
+        },
+        {
+          "name": "Create Comment",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/events/{{eventId}}/comments",
+            "description": "Post a comment on an event.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Looking forward to this!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.id) pm.collectionVariables.set('commentId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My Comments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/comments/me",
+            "description": "Current user's own comments."
+          }
+        },
+        {
+          "name": "Update Comment",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/comments/{{commentId}}",
+            "description": "Edit own comment.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Updated comment text\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete Comment",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/comments/{{commentId}}",
+            "description": "Delete own comment."
+          }
+        },
+        {
+          "name": "Report Comment",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/comments/{{commentId}}/report",
+            "description": "Report a comment for moderation."
+          }
+        },
+        {
+          "name": "Moderate Comment",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/comments/{{commentId}}/moderate",
+            "description": "Requires super_admin/core_committee.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"moderation_status\": \"hidden\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Community / Chat",
+      "description": "",
+      "item": [
+        {
+          "name": "Get Chat Config",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/events/{{eventId}}/chat-config",
+            "description": "Fetch an event's chat visibility/posting configuration."
+          }
+        },
+        {
+          "name": "Update Chat Config",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/events/{{eventId}}/chat-config",
+            "description": "Requires super_admin/core_committee.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"who_can_view\": \"internal_and_external\",\n  \"who_can_post\": \"internal_only\",\n  \"replies_allowed\": true,\n  \"moderation_required\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Chat History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/community/events/{{eventId}}/chat/history?limit=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "community",
+                "events",
+                "{{eventId}}",
+                "chat",
+                "history"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Paginated chat message history. Live send/receive happens over Socket.io directly to community-svc, not via REST — see the client's chat gateway connection."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Community / Members",
+      "description": "",
+      "item": [
+        {
+          "name": "Member Directory",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/members",
+            "description": "Org-scoped member directory (visibility-filtered)."
+          }
+        },
+        {
+          "name": "Pending Members",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/members/pending",
+            "description": "Requires super_admin/core_committee."
+          }
+        },
+        {
+          "name": "Get Member By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/members/{{membershipId}}",
+            "description": "Single member profile."
+          }
+        },
+        {
+          "name": "Update Member",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/members/{{membershipId}}",
+            "description": "Requires super_admin/core_committee.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"directory_visible\": true,\n  \"unit_identifier\": \"A-101\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Approve Member",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/members/{{membershipId}}/approve",
+            "description": "Requires super_admin/core_committee."
+          }
+        },
+        {
+          "name": "Reject Member",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/members/{{membershipId}}/reject",
+            "description": "Requires super_admin/core_committee."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Community / Calendar & Dashboard",
+      "description": "",
+      "item": [
+        {
+          "name": "Calendar",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/community/calendar?from=2026-09-01&to=2026-09-30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "community",
+                "calendar"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2026-09-01",
+                  "disabled": false
+                },
+                {
+                  "key": "to",
+                  "value": "2026-09-30",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Events within a date range."
+          }
+        },
+        {
+          "name": "Org Dashboard Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/dashboard/org-summary",
+            "description": "Requires super_admin/core_committee."
+          }
+        },
+        {
+          "name": "Event Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/dashboard/events/{{eventId}}",
+            "description": "Requires super_admin/core_committee."
+          }
+        },
+        {
+          "name": "Platform Dashboard Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/dashboard/platform-summary",
+            "description": "Cross-tenant summary (master_admin)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Community / Reports",
+      "description": "",
+      "item": [
+        {
+          "name": "Events Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/community/reports/events?format=csv",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "community",
+                "reports",
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "csv",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Requires super_admin/core_committee. Omit format or set to anything but csv for JSON."
+          }
+        },
+        {
+          "name": "Financial Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/community/reports/financial?format=csv",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "community",
+                "reports",
+                "financial"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "csv",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Requires super_admin/core_committee."
+          }
+        },
+        {
+          "name": "Volunteer Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/community/reports/volunteer?format=csv",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "community",
+                "reports",
+                "volunteer"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "csv",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Requires super_admin/core_committee."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Community / Public (Guest)",
+      "description": "",
+      "item": [
+        {
+          "name": "Guest: List Public Events",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/community/public/events?subdomain=greenvalley",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "community",
+                "public",
+                "events"
+              ],
+              "query": [
+                {
+                  "key": "subdomain",
+                  "value": "greenvalley",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Public. Published events for an org's subdomain (guest landing page).",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Guest: Get Public Event",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/public/events/{{eventId}}",
+            "description": "Public. Single published event detail.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/community/health",
+            "description": "Public liveness check.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications / Preferences (Management)",
+      "description": "",
+      "item": [
+        {
+          "name": "Get Notification Preferences",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/notification-preferences?organization_id={{organizationId}}&user_id={{userId}}&role=super_admin",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "notification-preferences"
+              ],
+              "query": [
+                {
+                  "key": "organization_id",
+                  "value": "{{organizationId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "user_id",
+                  "value": "{{userId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "role",
+                  "value": "super_admin",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "No guard enforced at this layer."
+          }
+        },
+        {
+          "name": "Upsert Company Preferences",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/notifications/notification-preferences/company",
+            "description": "Upserts company-level channel preferences.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"organizationId\": \"{{organizationId}}\",\n  \"channels\": {\n    \"allowEmail\": true,\n    \"allowSms\": false,\n    \"allowPush\": true,\n    \"allowWhatsapp\": false,\n    \"allowInApp\": true\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Upsert User Preferences",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/notifications/notification-preferences/user",
+            "description": "userId must be a UUID.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"organizationId\": \"{{organizationId}}\",\n  \"channels\": {\n    \"email\": true,\n    \"sms\": false,\n    \"push\": true,\n    \"inApp\": true,\n    \"whatsapp\": false\n  },\n  \"quietHoursStart\": \"22:00\",\n  \"quietHoursEnd\": \"07:00\",\n  \"timezone\": \"Asia/Kolkata\",\n  \"doNotDisturb\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Upsert Role Preferences",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/notifications/notification-preferences/role",
+            "description": "Upserts role-level event preferences.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"core_committee\",\n  \"organizationId\": \"{{organizationId}}\",\n  \"eventPreferences\": {\n    \"event.published\": true,\n    \"donation.recorded\": false\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List Device Tokens",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/notification-preferences/device-tokens?organization_id={{organizationId}}&user_id={{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "notification-preferences",
+                "device-tokens"
+              ],
+              "query": [
+                {
+                  "key": "organization_id",
+                  "value": "{{organizationId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "user_id",
+                  "value": "{{userId}}",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Lists registered push device tokens."
+          }
+        },
+        {
+          "name": "Register Device Token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/notifications/notification-preferences/device-tokens",
+            "description": "userId must be a UUID.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"organizationId\": \"{{organizationId}}\",\n  \"token\": \"fcm-token-abc123\",\n  \"platform\": \"android\",\n  \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Update Device Token",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/notifications/notification-preferences/device-tokens/{{deviceTokenId}}",
+            "description": "Updates activation/last-seen status.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isActive\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Notification Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/notification-preferences/logs?organization_id={{organizationId}}&page=1&limit=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "notification-preferences",
+                "logs"
+              ],
+              "query": [
+                {
+                  "key": "organization_id",
+                  "value": "{{organizationId}}",
+                  "disabled": false
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": false
+                },
+                {
+                  "key": "limit",
+                  "value": "20",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "organization_id is required."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications / Templates (Management)",
+      "description": "",
+      "item": [
+        {
+          "name": "List Templates",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/notification-templates?organization_id={{organizationId}}&event_type=&channel=&language=&search=",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "notification-templates"
+              ],
+              "query": [
+                {
+                  "key": "organization_id",
+                  "value": "{{organizationId}}",
+                  "disabled": true
+                },
+                {
+                  "key": "event_type",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "channel",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "language",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Lists templates with optional filters."
+          }
+        },
+        {
+          "name": "Preview Template",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/notifications/notification-templates/preview",
+            "description": "Renders a preview without persisting.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"template\": \"Hello {{name}}, your order {{orderId}} shipped.\",\n  \"subject\": \"Order Update\",\n  \"variables\": {\n    \"name\": \"Alice\",\n    \"orderId\": \"1001\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Template By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/notifications/notification-templates/{{templateId}}",
+            "description": "Fetch one template."
+          }
+        },
+        {
+          "name": "Create Template",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/notifications/notification-templates",
+            "description": "Creates a new notification template.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Event Published\",\n  \"eventType\": \"event.published\",\n  \"channel\": \"email\",\n  \"language\": \"en\",\n  \"organizationId\": \"{{organizationId}}\",\n  \"template\": \"Hello {{name}}, {{eventName}} is now live!\",\n  \"subject\": \"New event published\",\n  \"variables\": [\n    \"name\",\n    \"eventName\"\n  ],\n  \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const json = pm.response.json();",
+                  "  if (json.id) pm.collectionVariables.set('templateId', json.id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Template",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": "{{baseUrl}}/api/notifications/notification-templates/{{templateId}}",
+            "description": "Partial update.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subject\": \"Updated subject line\",\n  \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Delete Template",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/notifications/notification-templates/{{templateId}}",
+            "description": "Deactivates (soft-deletes) a template."
+          }
+        },
+        {
+          "name": "Test Send Template",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/notifications/notification-templates/{{templateId}}/test",
+            "description": "Sends a test render/dispatch.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"variables\": {\n    \"name\": \"Test User\",\n    \"eventName\": \"Ganesh Chaturthi\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications / Internal (Service-to-Service)",
+      "description": "",
+      "item": [
+        {
+          "name": "Bootstrap Company Preferences",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-internal-service-token",
+                "value": "{{internalServiceKey}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/notifications/bootstrap/company",
+            "description": "Requires x-internal-service-token. Called by auth-svc when a new org is provisioned.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"organizationId\": \"{{organizationId}}\",\n  \"channels\": {\n    \"allowEmail\": true,\n    \"allowSms\": false,\n    \"allowPush\": true,\n    \"allowWhatsapp\": false,\n    \"allowInApp\": true\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Bootstrap Role Preferences",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-internal-service-token",
+                "value": "{{internalServiceKey}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/notifications/bootstrap/role",
+            "description": "Requires x-internal-service-token.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"organizationId\": \"{{organizationId}}\",\n  \"role\": \"core_committee\",\n  \"eventPreferences\": {\n    \"event.published\": true\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Bootstrap User Preferences",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-internal-service-token",
+                "value": "{{internalServiceKey}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/notifications/bootstrap/user",
+            "description": "Requires x-internal-service-token.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"organizationId\": \"{{organizationId}}\",\n  \"channels\": {\n    \"email\": true,\n    \"sms\": false,\n    \"push\": true,\n    \"inApp\": true,\n    \"whatsapp\": false\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Send Notification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-internal-service-token",
+                "value": "{{internalServiceKey}}",
+                "type": "text"
+              },
+              {
+                "key": "idempotency-key",
+                "value": "evt-{{$randomUUID}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/notifications/send",
+            "description": "Requires x-internal-service-token. Dispatches a notification for an event; returns 202 Accepted.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventType\": \"event.published\",\n  \"organizationId\": \"{{organizationId}}\",\n  \"recipients\": [\n    {\n      \"userId\": \"{{userId}}\"\n    }\n  ],\n  \"payload\": {\n    \"eventName\": \"Ganesh Chaturthi\"\n  },\n  \"title\": \"New event published\",\n  \"body\": \"Ganesh Chaturthi is now live!\",\n  \"sourceService\": \"community-svc\",\n  \"priority\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Notification Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-internal-service-token",
+                "value": "{{internalServiceKey}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/notifications/{{notificationId}}/status",
+            "description": "Requires x-internal-service-token."
+          }
+        },
+        {
+          "name": "Upsert User Preferences (Internal)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-internal-service-token",
+                "value": "{{internalServiceKey}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/notifications/preferences/user",
+            "description": "Requires x-internal-service-token. userId is a plain string here, not UUID-validated.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"organizationId\": \"{{organizationId}}\",\n  \"channels\": {\n    \"email\": true,\n    \"sms\": false,\n    \"push\": true,\n    \"inApp\": true,\n    \"whatsapp\": false\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Upsert Company Preferences (Internal)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-internal-service-token",
+                "value": "{{internalServiceKey}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/notifications/preferences/company",
+            "description": "Requires x-internal-service-token.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"organizationId\": \"{{organizationId}}\",\n  \"channels\": {\n    \"allowEmail\": true,\n    \"allowSms\": false,\n    \"allowPush\": true,\n    \"allowWhatsapp\": false,\n    \"allowInApp\": true\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Upsert Role Preferences (Internal)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-internal-service-token",
+                "value": "{{internalServiceKey}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/notifications/preferences/role",
+            "description": "Requires x-internal-service-token.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"core_committee\",\n  \"organizationId\": \"{{organizationId}}\",\n  \"eventPreferences\": {\n    \"event.published\": true\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Effective User Preferences (Internal)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-internal-service-token",
+                "value": "{{internalServiceKey}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/preferences/user/{{userId}}?organizationId={{organizationId}}&eventType=event.published",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "preferences",
+                "user",
+                "{{userId}}"
+              ],
+              "query": [
+                {
+                  "key": "organizationId",
+                  "value": "{{organizationId}}",
+                  "disabled": false
+                },
+                {
+                  "key": "eventType",
+                  "value": "event.published",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Requires x-internal-service-token. Computes merged company/role/user preferences for an event type."
+          }
+        },
+        {
+          "name": "Create Template (Internal)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-internal-service-token",
+                "value": "{{internalServiceKey}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/notifications/templates",
+            "description": "Requires x-internal-service-token. template field is required here (unlike the management API).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventType\": \"event.published\",\n  \"channel\": \"email\",\n  \"template\": \"Hello {{name}}, {{eventName}} is live!\",\n  \"name\": \"Event Published\",\n  \"organizationId\": \"{{organizationId}}\",\n  \"subject\": \"New event published\",\n  \"variables\": [\n    \"name\",\n    \"eventName\"\n  ],\n  \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "List Templates (Internal)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-internal-service-token",
+                "value": "{{internalServiceKey}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/templates?eventType=event.published",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "templates"
+              ],
+              "query": [
+                {
+                  "key": "eventType",
+                  "value": "event.published",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Requires x-internal-service-token."
+          }
+        },
+        {
+          "name": "Preview Template (Internal)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-internal-service-token",
+                "value": "{{internalServiceKey}}",
+                "type": "text"
+              }
+            ],
+            "url": "{{baseUrl}}/api/notifications/templates/preview",
+            "description": "Requires x-internal-service-token.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"template\": \"Hello {{name}}\",\n  \"subject\": \"Hi {{name}}\",\n  \"variables\": {\n    \"name\": \"Alice\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/notifications/health",
+            "description": "Public liveness check.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
