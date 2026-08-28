@@ -124,6 +124,38 @@ services:
     depends_on:
       - gateway
 
+  client-web:
+    build:
+      context: .
+      dockerfile: client-web/Dockerfile
+      args:
+        # Baked into the browser bundle at build time — must be a public URL
+        # (the browser can't resolve Docker service names). Same rationale as
+        # the client's VITE_COMMUNITY_WS_URL above.
+        NEXT_PUBLIC_COMMUNITY_WS_URL: ${VITE_COMMUNITY_WS_URL:-http://localhost:5021}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # The Next server reads PORT/HOSTNAME to decide what it binds. The
+      # shared .env's PORT=4001 (meant for auth-svc) and NODE_ENV=development
+      # arrive via env_file above and would otherwise leak in, so pin them
+      # here — CLIENT_WEB_PORT is the app's own dedicated port variable.
+      NODE_ENV: production
+      PORT: ${CLIENT_WEB_PORT:-5175}
+      HOSTNAME: 0.0.0.0
+      # The Next server evaluates the /api/* rewrite at request time, so it
+      # proxies to the gateway container rather than localhost.
+      GATEWAY_URL: http://gateway:4000
+    depends_on:
+      - gateway
+    expose:
+      - "${CLIENT_WEB_PORT:-5175}"
+    # Published directly so the site is reachable at http://localhost:<port>
+    # for local Docker runs, without depending on Caddy + public DNS/TLS
+    # (the subdomain in the Caddyfile only resolves on the real deployment).
+    ports:
+      - "${CLIENT_WEB_PORT:-5175}:${CLIENT_WEB_PORT:-5175}"
+
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
@@ -136,6 +168,7 @@ services:
       - caddy_config:/config
     depends_on:
       - client
+      - client-web
       - gateway
       - community-svc
 

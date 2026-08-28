@@ -16,3 +16,20 @@ societyhub.jebitech.com {
 		reverse_proxy client:80
 	}
 }
+
+# Resident-facing community website (Next.js). Served on its own subdomain so
+# it stays independent of the admin dashboard on the root host above, while
+# still sharing the same API gateway and chat service over same-origin paths.
+community.societyhub.jebitech.com {
+	handle /socket.io/* {
+		reverse_proxy community-svc:5021
+	}
+
+	handle /api/* {
+		reverse_proxy gateway:4000
+	}
+
+	handle {
+		reverse_proxy client-web:5175
+	}
+}
