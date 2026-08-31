@@ -11,26 +11,25 @@ export function SectionHeader({
   right?: ReactNode;
 }) {
   return (
+    // Wraps so a long title and its action don't collide as space narrows.
     <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        marginBottom: 14,
-      }}
+      className="u-row u-row--between"
+      style={{ marginBottom: "var(--space-3)", gap: "var(--space-2)" }}
     >
       <h3
+        className="u-min0"
         style={{
-          fontSize: 14,
+          fontSize: "var(--text-sm)",
           fontWeight: 600,
           color: "var(--color-tx)",
           display: "flex",
           alignItems: "center",
-          gap: 7,
+          gap: "var(--space-2)",
           margin: 0,
+          lineHeight: 1.4,
         }}
       >
-        <Icon name={icon} size={15} color="var(--color-teal)" />
+        <Icon name={icon} size={16} color="var(--color-teal)" />
         {title}
       </h3>
       {right}

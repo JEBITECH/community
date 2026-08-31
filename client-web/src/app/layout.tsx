@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { Providers } from "@/components/providers/Providers";
 import "./globals.css";
 
 const inter = Inter({
@@ -14,18 +15,26 @@ export const metadata: Metadata = {
   description: "Together we celebrate, participate and connect",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Deliberately no maximum-scale / user-scalable=no: capping pinch-zoom
+  // fails WCAG 1.4.4.
+  themeColor: "#0e7b78",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={inter.variable}>
-      <head>
-        <link
-          rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"
-        />
-      </head>
-      <body>{children}</body>
+      <body>
+        {/* Keyboard users can jump past the sticky header and tab bar. */}
+        <a href="#main" className="u-skip-link">
+          Skip to content
+        </a>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

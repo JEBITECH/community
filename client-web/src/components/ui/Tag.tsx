@@ -1,12 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 
-type TagTone =
-  | "done"
-  | "part"
-  | "book"
-  | "join"
-  | "muted"
-  | "urgent";
+type TagTone = "done" | "part" | "book" | "join" | "muted" | "urgent";
 
 const TONE_STYLE: Record<TagTone, CSSProperties> = {
   done: {
@@ -32,22 +26,33 @@ const TONE_STYLE: Record<TagTone, CSSProperties> = {
   muted: {
     background: "var(--color-ivory-dark)",
     color: "var(--color-tx3)",
+    border: "1px solid var(--color-bdr)",
   },
   urgent: {
-    background: "#fee8e8",
-    color: "#8b1010",
-    border: "1px solid #f0a0a0",
+    background: "var(--color-danger-bg)",
+    color: "var(--color-danger-tx)",
+    border: "1px solid var(--color-danger-bd)",
   },
 };
 
-export function Tag({ tone, children }: { tone: TagTone; children: ReactNode }) {
+export function Tag({
+  tone,
+  children,
+}: {
+  tone: TagTone;
+  children: ReactNode;
+}) {
   return (
     <span
       style={{
-        fontSize: 10,
-        fontWeight: 500,
-        padding: "2px 8px",
-        borderRadius: 20,
+        display: "inline-block",
+        fontSize: "var(--text-2xs)",
+        fontWeight: 600,
+        padding: "0.125rem 0.5rem",
+        borderRadius: "var(--radius-pill)",
+        lineHeight: 1.4,
+        // Must wrap: "Registration open" is long enough to overflow a card.
+        whiteSpace: "normal",
         ...TONE_STYLE[tone],
       }}
     >

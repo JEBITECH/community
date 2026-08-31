@@ -15,9 +15,11 @@ export type ButtonVariant =
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: ButtonVariant;
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg";
   children: ReactNode;
   full?: boolean;
+  /** Icon-only control: enforces a square minimum target and needs a label. */
+  iconOnly?: boolean;
 }
 
 const VARIANT_STYLE: Record<ButtonVariant, CSSProperties> = {
@@ -25,7 +27,7 @@ const VARIANT_STYLE: Record<ButtonVariant, CSSProperties> = {
     background: "var(--color-saffron)",
     color: "#fff",
     borderColor: "var(--color-saffron-dark)",
-    boxShadow: "0 2px 6px rgba(232,101,10,.3)",
+    boxShadow: "0 0.125rem 0.375rem rgba(232,101,10,.3)",
   },
   teal: {
     background: "var(--color-teal)",
@@ -60,12 +62,35 @@ const VARIANT_STYLE: Record<ButtonVariant, CSSProperties> = {
   ghost: {
     background: "#fff",
     color: "var(--color-tx2)",
-    borderColor: "var(--color-bdr)",
+    borderColor: "var(--color-bdr2)",
   },
   danger: {
-    background: "#fee8e8",
-    color: "#8b1010",
-    borderColor: "#f0a0a0",
+    background: "var(--color-danger-bg)",
+    color: "var(--color-danger-tx)",
+    borderColor: "var(--color-danger-bd)",
+  },
+};
+
+/**
+ * Every size clears the 2.75rem (44px) minimum interactive target from
+ * WCAG 2.5.5. The old `sm` was ~18px tall, which is unhittable on touch and
+ * hard to hit with a mouse at 80% zoom.
+ */
+const SIZE_STYLE: Record<"sm" | "md" | "lg", CSSProperties> = {
+  sm: {
+    padding: "0.375rem 0.6875rem",
+    fontSize: "var(--text-2xs)",
+    minHeight: "var(--tap)",
+  },
+  md: {
+    padding: "0.5rem 0.875rem",
+    fontSize: "var(--text-xs)",
+    minHeight: "var(--tap)",
+  },
+  lg: {
+    padding: "0.6875rem 1.25rem",
+    fontSize: "var(--text-sm)",
+    minHeight: "3rem",
   },
 };
 
@@ -73,38 +98,47 @@ export function Button({
   variant = "ghost",
   size = "md",
   full,
+  iconOnly,
   children,
   style,
+  disabled,
+  type = "button",
   ...rest
 }: ButtonProps) {
-  const sizeStyle: CSSProperties =
-    size === "sm"
-      ? { padding: "4px 9px", fontSize: 10 }
-      : { padding: "5px 11px", fontSize: 11 };
-
   return (
     <button
       {...rest}
+      type={type}
+      disabled={disabled}
       style={{
         display: "inline-flex",
         alignItems: "center",
-        gap: 4,
+        justifyContent: full ? "flex-start" : "center",
+        gap: "var(--space-1)",
         borderRadius: "var(--radius-s)",
-        fontWeight: 500,
-        cursor: "pointer",
-        borderWidth: 1,
+        fontWeight: 600,
+        lineHeight: 1.3,
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.55 : 1,
+        borderWidth: "1px",
         borderStyle: "solid",
         fontFamily: "inherit",
-        transition: "all .18s",
-        whiteSpace: "nowrap",
+        transition: "filter .18s",
+        // Labels must wrap rather than force horizontal overflow.
+        whiteSpace: "normal",
+        textAlign: full ? "left" : "center",
         width: full ? "100%" : undefined,
-        justifyContent: full ? "flex-start" : undefined,
-        ...sizeStyle,
+        minWidth: iconOnly ? "var(--tap)" : undefined,
+        ...SIZE_STYLE[size],
         ...VARIANT_STYLE[variant],
         ...style,
       }}
-      onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.88")}
-      onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+      onMouseEnter={(e) => {
+        if (!disabled) e.currentTarget.style.filter = "brightness(.94)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.filter = "none";
+      }}
     >
       {children}
     </button>
