@@ -8,7 +8,8 @@
     "server/platform/shared-entities",
     "server/platform/gateway",
     "server/services/*",
-    "client"
+    "client",
+    "client-web"
   ],
   "scripts": {
     "install:all": "npm install",

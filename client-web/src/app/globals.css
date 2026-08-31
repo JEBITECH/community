@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+/*
+  Green Acres Society — festive design system
+  Ported from the interactive prototype. Warm saffron / teal / gold / ivory palette.
+*/
+@theme {
+  /* Core palette */
+  --color-saffron: #e8650a;
+  --color-saffron-dark: #c45008;
+  --color-saffron-light: #fff1e6;
+  --color-saffron-mid: #ffd8b0;
+
+  --color-teal: #0e7b78;
+  --color-teal-dark: #085a58;
+  --color-teal-light: #e6f4f4;
+  --color-teal-mid: #a8d8d6;
+
+  --color-gold: #c4880a;
+  --color-gold-light: #f0c040;
+  --color-gold-pale: #fdf0c0;
+
+  --color-ivory: #fffbf4;
+  --color-ivory-dark: #f5efe0;
+
+  /* Text */
+  --color-tx: #1a1208;
+  --color-tx2: #4a3c28;
+  --color-tx3: #8a7a60;
+
+  /* Borders */
+  --color-bdr: rgba(14, 123, 120, 0.14);
+  --color-bdr2: rgba(14, 123, 120, 0.28);
+
+  /* Status — join */
+  --color-join-bg: #fff1e6;
+  --color-join-tx: #b84800;
+  --color-join-bd: #f0a060;
+  /* Status — done */
+  --color-done-bg: #e8f6f0;
+  --color-done-tx: #0a6040;
+  --color-done-bd: #50b888;
+  /* Status — volunteer */
+  --color-vol-bg: #e6f4f4;
+  --color-vol-tx: #085a58;
+  --color-vol-bd: #60b8b4;
+  /* Status — booked */
+  --color-book-bg: #fdf0c0;
+  --color-book-tx: #805000;
+  --color-book-bd: #c4880a;
+  /* Status — participant */
+  --color-part-bg: #f0ecff;
+  --color-part-tx: #3a1890;
+  --color-part-bd: #9080d8;
+
+  --radius-card: 12px;
+  --radius-s: 8px;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-ivory);
+  color: var(--color-tx);
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-teal-mid);
+  border-radius: 3px;
+}
+
+/* Decorative festive top strip */
+.deco-strip {
+  height: 5px;
+  background: linear-gradient(
+    90deg,
+    var(--color-teal-dark) 0%,
+    var(--color-teal) 20%,
+    var(--color-gold-light) 38%,
+    var(--color-saffron) 55%,
+    var(--color-gold-light) 72%,
+    var(--color-teal) 88%,
+    var(--color-teal-dark) 100%
+  );
+}
+
+/* Subtle dotted pattern used in the hero */
+.hero-pattern {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
