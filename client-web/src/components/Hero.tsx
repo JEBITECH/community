@@ -1,128 +1,309 @@
 "use client";
 
 import { Icon } from "@/components/ui/Icon";
+import { Button } from "@/components/ui/Button";
 import { useModal } from "@/components/ModalHost";
-import { HERO_STATS } from "@/lib/data";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import {
+  flattenComponents,
+  useEvent,
+  useFeaturedEvent,
+  useSponsorshipNeeds,
+  useVolunteerRoles,
+} from "@/lib/hooks/useEvents";
+import { useMembers } from "@/lib/hooks/useActivity";
+import {
+  daysFromToday,
+  describeWhen,
+  formatDateRange,
+  formatMoneyCompact,
+  toNumber,
+} from "@/lib/utils/format";
 import type { TabId } from "@/components/TabNav";
 
+/**
+ * Festive banner for the event that's on now, or starting within a week.
+ *
+ * Renders nothing outside that window -- per spec the banner only appears when
+ * something is imminent, rather than always occupying the fold.
+ *
+ * Layout is `.u-hero`, which collapses to a single column below 64rem so the
+ * stats stack under the greeting instead of being squeezed.
+ */
 export function Hero({ onNavigate }: { onNavigate: (tab: TabId) => void }) {
   const { open } = useModal();
+  const { user, membership } = useAuth();
+
+  const { event, isLoading } = useFeaturedEvent(7);
+
+  const detail = useEvent(event?.id);
+  const roles = useVolunteerRoles(event?.id);
+  const needs = useSponsorshipNeeds(event?.id);
+  const members = useMembers();
+
+  if (isLoading || !event) return null;
+
+  const components = flattenComponents(detail.data?.days);
+  const dayCount = detail.data?.days?.length ?? 0;
+
+  const volunteersSignedUp = (roles.data ?? []).reduce(
+    (sum, r) => sum + r.headcount_filled,
+    0,
+  );
+  const raised = (needs.data ?? []).reduce(
+    (sum, n) => sum + toNumber(n.amount_raised),
+    0,
+  );
+
+  const isLive = daysFromToday(event.start_date) <= 0;
 
   return (
-    <div
+    <section
+      aria-label="Highlights"
       style={{
         background:
           "linear-gradient(135deg,var(--color-teal-dark) 0%,var(--color-teal) 50%,#128a80 100%)",
-        padding: "32px",
-        display: "grid",
-        gridTemplateColumns: "1fr 340px",
-        gap: 28,
-        alignItems: "center",
         position: "relative",
         overflow: "hidden",
-        borderBottom: "3px solid var(--color-gold-light)",
+        borderBottom: "0.1875rem solid var(--color-gold-light)",
       }}
     >
-      {/* Glows + pattern */}
-      <div style={glow(300, "rgba(232,101,10,.18)", { right: -60, top: -80 })} />
-      <div style={glow(200, "rgba(196,136,10,.12)", { left: "35%", bottom: -60 })} />
-      <div className="hero-pattern" style={{ position: "absolute", inset: 0, pointerEvents: "none" }} />
+      <div style={glow(300, "rgba(232,101,10,.18)", { right: "-4rem", top: "-5rem" })} />
+      <div
+        style={glow(200, "rgba(196,136,10,.12)", { left: "35%", bottom: "-4rem" })}
+      />
+      <div
+        className="hero-pattern"
+        style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+      />
 
-      {/* Left */}
-      <div style={{ position: "relative", zIndex: 1 }}>
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 7,
-            background: "rgba(240,192,64,.18)",
-            border: "1px solid rgba(240,192,64,.4)",
-            borderRadius: 20,
-            padding: "5px 14px",
-            fontSize: 11,
-            fontWeight: 600,
-            color: "var(--color-gold-light)",
-            marginBottom: 14,
-          }}
-        >
-          <Icon name="ti-calendar-event" size={12} /> Ganesh Festival begins in 4 days &nbsp;🐘
+      <div className="u-hero u-container" style={{ position: "relative", zIndex: 1 }}>
+        {/* Left */}
+        <div className="u-min0">
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "var(--space-2)",
+              background: "rgba(240,192,64,.18)",
+              border: "1px solid rgba(240,192,64,.4)",
+              borderRadius: "var(--radius-pill)",
+              padding: "0.3125rem 0.875rem",
+              fontSize: "var(--text-2xs)",
+              fontWeight: 600,
+              color: "var(--color-gold-light)",
+              marginBottom: "var(--space-3)",
+              lineHeight: 1.4,
+            }}
+          >
+            <Icon name="ti-calendar-event" size={13} />
+            {isLive
+              ? `${event.name} is happening now`
+              : `${event.name} begins ${describeWhen(event.start_date)}`}
+          </span>
+
+          <h1
+            style={{
+              // Fluid: scales with viewport but never below a readable size.
+              fontSize: "clamp(1.25rem, 3vw, 1.75rem)",
+              fontWeight: 700,
+              color: "#fff",
+              margin: "0 0 var(--space-2)",
+              lineHeight: 1.25,
+            }}
+          >
+            {greeting()}
+            {user?.firstName ? `, ${user.firstName}` : ""} 👋
+          </h1>
+
+          <p
+            style={{
+              fontSize: "var(--text-xs)",
+              color: "rgba(255,255,255,.78)",
+              margin: "0 0 var(--space-5)",
+              maxWidth: "28rem",
+              lineHeight: 1.6,
+            }}
+          >
+            Here&apos;s what&apos;s happening in your community
+            {isLive ? " right now" : " this week"}.
+          </p>
+
+          <div className="u-row" style={{ gap: "var(--space-2)" }}>
+            <Button
+              variant="saffron"
+              size="lg"
+              onClick={() => onNavigate("events")}
+            >
+              <Icon name="ti-calendar-event" size={15} /> View all events
+            </Button>
+            <Button
+              size="lg"
+              onClick={() => onNavigate("my-activity")}
+              style={{
+                background: "rgba(255,255,255,.12)",
+                color: "#fff",
+                borderColor: "rgba(255,255,255,.28)",
+              }}
+            >
+              <Icon name="ti-clipboard-list" size={15} /> My activity
+            </Button>
+            {event.volunteer_enabled && (
+              <Button
+                size="lg"
+                onClick={() => open({ kind: "volunteer", eventId: event.id })}
+                style={{
+                  background: "rgba(255,255,255,.12)",
+                  color: "#fff",
+                  borderColor: "rgba(255,255,255,.28)",
+                }}
+              >
+                <Icon name="ti-heart-handshake" size={15} /> Volunteer
+              </Button>
+            )}
+          </div>
         </div>
-        <h1 style={{ fontSize: 26, fontWeight: 700, color: "#fff", marginBottom: 6, lineHeight: 1.25 }}>
-          Good evening, Jay 👋
-        </h1>
-        <p
-          style={{
-            fontSize: 13,
-            color: "rgba(255,255,255,.72)",
-            marginBottom: 20,
-            maxWidth: 420,
-            lineHeight: 1.6,
-          }}
-        >
-          Welcome back to Green Acres Society. Here&apos;s what&apos;s happening in your community today.
-        </p>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <HeroBtn variant="saffron" onClick={() => onNavigate("events")}>
-            <Icon name="ti-calendar-event" size={14} /> View all events
-          </HeroBtn>
-          <HeroBtn variant="ghost" onClick={() => onNavigate("my-activity")}>
-            <Icon name="ti-clipboard-list" size={14} /> My activity
-          </HeroBtn>
-          <HeroBtn variant="ghost" onClick={() => open("vol")}>
-            <Icon name="ti-heart-handshake" size={14} /> Volunteer
-          </HeroBtn>
+
+        {/* Right */}
+        <div className="u-stack u-stack--sm u-min0">
+          {/* Membership id sits above the member stats, per spec. */}
+          {membership && (
+            <div
+              className="u-row u-row--between"
+              style={{
+                padding: "0.375rem 0.75rem",
+                background: "rgba(255,255,255,.08)",
+                border: "1px solid rgba(255,255,255,.16)",
+                borderRadius: "var(--radius-s)",
+                gap: "var(--space-2)",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "var(--text-2xs)",
+                  fontWeight: 600,
+                  letterSpacing: ".06em",
+                  textTransform: "uppercase",
+                  color: "rgba(255,255,255,.6)",
+                }}
+              >
+                Membership ID
+              </span>
+              <code
+                style={{
+                  fontSize: "var(--text-2xs)",
+                  fontWeight: 700,
+                  color: "var(--color-gold-light)",
+                  fontFamily: "ui-monospace, SFMono-Regular, monospace",
+                  wordBreak: "break-all",
+                }}
+                title={membership.id}
+              >
+                {membership.id.slice(0, 8).toUpperCase()}
+              </code>
+            </div>
+          )}
+
+          <div className="u-autogrid u-autogrid--sm">
+            <HeroStat
+              num={members.data ? String(members.data.length) : "—"}
+              lbl="Members"
+              sub="In the directory"
+            />
+            <HeroStat
+              num={String(components.length)}
+              lbl="Activities"
+              sub={dayCount > 1 ? `Across ${dayCount} days` : "This event"}
+            />
+            <HeroStat
+              num={String(volunteersSignedUp)}
+              lbl="Volunteers"
+              sub="Signed up"
+            />
+            <HeroStat
+              num={raised > 0 ? formatMoneyCompact(raised) : "—"}
+              lbl="Sponsorships"
+              sub="Raised so far"
+            />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onNavigate("events")}
+            style={{
+              textAlign: "left",
+              background: "rgba(255,255,255,.1)",
+              border: "1px solid rgba(255,255,255,.18)",
+              borderRadius: "var(--radius-card)",
+              padding: "var(--space-3)",
+              cursor: "pointer",
+              fontFamily: "inherit",
+              minHeight: "var(--tap)",
+            }}
+          >
+            <span
+              className="u-row"
+              style={{ gap: "var(--space-2)", marginBottom: "var(--space-1)" }}
+            >
+              <span style={{ fontSize: "var(--text-lg)" }} aria-hidden="true">
+                {event.event_type === "festival" ? "🐘" : "📅"}
+              </span>
+              <span
+                style={{
+                  fontSize: "var(--text-xs)",
+                  fontWeight: 600,
+                  color: "#fff",
+                }}
+              >
+                {event.name}
+              </span>
+            </span>
+            <span
+              className="u-row"
+              style={{
+                fontSize: "var(--text-2xs)",
+                color: "rgba(255,255,255,.7)",
+                gap: "var(--space-3)",
+              }}
+            >
+              <span className="u-row" style={{ gap: "var(--space-1)" }}>
+                <Icon name="ti-calendar" size={12} />
+                {formatDateRange(event.start_date, event.end_date)}
+              </span>
+              {event.venue && (
+                <span className="u-row" style={{ gap: "var(--space-1)" }}>
+                  <Icon name="ti-map-pin" size={12} /> {event.venue}
+                </span>
+              )}
+              <span className="u-row" style={{ gap: "var(--space-1)" }}>
+                <Icon name="ti-list" size={12} /> {components.length} activities
+              </span>
+            </span>
+          </button>
         </div>
       </div>
-
-      {/* Right */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, position: "relative", zIndex: 1 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          {HERO_STATS.slice(0, 2).map((s) => (
-            <HeroStat key={s.lbl} {...s} />
-          ))}
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          {HERO_STATS.slice(2).map((s) => (
-            <HeroStat key={s.lbl} {...s} />
-          ))}
-        </div>
-        <div
-          onClick={() => onNavigate("events")}
-          style={{
-            background: "rgba(255,255,255,.1)",
-            border: "1px solid rgba(255,255,255,.18)",
-            borderRadius: "var(--radius-card)",
-            padding: "13px 15px",
-            cursor: "pointer",
-            backdropFilter: "blur(4px)",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 5 }}>
-            <span style={{ fontSize: 20 }}>🐘</span>
-            <div style={{ fontSize: 13, fontWeight: 600, color: "#fff" }}>Ganesh Festival 2026</div>
-          </div>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,.65)", display: "flex", gap: 12, flexWrap: "wrap" }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
-              <Icon name="ti-calendar" size={11} /> 20–25 Sep · 6 days
-            </span>
-            <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
-              <Icon name="ti-users" size={11} /> 126 joined
-            </span>
-            <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
-              <Icon name="ti-list" size={11} /> 24 activities
-            </span>
-          </div>
-        </div>
-      </div>
-    </div>
+    </section>
   );
 }
 
-function glow(size: number, color: string, pos: React.CSSProperties): React.CSSProperties {
+/** Time-derived rather than hardcoded, so the greeting is always truthful. */
+function greeting(): string {
+  const h = new Date().getHours();
+  if (h < 5) return "Hello";
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  return "Good evening";
+}
+
+function glow(
+  size: number,
+  color: string,
+  pos: React.CSSProperties,
+): React.CSSProperties {
   return {
     position: "absolute",
-    width: size,
-    height: size,
+    width: `${size / 16}rem`,
+    height: `${size / 16}rem`,
     borderRadius: "50%",
     background: `radial-gradient(circle,${color} 0%,transparent 70%)`,
     pointerEvents: "none",
@@ -130,65 +311,54 @@ function glow(size: number, color: string, pos: React.CSSProperties): React.CSSP
   };
 }
 
-function HeroStat({ num, lbl, sub }: { num: string; lbl: string; sub: string }) {
+function HeroStat({
+  num,
+  lbl,
+  sub,
+}: {
+  num: string;
+  lbl: string;
+  sub: string;
+}) {
   return (
     <div
       style={{
         background: "rgba(255,255,255,.1)",
         border: "1px solid rgba(255,255,255,.18)",
         borderRadius: "var(--radius-card)",
-        padding: "14px 16px",
-        backdropFilter: "blur(4px)",
+        padding: "var(--space-3)",
+        minWidth: 0,
       }}
     >
-      <div style={{ fontSize: 28, fontWeight: 700, lineHeight: 1, color: "var(--color-gold-light)" }}>
+      <div
+        style={{
+          fontSize: "clamp(1.25rem, 2.5vw, 1.625rem)",
+          fontWeight: 700,
+          lineHeight: 1.1,
+          color: "var(--color-gold-light)",
+        }}
+      >
         {num}
       </div>
-      <div style={{ fontSize: 11, color: "rgba(255,255,255,.72)", marginTop: 4, fontWeight: 500 }}>
+      <div
+        style={{
+          fontSize: "var(--text-2xs)",
+          color: "rgba(255,255,255,.78)",
+          marginTop: "var(--space-1)",
+          fontWeight: 500,
+        }}
+      >
         {lbl}
       </div>
-      <div style={{ fontSize: 10, color: "rgba(255,255,255,.45)", marginTop: 3 }}>{sub}</div>
+      <div
+        style={{
+          fontSize: "var(--text-2xs)",
+          color: "rgba(255,255,255,.55)",
+          marginTop: "0.125rem",
+        }}
+      >
+        {sub}
+      </div>
     </div>
-  );
-}
-
-function HeroBtn({
-  variant,
-  children,
-  onClick,
-}: {
-  variant: "saffron" | "ghost";
-  children: React.ReactNode;
-  onClick?: () => void;
-}) {
-  const base: React.CSSProperties = {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: 6,
-    padding: "9px 18px",
-    borderRadius: "var(--radius-s)",
-    fontSize: 13,
-    fontWeight: 600,
-    cursor: "pointer",
-    fontFamily: "inherit",
-    transition: "all .2s",
-    border: "none",
-  };
-  const variantStyle: React.CSSProperties =
-    variant === "saffron"
-      ? {
-          background: "linear-gradient(135deg,var(--color-saffron),#f07820)",
-          color: "#fff",
-          boxShadow: "0 3px 12px rgba(232,101,10,.4)",
-        }
-      : {
-          background: "rgba(255,255,255,.12)",
-          color: "#fff",
-          border: "1px solid rgba(255,255,255,.28)",
-        };
-  return (
-    <button style={{ ...base, ...variantStyle }} onClick={onClick}>
-      {children}
-    </button>
   );
 }

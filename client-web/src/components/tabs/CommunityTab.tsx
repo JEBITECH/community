@@ -1,340 +1,314 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
-import { Button } from "@/components/ui/Button";
-import { Tag } from "@/components/ui/Tag";
 import { Card, CardHead, CardBody } from "@/components/ui/Card";
 import { SectionHeader } from "@/components/ui/SectionHeader";
-import { SubTabs } from "@/components/TabNav";
-import { useModal } from "@/components/ModalHost";
-import { BIRTHDAYS, COMMITTEE, DISCUSSIONS, FEED } from "@/lib/data";
-import type { Discussion } from "@/lib/types";
+import { NotAvailable, LoadingRows } from "@/components/ui/NotAvailable";
+import { useMembers, displayName } from "@/lib/hooks/useActivity";
+import { humanize, initials } from "@/lib/utils/format";
+import type { DirectoryEntry } from "@/lib/api/types";
 
-type CommunitySubTab = "discussions" | "birthdays" | "feed";
-
-const SUB_TABS: { id: CommunitySubTab; icon: string; label: string }[] = [
-  { id: "discussions", icon: "ti-messages", label: "Discussions" },
-  { id: "birthdays", icon: "ti-cake", label: "Birthdays" },
-  { id: "feed", icon: "ti-activity", label: "Community feed" },
-];
+/** Roles that make up the organising committee. */
+const COMMITTEE_ROLES = new Set(["super_admin", "core_committee", "master_admin"]);
 
 export function CommunityTab() {
-  const [sub, setSub] = useState<CommunitySubTab>("discussions");
-
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 360px",
-        gap: 22,
-        alignItems: "start",
-      }}
-    >
-      <div>
-        <SubTabs tabs={SUB_TABS} active={sub} onChange={setSub} />
-        {sub === "discussions" && <DiscussionsView />}
-        {sub === "birthdays" && <BirthdaysView />}
-        {sub === "feed" && <FeedView />}
+    // Collapses to a single column below 64rem.
+    <div className="u-split u-split--narrow">
+      <div style={{ display: "grid", gap: "1.125rem" }}>
+        <CommunicationsBox />
+        <DirectoryBox />
       </div>
-      <CommunitySidebar />
-    </div>
-  );
-}
 
-/* ─── Discussions ─── */
-function DiscussionsView() {
-  return (
-    <>
-      <SectionHeader
-        icon="ti-messages"
-        title="Community conversations"
-        right={
-          <Button variant="saffron" size="sm">
-            <Icon name="ti-plus" size={12} /> New post
-          </Button>
-        }
-      />
-      {DISCUSSIONS.map((d) => (
-        <DiscussionCard key={d.id} d={d} />
-      ))}
-    </>
-  );
-}
-
-function DiscussionCard({ d }: { d: Discussion }) {
-  return (
-    <div
-      style={{
-        background: "#fff",
-        border: "1px solid var(--color-bdr)",
-        borderRadius: "var(--radius-card)",
-        padding: 14,
-        marginBottom: 10,
-        cursor: "pointer",
-        boxShadow: "0 1px 4px rgba(14,123,120,.04)",
-      }}
-    >
-      <div style={{ display: "flex", gap: 9, alignItems: "flex-start", marginBottom: 8 }}>
-        <div
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 11,
-            fontWeight: 700,
-            color: "#fff",
-            flexShrink: 0,
-            background: d.avatarGradient,
-          }}
-        >
-          {d.initials}
-        </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 12, fontWeight: 500, color: "var(--color-tx)" }}>{d.name}</div>
-          <div style={{ fontSize: 10, color: "var(--color-tx3)" }}>{d.when}</div>
-        </div>
-        <Tag tone={d.tagKind}>{d.tagLabel}</Tag>
-      </div>
-      <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-tx)", marginBottom: 4 }}>
-        {d.title}
-      </div>
-      <div style={{ fontSize: 11, color: "var(--color-tx2)", lineHeight: 1.6 }}>{d.preview}</div>
-      <div
-        style={{
-          display: "flex",
-          gap: 14,
-          marginTop: 10,
-          paddingTop: 8,
-          borderTop: "1px solid var(--color-bdr)",
-        }}
-      >
-        <Stat icon="ti-heart" color="var(--color-saffron)" label={d.likes} />
-        <Stat icon="ti-message" label={d.comments} />
-        {d.follow && <Stat icon="ti-bookmark" color="var(--color-teal)" label="Follow" />}
+      <div style={{ display: "grid", gap: "1.125rem" }}>
+        <CommitteeBox />
+        <BirthdaysBox />
+        <UrgentContactsBox />
       </div>
     </div>
   );
 }
 
-function Stat({ icon, color, label }: { icon: string; color?: string; label: string }) {
-  return (
-    <span
-      style={{
-        fontSize: 11,
-        color: "var(--color-tx3)",
-        display: "flex",
-        alignItems: "center",
-        gap: 4,
-      }}
-    >
-      <Icon name={icon} size={13} color={color} />
-      {label}
-    </span>
-  );
-}
+/* ─── 1. Communications ─── */
 
-/* ─── Birthdays ─── */
-function BirthdaysView() {
-  const { open } = useModal();
-  const [when, setWhen] = useState<"today" | "tomorrow" | "week">("today");
-
-  return (
-    <>
-      <SectionHeader
-        icon="ti-cake"
-        title="Birthdays"
-        right={
-          <div style={{ display: "flex", gap: 6 }}>
-            <Button variant={when === "today" ? "teal" : "ghost"} size="sm" onClick={() => setWhen("today")}>
-              Today
-            </Button>
-            <Button variant={when === "tomorrow" ? "teal" : "ghost"} size="sm" onClick={() => setWhen("tomorrow")}>
-              Tomorrow
-            </Button>
-            <Button variant={when === "week" ? "teal" : "ghost"} size="sm" onClick={() => setWhen("week")}>
-              This week
-            </Button>
-          </div>
-        }
-      />
-      <Card>
-        <CardBody flush>
-          {BIRTHDAYS.map((b, i) => (
-            <div
-              key={b.id}
-              style={{
-                display: "flex",
-                gap: 10,
-                alignItems: "center",
-                padding: "9px 0",
-                borderBottom: i === BIRTHDAYS.length - 1 ? "none" : "1px solid var(--color-bdr)",
-              }}
-            >
-              <div
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: "#fff",
-                  flexShrink: 0,
-                  background: b.avatarGradient,
-                }}
-              >
-                {b.initials}
-              </div>
-              <div style={{ flex: 1 }}>
-                <h4 style={{ fontSize: 12, fontWeight: 500, color: "var(--color-tx)", margin: 0 }}>
-                  {b.name}
-                </h4>
-                <p style={{ fontSize: 10, color: "var(--color-tx3)", margin: 0 }}>{b.detail}</p>
-              </div>
-              {b.today ? (
-                <Button variant="join" size="sm" onClick={() => open("wish")}>
-                  <Icon name="ti-confetti" size={11} /> Send wish
-                </Button>
-              ) : (
-                <Button variant="ghost" size="sm">
-                  Remind me
-                </Button>
-              )}
-            </div>
-          ))}
-        </CardBody>
-      </Card>
-    </>
-  );
-}
-
-/* ─── Feed ─── */
-function FeedView() {
-  return (
-    <>
-      <SectionHeader icon="ti-activity" title="Community feed" />
-      <Card>
-        <CardBody flush>
-          {FEED.map((f, i) => (
-            <div
-              key={f.id}
-              style={{
-                display: "flex",
-                gap: 10,
-                padding: "8px 0",
-                borderBottom: i === FEED.length - 1 ? "none" : "1px solid var(--color-bdr)",
-                alignItems: "flex-start",
-              }}
-            >
-              <div
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: "50%",
-                  flexShrink: 0,
-                  marginTop: 5,
-                  background: f.dotColor,
-                }}
-              />
-              <div>
-                <div style={{ fontSize: 12, color: "var(--color-tx)", lineHeight: 1.5 }}>{f.text}</div>
-                <div style={{ fontSize: 10, color: "var(--color-tx3)", marginTop: 2 }}>{f.time}</div>
-              </div>
-            </div>
-          ))}
-        </CardBody>
-      </Card>
-    </>
-  );
-}
-
-/* ─── Sidebar ─── */
-function CommunitySidebar() {
+function CommunicationsBox() {
   return (
     <div>
-      <Card style={{ marginBottom: 14 }}>
-        <CardHead icon="ti-home" title="About Green Acres Society" />
-        <CardBody style={{ fontSize: 12, color: "var(--color-tx2)", lineHeight: 1.65 }}>
-          Green Acres Society brings 75 families together through celebrations, sports and cultural events.
-          <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 7 }}>
-            <ContactRow icon="ti-map-pin" text="Sector 12, Green Acres, Pune" />
-            <ContactRow icon="ti-phone" text="+91 98765 00000" />
-            <ContactRow icon="ti-mail" text="office@greenacressociety.in" />
-          </div>
-        </CardBody>
-      </Card>
-
-      <Card style={{ marginBottom: 14 }}>
-        <CardHead icon="ti-award" title="Committee" />
-        <CardBody flush>
-          {COMMITTEE.map((p, i) => (
-            <div
-              key={p.id}
-              style={{
-                display: "flex",
-                gap: 10,
-                alignItems: "center",
-                padding: "9px 0",
-                borderBottom: i === COMMITTEE.length - 1 ? "none" : "1px solid var(--color-bdr)",
-              }}
-            >
-              <div
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: "#fff",
-                  flexShrink: 0,
-                  background: p.avatarGradient,
-                }}
-              >
-                {p.initials}
-              </div>
-              <div style={{ flex: 1 }}>
-                <h4 style={{ fontSize: 12, fontWeight: 500, color: "var(--color-tx)", margin: 0 }}>
-                  {p.name}
-                </h4>
-                <p style={{ fontSize: 10, color: "var(--color-tx3)", margin: 0 }}>{p.role}</p>
-              </div>
-            </div>
-          ))}
-        </CardBody>
-      </Card>
-
-      <Card>
-        <CardHead icon="ti-alert-triangle" title="Emergency contacts" />
-        <CardBody style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-          <Button variant="danger" full>
-            <Icon name="ti-ambulance" size={14} /> Ambulance — 108
-          </Button>
-          <Button variant="ghost" full>
-            <Icon name="ti-shield" size={14} color="var(--color-teal)" /> Security guard on duty
-          </Button>
-          <Button variant="ghost" full>
-            <Icon name="ti-stethoscope" size={14} color="var(--color-teal)" /> Dr. Mehta — C-8
-          </Button>
-        </CardBody>
-      </Card>
+      <SectionHeader icon="ti-speakerphone" title="Community conversations" />
+      {/*
+        Event discussion threads and per-event chat DO exist in community-svc
+        (GET/POST /events/:id/comments and a Socket.io chat namespace), but a
+        standalone community-wide feed does not. Rather than mislabel event
+        comments as a community feed, this states what's missing.
+      */}
+      <NotAvailable
+        title="Community-wide conversations aren't wired up yet"
+        detail="community-svc has per-event discussion threads and live chat, but no organisation-level feed or announcements table. Those need backend work before this box can show real posts."
+      />
     </div>
   );
 }
 
-function ContactRow({ icon, text }: { icon: string; text: string }) {
+/* ─── 2. Directory (real) ─── */
+
+function DirectoryBox() {
+  const members = useMembers();
+  const [search, setSearch] = useState("");
+
+  const visible = useMemo(() => {
+    const needle = search.trim().toLowerCase();
+    return (members.data ?? [])
+      .filter((m) => {
+        if (!needle) return true;
+        return (
+          displayName(m).toLowerCase().includes(needle) ||
+          (m.unit_identifier ?? "").toLowerCase().includes(needle)
+        );
+      })
+      .sort((a, b) => displayName(a).localeCompare(displayName(b)));
+  }, [members.data, search]);
+
   return (
-    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-      <Icon name={icon} size={14} color="var(--color-teal)" />
-      <span>{text}</span>
+    <Card>
+      <CardHead
+        icon="ti-users"
+        title={`Neighbours${members.data ? ` · ${members.data.length}` : ""}`}
+        right={
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search name or flat"
+            aria-label="Search neighbours"
+            style={{
+              width: "9.375rem",
+              height: "1.625rem",
+              padding: "0 0.5625rem",
+              fontSize: "var(--text-xs)",
+              fontFamily: "inherit",
+              color: "var(--color-tx)",
+              background: "#fff",
+              border: "1px solid var(--color-bdr2)",
+              borderRadius: "1.25rem",
+              outline: "none",
+            }}
+          />
+        }
+      />
+      <CardBody flush style={{ paddingBottom: "0.75rem" }}>
+        {members.isLoading ? (
+          <div style={{ padding: "0.75rem 0" }}>
+            <LoadingRows rows={3} />
+          </div>
+        ) : visible.length === 0 ? (
+          <div
+            style={{
+              padding: "1.125rem 0",
+              textAlign: "center",
+              fontSize: "var(--text-sm)",
+              color: "var(--color-tx3)",
+            }}
+          >
+            {search
+              ? "No matches."
+              : "No members have made themselves visible yet."}
+          </div>
+        ) : (
+          visible.map((m) => <MemberRow key={m.membership_id} member={m} />)
+        )}
+      </CardBody>
+    </Card>
+  );
+}
+
+function MemberRow({ member }: { member: DirectoryEntry }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "0.625rem",
+        padding: "0.5rem 0",
+        borderBottom: "1px solid var(--color-bdr)",
+      }}
+    >
+      <span
+        style={{
+          width: "1.875rem",
+          height: "1.875rem",
+          flexShrink: 0,
+          borderRadius: "50%",
+          background: "var(--color-teal-light)",
+          color: "var(--color-teal-dark)",
+          fontSize: "var(--text-xs)",
+          fontWeight: 700,
+          display: "grid",
+          placeItems: "center",
+        }}
+      >
+        {initials(member.first_name, member.last_name)}
+      </span>
+      <div style={{ minWidth: "0rem", flex: 1 }}>
+        <div
+          style={{ fontSize: "var(--text-sm)", fontWeight: 600, color: "var(--color-tx)" }}
+        >
+          {displayName(member)}
+        </div>
+        <div style={{ fontSize: "var(--text-2xs)", color: "var(--color-tx3)", marginTop: "0.0625rem" }}>
+          {member.unit_identifier || humanize(member.role)}
+        </div>
+      </div>
+      {member.member_type === "external" && (
+        <span
+          style={{
+            flexShrink: 0,
+            fontSize: "var(--text-2xs)",
+            fontWeight: 600,
+            padding: "0.125rem 0.4375rem",
+            borderRadius: "0.625rem",
+            background: "var(--color-part-bg)",
+            color: "var(--color-part-tx)",
+          }}
+        >
+          Guest
+        </span>
+      )}
     </div>
+  );
+}
+
+/* ─── 3. Committee (real) ─── */
+
+function CommitteeBox() {
+  const members = useMembers();
+
+  // Derived from membership roles -- there's no dedicated committee endpoint,
+  // but the directory already exposes each member's role.
+  const committee = useMemo(
+    () => (members.data ?? []).filter((m) => COMMITTEE_ROLES.has(m.role)),
+    [members.data],
+  );
+
+  return (
+    <Card>
+      <CardHead icon="ti-award" title="Committee" />
+      <CardBody flush style={{ paddingBottom: "0.75rem" }}>
+        {members.isLoading ? (
+          <div style={{ padding: "0.75rem 0" }}>
+            <LoadingRows rows={2} />
+          </div>
+        ) : committee.length === 0 ? (
+          <div
+            style={{
+              padding: "1rem 0",
+              textAlign: "center",
+              fontSize: "var(--text-sm)",
+              color: "var(--color-tx3)",
+            }}
+          >
+            No committee members are listed in the directory.
+          </div>
+        ) : (
+          committee.map((m) => (
+            <div
+              key={m.membership_id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.625rem",
+                padding: "0.5rem 0",
+                borderBottom: "1px solid var(--color-bdr)",
+              }}
+            >
+              <span
+                style={{
+                  width: "1.875rem",
+                  height: "1.875rem",
+                  flexShrink: 0,
+                  borderRadius: "50%",
+                  background: "var(--color-gold-pale)",
+                  color: "var(--color-gold)",
+                  fontSize: "var(--text-xs)",
+                  fontWeight: 700,
+                  display: "grid",
+                  placeItems: "center",
+                }}
+              >
+                {initials(m.first_name, m.last_name)}
+              </span>
+              <div style={{ minWidth: "0rem", flex: 1 }}>
+                <div
+                  style={{
+                    fontSize: "var(--text-sm)",
+                    fontWeight: 600,
+                    color: "var(--color-tx)",
+                  }}
+                >
+                  {displayName(m)}
+                </div>
+                <div
+                  style={{
+                    fontSize: "var(--text-2xs)",
+                    color: "var(--color-teal)",
+                    marginTop: "0.0625rem",
+                    fontWeight: 500,
+                  }}
+                >
+                  {humanize(m.role)}
+                  {m.unit_identifier ? ` · ${m.unit_identifier}` : ""}
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+        <p
+          style={{
+            margin: "0.625rem 0 0",
+            fontSize: "var(--text-2xs)",
+            lineHeight: 1.5,
+            color: "var(--color-tx3)",
+          }}
+        >
+          Contact details are only shared with committee members.
+        </p>
+      </CardBody>
+    </Card>
+  );
+}
+
+/* ─── 4. Birthdays ─── */
+
+function BirthdaysBox() {
+  return (
+    <Card>
+      <CardHead icon="ti-cake" title="Birthdays" />
+      <CardBody>
+        {/*
+          Users DO have a `dob` column, but GET /members returns a projection
+          that omits it and there's no upcoming-birthdays endpoint, so the data
+          simply isn't reachable from here yet.
+        */}
+        <NotAvailable
+          title="Birthdays aren't available yet"
+          detail="Members have a date of birth on file, but the directory endpoint doesn't return it. A small backend change would light this up."
+        />
+      </CardBody>
+    </Card>
+  );
+}
+
+/* ─── 5. Urgent contacts ─── */
+
+function UrgentContactsBox() {
+  return (
+    <Card>
+      <CardHead icon="ti-alert-triangle" title="Urgent contacts" />
+      <CardBody>
+        <NotAvailable
+          title="Emergency contacts aren't stored yet"
+          detail="There's no emergency-contacts table in the backend. Once added, security, plumber and society office numbers can live here."
+        />
+      </CardBody>
+    </Card>
   );
 }

@@ -2,7 +2,12 @@
 
 /*
   Green Acres Society — festive design system
-  Ported from the interactive prototype. Warm saffron / teal / gold / ivory palette.
+  Warm saffron / teal / gold / ivory palette.
+
+  Everything that scales is expressed in rem so the layout responds to browser
+  zoom AND to a user's default font-size preference (WCAG 1.4.4). Breakpoints
+  are in rem for the same reason. Layout that needs media queries lives in the
+  utility classes at the bottom, because inline styles can't express them.
 */
 @theme {
   /* Core palette */
@@ -10,23 +15,20 @@
   --color-saffron-dark: #c45008;
   --color-saffron-light: #fff1e6;
   --color-saffron-mid: #ffd8b0;
-
   --color-teal: #0e7b78;
   --color-teal-dark: #085a58;
   --color-teal-light: #e6f4f4;
   --color-teal-mid: #a8d8d6;
-
   --color-gold: #c4880a;
   --color-gold-light: #f0c040;
   --color-gold-pale: #fdf0c0;
-
   --color-ivory: #fffbf4;
   --color-ivory-dark: #f5efe0;
 
   /* Text */
   --color-tx: #1a1208;
   --color-tx2: #4a3c28;
-  --color-tx3: #8a7a60;
+  --color-tx3: #6d5c44;
 
   /* Borders */
   --color-bdr: rgba(14, 123, 120, 0.14);
@@ -34,7 +36,7 @@
 
   /* Status — join */
   --color-join-bg: #fff1e6;
-  --color-join-tx: #b84800;
+  --color-join-tx: #a33f00;
   --color-join-bd: #f0a060;
   /* Status — done */
   --color-done-bg: #e8f6f0;
@@ -46,20 +48,54 @@
   --color-vol-bd: #60b8b4;
   /* Status — booked */
   --color-book-bg: #fdf0c0;
-  --color-book-tx: #805000;
+  --color-book-tx: #6b4400;
   --color-book-bd: #c4880a;
   /* Status — participant */
   --color-part-bg: #f0ecff;
   --color-part-tx: #3a1890;
   --color-part-bd: #9080d8;
+  /* Status — danger */
+  --color-danger-bg: #fee8e8;
+  --color-danger-tx: #8b1010;
+  --color-danger-bd: #f0a0a0;
 
-  --radius-card: 12px;
-  --radius-s: 8px;
+  /*
+    Type scale. The old design bottomed out at 9.5px, which ignores a user's
+    font-size preference and is below a readable floor; the smallest step here
+    is 0.75rem (12px at default).
+  */
+  --text-2xs: 0.75rem;
+  --text-xs: 0.8125rem;
+  --text-sm: 0.875rem;
+  --text-base: 0.9375rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
 
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+
+  --radius-card: 0.75rem;
+  --radius-s: 0.5rem;
+  --radius-pill: 62.4375rem;
+
+  /* Minimum interactive target (WCAG 2.5.5). */
+  --tap: 2.75rem;
+
+  /* next/font generates a hashed family name and exposes it as --font-inter. */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
-* {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
@@ -69,28 +105,82 @@ body {
   padding: 0;
 }
 
+html {
+  /* Never cap zoom; text must be resizable. */
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   font-family: var(--font-sans);
   background: var(--color-ivory);
   color: var(--color-tx);
-  font-size: 14px;
+  font-size: var(--text-base);
   line-height: 1.5;
   min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/*
+  Long unbroken strings (emails, UUIDs, URLs) are the usual cause of
+  horizontal overflow once the viewport narrows.
+*/
+body,
+p,
+div,
+span,
+h1,
+h2,
+h3,
+h4,
+td {
+  overflow-wrap: break-word;
+}
+
+img,
+svg,
+canvas {
+  max-width: 100%;
+}
+
+input,
+button,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* Visible keyboard focus everywhere, without punishing mouse users. */
+:focus-visible {
+  outline: 2px solid var(--color-saffron);
+  outline-offset: 2px;
+  border-radius: var(--radius-s);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 0.375rem;
+  height: 0.375rem;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--color-teal-mid);
-  border-radius: 3px;
+  border-radius: 0.1875rem;
 }
 
 /* Decorative festive top strip */
 .deco-strip {
-  height: 5px;
+  height: 0.3125rem;
   background: linear-gradient(
     90deg,
     var(--color-teal-dark) 0%,
@@ -105,6 +195,231 @@ body {
 
 /* Subtle dotted pattern used in the hero */
 .hero-pattern {
-  background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-  background-size: 28px 28px;
+  background-image: radial-gradient(
+    rgba(255, 255, 255, 0.04) 1px,
+    transparent 1px
+  );
+  background-size: 1.75rem 1.75rem;
+}
+
+/* ==========================================================================
+   Layout utilities
+   Media queries live here because inline styles cannot express them.
+   Breakpoints: 64rem (~1024px) tablet, 48rem (~768px) mobile, 30rem phone.
+   ========================================================================== */
+
+.u-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Page shell: fluid gutters, capped measure. */
+.u-container {
+  width: 100%;
+  max-width: 75rem;
+  margin-inline: auto;
+  padding-inline: clamp(0.875rem, 3vw, 2rem);
+}
+
+.u-page-pad {
+  padding-block: clamp(1rem, 2.5vw, 1.75rem);
+}
+
+/*
+  Content + sidebar. `minmax(0,1fr)` on the main column is what stops long
+  content forcing horizontal overflow, and the sidebar collapses underneath
+  rather than being squeezed.
+*/
+.u-split {
+  display: grid;
+  gap: clamp(1rem, 2vw, 1.375rem);
+  align-items: start;
+  grid-template-columns: minmax(0, 1fr) 25rem;
+}
+.u-split--narrow {
+  grid-template-columns: minmax(0, 1fr) 21rem;
+}
+@media (max-width: 64rem) {
+  .u-split,
+  .u-split--narrow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Hero: text beside stats, stacking when space runs out. */
+.u-hero {
+  display: grid;
+  gap: clamp(1.25rem, 3vw, 1.75rem);
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr) 21rem;
+  padding: clamp(1.25rem, 3vw, 2rem);
+}
+@media (max-width: 64rem) {
+  .u-hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Auto-fitting card/stat grids: the browser decides the column count. */
+.u-autogrid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+}
+.u-autogrid--sm {
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+}
+.u-autogrid--wide {
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+}
+
+.u-stack {
+  display: grid;
+  gap: var(--space-4);
+}
+.u-stack--sm {
+  gap: var(--space-2);
+}
+
+/* Rows that should wrap instead of overflowing. */
+.u-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.u-row--between {
+  justify-content: space-between;
+}
+
+/* Grid/flex children need this or their content sets a minimum width. */
+.u-min0 {
+  min-width: 0;
+}
+
+/*
+  Sticky bars are released once vertical space gets tight: at 200%+ zoom two
+  stacked sticky bars would eat most of the viewport.
+*/
+.u-sticky {
+  position: sticky;
+  z-index: 100;
+}
+@media (max-width: 48rem), (max-height: 34rem) {
+  .u-sticky {
+    position: static;
+  }
+}
+
+/* Horizontally scrollable strip (tab bars) with hidden scrollbar. */
+.u-scroll-x {
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.u-scroll-x::-webkit-scrollbar {
+  display: none;
+}
+
+/* Timeline row: fixed-ish time gutter that collapses on small screens. */
+.u-timeline-row {
+  display: grid;
+  grid-template-columns: 4.5rem 0.875rem minmax(0, 1fr);
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+@media (max-width: 30rem) {
+  .u-timeline-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* The connector line is meaningless once the row stacks. */
+  .u-timeline-rail {
+    display: none;
+  }
+  .u-timeline-time {
+    text-align: left;
+  }
+}
+
+/* Activity row: date / detail / status, stacking on phones. */
+.u-activity-row {
+  display: grid;
+  grid-template-columns: 4rem minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: start;
+}
+@media (max-width: 30rem) {
+  .u-activity-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+  }
+}
+
+/* Media object with a leading emoji/icon panel. */
+.u-media {
+  display: flex;
+  align-items: stretch;
+}
+@media (max-width: 30rem) {
+  .u-media {
+    flex-direction: column;
+  }
+  .u-media__figure {
+    width: 100% !important;
+    min-height: 3.5rem;
+    border-left: none !important;
+  }
+  .u-media__body {
+    border-left: none !important;
+    border-top: 1px solid var(--color-bdr);
+  }
+}
+
+/*
+  Every interactive control clears the 2.75rem (44px) minimum target.
+  `u-tap` is for icon-only buttons; text buttons get it via min-height.
+*/
+.u-tap {
+  min-width: var(--tap);
+  min-height: var(--tap);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Two-up form fields that collapse to one column. */
+.u-fields-2 {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+}
+
+/* Skip link: offscreen until focused. */
+.u-skip-link {
+  position: absolute;
+  left: -100vw;
+  top: 0;
+  z-index: 300;
+}
+.u-skip-link:focus {
+  left: var(--space-3);
+  top: var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-saffron);
+  color: #fff;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  border-radius: var(--radius-s);
+  text-decoration: none;
 }

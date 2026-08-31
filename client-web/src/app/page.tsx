@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AuthGate } from "@/components/auth/AuthGate";
 import { ModalHost } from "@/components/ModalHost";
 import { Topbar } from "@/components/Topbar";
 import { Hero } from "@/components/Hero";
@@ -20,17 +21,19 @@ export default function Home() {
   };
 
   return (
-    <ModalHost>
-      <div className="deco-strip" />
-      <Topbar />
-      <Hero onNavigate={navigate} />
-      <TabNav active={tab} onChange={navigate} />
+    <AuthGate>
+      <ModalHost>
+        <div className="deco-strip" />
+        <Topbar />
+        <Hero onNavigate={navigate} />
+        <TabNav active={tab} onChange={navigate} />
 
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "28px 32px" }}>
-        {tab === "events" && <EventsTab />}
-        {tab === "my-activity" && <MyActivityTab />}
-        {tab === "community" && <CommunityTab />}
-      </div>
-    </ModalHost>
+        <main id="main" className="u-container u-page-pad">
+          {tab === "events" && <EventsTab />}
+          {tab === "my-activity" && <MyActivityTab />}
+          {tab === "community" && <CommunityTab />}
+        </main>
+      </ModalHost>
+    </AuthGate>
   );
 }

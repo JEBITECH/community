@@ -15,7 +15,10 @@ export function Card({
         border: "1px solid var(--color-bdr)",
         borderRadius: "var(--radius-card)",
         overflow: "hidden",
-        boxShadow: "0 1px 4px rgba(14,123,120,.06)",
+        // Without this a card inside a grid track can be widened by its
+        // content instead of wrapping.
+        minWidth: 0,
+        boxShadow: "0 0.0625rem 0.25rem rgba(14,123,120,.06)",
         ...style,
       }}
     >
@@ -35,27 +38,29 @@ export function CardHead({
 }) {
   return (
     <div
+      // Wraps so a long title plus an action control never overflow.
+      className="u-row u-row--between"
       style={{
-        padding: "12px 16px",
+        padding: "var(--space-3) var(--space-4)",
         borderBottom: "1px solid var(--color-bdr)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
         background: "linear-gradient(90deg,var(--color-teal-light),#fff)",
+        gap: "var(--space-2)",
       }}
     >
       <h3
+        className="u-min0"
         style={{
-          fontSize: 12,
+          fontSize: "var(--text-xs)",
           fontWeight: 600,
           color: "var(--color-teal-dark)",
           display: "flex",
           alignItems: "center",
-          gap: 6,
+          gap: "var(--space-2)",
           margin: 0,
+          lineHeight: 1.4,
         }}
       >
-        {icon && <Icon name={icon} size={14} color="var(--color-teal)" />}
+        {icon && <Icon name={icon} size={15} color="var(--color-teal)" />}
         {title}
       </h3>
       {right}
@@ -73,7 +78,13 @@ export function CardBody({
   style?: CSSProperties;
 }) {
   return (
-    <div style={{ padding: flush ? "0 16px" : "14px 16px", ...style }}>
+    <div
+      style={{
+        padding: flush ? "0 var(--space-4)" : "var(--space-4)",
+        minWidth: 0,
+        ...style,
+      }}
+    >
       {children}
     </div>
   );
