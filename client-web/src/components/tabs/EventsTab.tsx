@@ -1,28 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
 import { Tag } from "@/components/ui/Tag";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { SectionHeader } from "@/components/ui/SectionHeader";
+import {
+  EmptyNote,
+  LoadingRows,
+  NotAvailable,
+} from "@/components/ui/NotAvailable";
 import { SubTabs } from "@/components/TabNav";
 import { useModal } from "@/components/ModalHost";
 import {
-  ANNOUNCEMENTS,
-  EVENTS,
-  TODAY_TIMELINE,
-  VOLUNTEER_OPPS,
-} from "@/lib/data";
-import type {
-  Announcement,
-  AnnouncementTone,
-  EventItem,
-  EventStatus,
-  TimelineActivity,
-  VolunteerOpp,
-} from "@/lib/types";
-import type { ButtonVariant } from "@/components/ui/Button";
+  categorize,
+  findTodayDay,
+  useComponentAvailability,
+  useEvent,
+  usePublishedEvents,
+  useVolunteerRolesForEvents,
+} from "@/lib/hooks/useEvents";
+import { useMyParticipationIndex, useMyVolunteerRoleIds } from "@/lib/hooks/useActivity";
+import {
+  describeWhen,
+  formatDateFull,
+  formatDateRange,
+  formatDateWeekday,
+  formatTime,
+  formatTimeRange,
+  humanize,
+} from "@/lib/utils/format";
+import type { CommunityEvent, EventComponent } from "@/lib/api/types";
 
 type EventsSubTab = "today" | "all-events" | "volunteer";
 
@@ -33,46 +42,122 @@ const SUB_TABS: { id: EventsSubTab; icon: string; label: string }[] = [
 ];
 
 export function EventsTab() {
-  const [sub, setSub] = useState<EventsSubTab>("today");
+  const events = usePublishedEvents();
+
+  const buckets = useMemo(() => categorize(events.data ?? []), [events.data]);
+  const liveEvent = buckets.live[0] ?? null;
+
+  // Detail is needed to know whether anything is actually scheduled today.
+  const liveDetail = useEvent(liveEvent?.id);
+  const todayDay = findTodayDay(liveDetail.data?.days);
+  const hasToday = Boolean(todayDay?.components?.length);
+
+  // Default to today's schedule only when there really is something on today,
+  // otherwise land on the events list.
+  const [sub, setSub] = useState<EventsSubTab>("all-events");
+  const [pinned, setPinned] = useState(false);
+
+  useEffect(() => {
+    if (pinned || events.isLoading || liveDetail.isLoading) return;
+    setSub(hasToday ? "today" : "all-events");
+  }, [hasToday, pinned, events.isLoading, liveDetail.isLoading]);
+
+  function choose(next: EventsSubTab) {
+    setPinned(true);
+    setSub(next);
+  }
 
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 400px",
-        gap: 22,
-        alignItems: "start",
-      }}
-    >
-      <div>
-        <SubTabs tabs={SUB_TABS} active={sub} onChange={setSub} />
-        {sub === "today" && <TodayView />}
-        {sub === "all-events" && <AllEventsView />}
-        {sub === "volunteer" && <VolunteerView />}
+    // Content + announcements rail; collapses to one column below 64rem.
+    <div className="u-split">
+      <div className="u-min0">
+        <SubTabs tabs={SUB_TABS} active={sub} onChange={choose} />
+
+        {sub === "today" && (
+          <TodayView
+            event={liveEvent}
+            day={todayDay}
+            loading={events.isLoading || liveDetail.isLoading}
+            onSeeAll={() => choose("all-events")}
+          />
+        )}
+        {sub === "all-events" && (
+          <AllEventsView
+            live={buckets.live}
+            upcoming={buckets.upcoming}
+            loading={events.isLoading}
+          />
+        )}
+        {sub === "volunteer" && (
+          <VolunteerView events={[...buckets.live, ...buckets.upcoming]} />
+        )}
       </div>
+
       <AnnouncementsSidebar />
     </div>
   );
 }
 
 /* ─── Today ─── */
-function TodayView() {
+
+function TodayView({
+  event,
+  day,
+  loading,
+  onSeeAll,
+}: {
+  event: CommunityEvent | null;
+  day: ReturnType<typeof findTodayDay>;
+  loading: boolean;
+  onSeeAll: () => void;
+}) {
+  if (loading) return <LoadingRows rows={3} />;
+
+  const components = [...(day?.components ?? [])].sort(
+    (a, b) => a.sequence - b.sequence,
+  );
+
+  if (!event || components.length === 0) {
+    return (
+      <EmptyNote>
+        Nothing is scheduled for today. Check{" "}
+        <button
+          type="button"
+          onClick={onSeeAll}
+          style={{
+            padding: "0rem",
+            border: "none",
+            background: "none",
+            font: "inherit",
+            color: "var(--color-teal)",
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          all events
+        </button>{" "}
+        for what&apos;s coming up.
+      </EmptyNote>
+    );
+  }
+
   return (
     <>
       <SectionHeader
         icon="ti-sun"
-        title="Happening today — 20 September"
+        title={`Happening today — ${formatDateWeekday(day!.date)}`}
         right={
-          <Button variant="ghost" size="sm">
-            Full schedule
+          <Button variant="ghost" size="sm" onClick={onSeeAll}>
+            All events
           </Button>
         }
       />
-      {TODAY_TIMELINE.map((item, i) => (
+      {components.map((component, i) => (
         <TimelineRow
-          key={item.id}
-          item={item}
-          last={i === TODAY_TIMELINE.length - 1}
+          key={component.id}
+          eventId={event.id}
+          component={component}
+          last={i === components.length - 1}
         />
       ))}
     </>
@@ -80,104 +165,107 @@ function TodayView() {
 }
 
 function TimelineRow({
-  item,
+  eventId,
+  component,
   last,
 }: {
-  item: TimelineActivity;
+  eventId: string;
+  component: EventComponent;
   last: boolean;
 }) {
-  const { open } = useModal();
   return (
-    <div style={{ display: "flex", gap: 10, marginBottom: 14 }}>
+    // Time gutter + rail + card; the gutter and rail drop away on phones.
+    <div className="u-timeline-row">
       <div
+        className="u-timeline-time"
         style={{
-          width: 58,
-          flexShrink: 0,
           textAlign: "right",
-          fontSize: 11,
+          fontSize: "var(--text-xs)",
           fontWeight: 600,
           color: "var(--color-saffron)",
-          paddingTop: 4,
+          paddingTop: "0.25rem",
         }}
       >
-        {item.time}
+        {formatTime(component.start_time) || "All day"}
       </div>
       <div
+        className="u-timeline-rail"
         style={{
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          width: 14,
-          flexShrink: 0,
         }}
       >
         <div
           style={{
-            width: 9,
-            height: 9,
+            width: "0.5625rem",
+            height: "0.5625rem",
             borderRadius: "50%",
-            background: item.dotColor || "var(--color-saffron)",
+            background: component.requires_booking
+              ? "var(--color-gold)"
+              : "var(--color-saffron)",
             border: "2px solid var(--color-ivory)",
             flexShrink: 0,
-            marginTop: 3,
+            marginTop: "0.1875rem",
           }}
         />
         {!last && (
           <div
             style={{
               flex: 1,
-              width: 1,
+              width: "0.0625rem",
               background: "var(--color-saffron-mid)",
-              marginTop: 3,
+              marginTop: "0.1875rem",
             }}
           />
         )}
       </div>
-      <div style={{ flex: 1 }}>
+      <div className="u-min0">
         <div
           style={{
             background: "#fff",
             border: "1px solid var(--color-bdr)",
             borderRadius: "var(--radius-card)",
-            padding: "11px 13px",
-            marginBottom: 3,
+            padding: "0.6875rem 0.8125rem",
+            marginBottom: "0.1875rem",
             boxShadow: "0 1px 3px rgba(14,123,120,.05)",
           }}
         >
-          <h4 style={{ fontSize: 12, fontWeight: 600, color: "var(--color-tx)", margin: 0 }}>
-            {item.title}
+          <h4
+            style={{
+              fontSize: "var(--text-sm)",
+              fontWeight: 600,
+              color: "var(--color-tx)",
+              margin: "0rem",
+            }}
+          >
+            {component.name}
           </h4>
           <div
             style={{
-              fontSize: 10,
+              fontSize: "var(--text-2xs)",
               color: "var(--color-tx3)",
-              marginTop: 3,
+              marginTop: "0.1875rem",
               display: "flex",
               alignItems: "center",
-              gap: 6,
+              gap: "0.375rem",
               flexWrap: "wrap",
             }}
           >
-            <Icon
-              name={item.metaIcon}
-              size={10}
-              color={item.metaIconColor || "var(--color-teal)"}
-            />
-            {item.meta}
+            <Icon name="ti-clock" size={10} color="var(--color-teal)" />
+            {formatTimeRange(component.start_time, component.end_time) ||
+              "Time to be confirmed"}
+            {component.location_resource && (
+              <>
+                <Icon name="ti-map-pin" size={10} color="var(--color-teal)" />
+                {humanize(component.location_resource)}
+              </>
+            )}
           </div>
-          <div style={{ display: "flex", gap: 5, marginTop: 8, flexWrap: "wrap" }}>
-            <Button
-              variant={actionVariant(item.action.kind)}
-              size="sm"
-              onClick={item.action.modal ? () => open(item.action.modal!) : undefined}
-            >
-              {item.action.kind === "joined" && <Icon name="ti-check" size={11} />}
-              {item.action.kind === "volunteer" && (
-                <Icon name="ti-heart-handshake" size={11} />
-              )}
-              {item.action.kind === "book" && <Icon name="ti-ticket" size={11} />}
-              {item.action.label}
-            </Button>
+          <div
+            style={{ display: "flex", gap: "0.3125rem", marginTop: "0.5rem", flexWrap: "wrap" }}
+          >
+            <ComponentAction eventId={eventId} component={component} />
           </div>
         </div>
       </div>
@@ -185,28 +273,118 @@ function TimelineRow({
   );
 }
 
+/**
+ * The one button a resident can act on for a component: book it when it needs
+ * a reservation, join it when it just needs an RSVP, and reflect the state they
+ * are already in.
+ */
+function ComponentAction({
+  eventId,
+  component,
+}: {
+  eventId: string;
+  component: EventComponent;
+}) {
+  const { open } = useModal();
+  const { byComponent } = useMyParticipationIndex();
+  const tracksCapacity = component.requires_booking || component.capacity !== null;
+  const availability = useComponentAvailability(component.id, tracksCapacity);
+
+  const mine = byComponent.get(component.id);
+
+  if (mine) {
+    return (
+      <>
+        <Button variant="joined" size="sm">
+          <Icon name="ti-check" size={11} />
+          {mine.type === "book" ? "Booked" : "Joined"}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() =>
+            open({
+              kind: "cancel",
+              participationId: mine.id,
+              label: component.name,
+            })
+          }
+        >
+          Cancel
+        </Button>
+      </>
+    );
+  }
+
+  const left = availability.data?.available;
+  const full = left !== null && left !== undefined && left <= 0;
+
+  if (component.requires_booking) {
+    return (
+      <Button
+        variant={full ? "ghost" : "book"}
+        size="sm"
+        disabled={full}
+        onClick={() => open({ kind: "book", eventId, componentId: component.id })}
+      >
+        <Icon name="ti-ticket" size={11} />
+        {full ? "Full" : left != null ? `Book · ${left} left` : "Book"}
+      </Button>
+    );
+  }
+
+  if (!component.registration_enabled) return null;
+
+  return (
+    <Button
+      variant="join"
+      size="sm"
+      disabled={full}
+      onClick={() => open({ kind: "join", eventId, componentId: component.id })}
+    >
+      {full ? "Full" : "Join"}
+    </Button>
+  );
+}
+
 /* ─── All events ─── */
-function AllEventsView() {
+
+function AllEventsView({
+  live,
+  upcoming,
+  loading,
+}: {
+  live: CommunityEvent[];
+  upcoming: CommunityEvent[];
+  loading: boolean;
+}) {
+  if (loading) return <LoadingRows rows={3} />;
+
+  const all = [...live, ...upcoming];
+
+  if (all.length === 0) {
+    return (
+      <EmptyNote>
+        No events have been published yet. Your committee will post them here.
+      </EmptyNote>
+    );
+  }
+
   return (
     <>
-      <SectionHeader
-        icon="ti-calendar"
-        title="All upcoming events"
-        right={
-          <Button variant="ghost" size="sm">
-            Filter
-          </Button>
-        }
-      />
-      {EVENTS.map((e) => (
-        <EventCard key={e.id} event={e} />
+      <SectionHeader icon="ti-calendar" title="All upcoming events" />
+      {all.map((event) => (
+        <EventCard key={event.id} event={event} />
       ))}
     </>
   );
 }
 
-function EventCard({ event }: { event: EventItem }) {
+function EventCard({ event }: { event: CommunityEvent }) {
   const { open } = useModal();
+  const { byEvent } = useMyParticipationIndex();
+  const mine = byEvent.get(event.id);
+
   return (
     <div
       style={{
@@ -214,301 +392,397 @@ function EventCard({ event }: { event: EventItem }) {
         border: "1px solid var(--color-bdr)",
         borderRadius: "var(--radius-card)",
         overflow: "hidden",
-        marginBottom: 12,
-        display: "flex",
+        marginBottom: "0.75rem",
         boxShadow: "0 1px 4px rgba(14,123,120,.05)",
       }}
+      className="u-media"
     >
       <div
+        className="u-media__figure"
         style={{
-          width: 72,
+          width: "4.5rem",
           flexShrink: 0,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: 36,
+          fontSize: "var(--text-2xl)",
           background: "var(--color-ivory-dark)",
         }}
+        aria-hidden="true"
       >
-        {event.emoji}
+        {emojiFor(event)}
       </div>
       <div
+        className="u-media__body u-min0"
         style={{
           flex: 1,
-          padding: "13px 14px",
-          minWidth: 0,
+          padding: "0.8125rem 0.875rem",
           borderLeft: "1px solid var(--color-bdr)",
         }}
       >
         <div
+          className="u-row u-row--between"
+          style={{ marginBottom: "0.3125rem" }}
+        >
+          <div
+            style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--color-tx)" }}
+          >
+            {event.name}
+          </div>
+          <StatusTag event={event} />
+        </div>
+
+        <div
           style={{
             display: "flex",
-            justifyContent: "space-between",
-            gap: 8,
-            marginBottom: 5,
+            gap: "0.625rem",
+            flexWrap: "wrap",
+            marginBottom: "0.5rem",
           }}
         >
-          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-tx)" }}>
-            {event.title}
-          </div>
-          <StatusTag status={event.status} />
+          <Meta icon="ti-calendar">
+            {formatDateRange(event.start_date, event.end_date)}
+          </Meta>
+          <Meta icon="ti-clock">{describeWhen(event.start_date)}</Meta>
+          {event.venue && <Meta icon="ti-map-pin">{event.venue}</Meta>}
+          <Meta icon="ti-tag">{humanize(event.event_type)}</Meta>
         </div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
-          {event.meta.map((m, i) => (
-            <span
-              key={i}
-              style={{
-                fontSize: 11,
-                color: "var(--color-tx2)",
-                display: "flex",
-                alignItems: "center",
-                gap: 3,
-              }}
-            >
-              <Icon name={m.icon} size={11} /> {m.label}
-            </span>
-          ))}
-        </div>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {event.actions.map((a, i) => (
+
+        <div style={{ display: "flex", gap: "0.375rem", flexWrap: "wrap" }}>
+          {event.registration_required &&
+            (mine ? (
+              <>
+                <Button variant="joined" size="sm">
+                  <Icon name="ti-check" size={11} /> Going
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    open({
+                      kind: "cancel",
+                      participationId: mine.id,
+                      label: event.name,
+                    })
+                  }
+                >
+                  Cancel
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="join"
+                size="sm"
+                onClick={() => open({ kind: "join", eventId: event.id })}
+              >
+                I&apos;m going
+              </Button>
+            ))}
+
+          {event.volunteer_enabled && (
             <Button
-              key={i}
-              variant={actionVariant(a.kind)}
+              variant="vol"
               size="sm"
-              onClick={a.modal ? () => open(a.modal!) : undefined}
+              onClick={() => open({ kind: "volunteer", eventId: event.id })}
             >
-              {a.icon && <Icon name={a.icon} size={11} />}
-              {a.label}
+              <Icon name="ti-heart-handshake" size={11} /> Volunteer
             </Button>
-          ))}
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function StatusTag({ status }: { status: EventStatus }) {
-  switch (status) {
-    case "ongoing":
-      return <Tag tone="done">Ongoing</Tag>;
-    case "coming-soon":
-      return <Tag tone="muted">Coming soon</Tag>;
-    case "registration-open":
-      return <Tag tone="part">Registration open</Tag>;
-    case "urgent":
-      return <Tag tone="urgent">Urgent</Tag>;
+function Meta({
+  icon,
+  children,
+}: {
+  icon: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <span
+      style={{
+        fontSize: "var(--text-xs)",
+        color: "var(--color-tx2)",
+        display: "flex",
+        alignItems: "center",
+        gap: "0.1875rem",
+      }}
+    >
+      <Icon name={icon} size={11} /> {children}
+    </span>
+  );
+}
+
+function StatusTag({ event }: { event: CommunityEvent }) {
+  const delta = describeWhen(event.start_date);
+
+  if (event.status === "cancelled") return <Tag tone="urgent">Cancelled</Tag>;
+  if (delta === "today" || event.start_date < event.end_date)
+    return <Tag tone="done">Ongoing</Tag>;
+  if (event.registration_required)
+    return <Tag tone="part">Registration open</Tag>;
+  return <Tag tone="muted">Coming soon</Tag>;
+}
+
+/** Event types don't carry an icon, so this is presentation-only decoration. */
+function emojiFor(event: CommunityEvent): string {
+  switch (event.event_type) {
+    case "festival":
+      return "🐘";
+    case "cultural":
+      return "🎭";
+    case "sports":
+      return "🏏";
+    case "workshop":
+      return "🛠️";
+    case "educational_program":
+      return "📚";
+    case "meeting":
+      return "📋";
+    case "fundraising":
+      return "💝";
+    default:
+      return "📅";
   }
 }
 
 /* ─── Volunteer ─── */
-function VolunteerView() {
+
+function VolunteerView({ events }: { events: CommunityEvent[] }) {
+  const volunteerEvents = useMemo(
+    () => events.filter((e) => e.volunteer_enabled),
+    [events],
+  );
+  const { groups, isLoading } = useVolunteerRolesForEvents(volunteerEvents);
+  const myRoleIds = useMyVolunteerRoleIds();
   const { open } = useModal();
-  const tint: Record<VolunteerOpp["iconTint"], { bg: string; fg: string }> = {
-    saffron: { bg: "var(--color-saffron-light)", fg: "var(--color-saffron)" },
-    teal: { bg: "var(--color-teal-light)", fg: "var(--color-teal)" },
-    gold: { bg: "var(--color-gold-pale)", fg: "var(--color-gold)" },
-  };
+
+  if (isLoading) return <LoadingRows rows={2} />;
+
+  if (groups.length === 0) {
+    return (
+      <EmptyNote>
+        No volunteer roles are open right now. They&apos;ll appear here when the
+        committee opens them.
+      </EmptyNote>
+    );
+  }
+
   return (
     <>
-      <SectionHeader icon="ti-heart-handshake" title="Volunteer opportunities" />
-      {VOLUNTEER_OPPS.map((v) => (
-        <div
-          key={v.id}
-          style={{
-            background: "#fff",
-            border: "1px solid var(--color-bdr)",
-            borderRadius: "var(--radius-card)",
-            overflow: "hidden",
-            marginBottom: 12,
-            display: "flex",
-            boxShadow: "0 1px 4px rgba(14,123,120,.05)",
-          }}
-        >
-          <div
-            style={{
-              width: 72,
-              flexShrink: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: tint[v.iconTint].bg,
-            }}
-          >
-            <Icon name={v.icon} size={28} color={tint[v.iconTint].fg} />
-          </div>
-          <div
-            style={{
-              flex: 1,
-              padding: "13px 14px",
-              minWidth: 0,
-              borderLeft: "1px solid var(--color-bdr)",
-            }}
-          >
-            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--color-tx)", marginBottom: 5 }}>
-              {v.title}
+      <SectionHeader
+        icon="ti-heart-handshake"
+        title="Volunteer opportunities"
+      />
+      {groups.map(({ event, roles }) =>
+        roles.map((role) => {
+          const left = Math.max(
+            0,
+            role.headcount_needed - role.headcount_filled,
+          );
+          const full = left === 0;
+          const signedUp = myRoleIds.has(role.id);
+          const pct =
+            role.headcount_needed > 0
+              ? Math.round(
+                  (role.headcount_filled / role.headcount_needed) * 100,
+                )
+              : 0;
+
+          return (
+            <div
+              key={role.id}
+              style={{
+                background: "#fff",
+                border: "1px solid var(--color-bdr)",
+                borderRadius: "var(--radius-card)",
+                overflow: "hidden",
+                marginBottom: "0.75rem",
+                boxShadow: "0 1px 4px rgba(14,123,120,.05)",
+              }}
+              className="u-media"
+            >
+              <div
+                className="u-media__figure"
+                style={{
+                  width: "4.5rem",
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  background: "var(--color-teal-light)",
+                }}
+              >
+                <Icon
+                  name="ti-heart-handshake"
+                  size={28}
+                  color="var(--color-teal)"
+                />
+              </div>
+              <div
+                className="u-media__body u-min0"
+                style={{
+                  flex: 1,
+                  padding: "0.8125rem 0.875rem",
+                  borderLeft: "1px solid var(--color-bdr)",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "var(--text-base)",
+                    fontWeight: 600,
+                    color: "var(--color-tx)",
+                    marginBottom: "0.3125rem",
+                  }}
+                >
+                  {role.title}
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "0.625rem",
+                    flexWrap: "wrap",
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  <Meta icon="ti-calendar">{event.name}</Meta>
+                  {(role.slot_start || role.slot_end) && (
+                    <Meta icon="ti-clock">
+                      {formatTimeRange(role.slot_start, role.slot_end)}
+                    </Meta>
+                  )}
+                  <span
+                    style={{
+                      fontSize: "var(--text-xs)",
+                      color: full ? "#8b1010" : "var(--color-teal)",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.1875rem",
+                      fontWeight: 600,
+                    }}
+                  >
+                    <Icon name="ti-users" size={11} />
+                    {full
+                      ? "Fully staffed"
+                      : `${left} of ${role.headcount_needed} needed`}
+                  </span>
+                </div>
+
+                <ProgressBar
+                  value={pct}
+                  color="var(--color-teal)"
+                  width={200}
+                />
+
+                <div
+                  style={{
+                    display: "flex",
+                    gap: "0.375rem",
+                    flexWrap: "wrap",
+                    marginTop: "0.5rem",
+                  }}
+                >
+                  {signedUp ? (
+                    <Button variant="joined" size="sm">
+                      <Icon name="ti-check" size={11} /> Applied
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="vol"
+                      size="sm"
+                      disabled={full}
+                      onClick={() =>
+                        open({
+                          kind: "volunteer",
+                          eventId: event.id,
+                          roleId: role.id,
+                        })
+                      }
+                    >
+                      <Icon name="ti-heart-handshake" size={11} />
+                      {full ? "Full" : "Apply"}
+                    </Button>
+                  )}
+                </div>
+              </div>
             </div>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
-              <span style={{ fontSize: 11, color: "var(--color-tx2)", display: "flex", alignItems: "center", gap: 3 }}>
-                <Icon name="ti-calendar" size={11} /> {v.date}
-              </span>
-              <span style={{ fontSize: 11, color: tint[v.iconTint].fg, display: "flex", alignItems: "center", gap: 3 }}>
-                <Icon name="ti-users" size={11} /> {v.spots}
-              </span>
-            </div>
-            <ProgressBar value={v.progress} color={tint[v.iconTint].fg} width={200} />
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
-              <Button variant="vol" size="sm" onClick={() => open("vol")}>
-                <Icon name="ti-heart-handshake" size={11} /> Apply
-              </Button>
-            </div>
-          </div>
-        </div>
-      ))}
+          );
+        }),
+      )}
     </>
   );
 }
 
 /* ─── Announcements sidebar ─── */
+
 function AnnouncementsSidebar() {
+  const events = usePublishedEvents();
+  const buckets = useMemo(() => categorize(events.data ?? []), [events.data]);
+  const next = [...buckets.live, ...buckets.upcoming].slice(0, 4);
+
   return (
     <div>
-      <SectionHeader
-        icon="ti-speakerphone"
-        title="Announcements"
-        right={
-          <Button variant="ghost" size="sm">
-            See all
-          </Button>
-        }
+      <SectionHeader icon="ti-speakerphone" title="Announcements" />
+
+      {/*
+        There is no announcements table or endpoint in community-svc, so rather
+        than reinstate the prototype's invented notices this states the gap and
+        falls back to the real upcoming schedule.
+      */}
+      <NotAvailable
+        title="Announcements aren't wired up yet"
+        detail="community-svc has no announcements endpoint. Once it exists, committee notices will appear here."
       />
-      {ANNOUNCEMENTS.map((a) => (
-        <AnnouncementCard key={a.id} a={a} />
-      ))}
-    </div>
-  );
-}
 
-const TONE: Record<
-  AnnouncementTone,
-  { border: string; iconBg: string; iconFg: string; badgeBg: string; badgeFg: string }
-> = {
-  saf: {
-    border: "var(--color-saffron)",
-    iconBg: "var(--color-saffron-light)",
-    iconFg: "var(--color-saffron)",
-    badgeBg: "var(--color-saffron-light)",
-    badgeFg: "var(--color-saffron-dark)",
-  },
-  tel: {
-    border: "var(--color-teal)",
-    iconBg: "var(--color-teal-light)",
-    iconFg: "var(--color-teal)",
-    badgeBg: "var(--color-teal-light)",
-    badgeFg: "var(--color-teal-dark)",
-  },
-  grn: {
-    border: "#1a8a40",
-    iconBg: "#e8f6e8",
-    iconFg: "#1a8a40",
-    badgeBg: "#e8f6e8",
-    badgeFg: "#1a6a20",
-  },
-  red: {
-    border: "#c02020",
-    iconBg: "#fee8e8",
-    iconFg: "#c02020",
-    badgeBg: "#fee8e8",
-    badgeFg: "#8b1010",
-  },
-  gold: {
-    border: "var(--color-gold)",
-    iconBg: "var(--color-gold-pale)",
-    iconFg: "var(--color-gold)",
-    badgeBg: "var(--color-gold-pale)",
-    badgeFg: "#7a5000",
-  },
-};
-
-function AnnouncementCard({ a }: { a: Announcement }) {
-  const t = TONE[a.tone];
-  return (
-    <div
-      style={{
-        background: "#fff",
-        border: "1px solid var(--color-bdr)",
-        borderLeft: `3px solid ${t.border}`,
-        borderRadius: "0 var(--radius-card) var(--radius-card) 0",
-        padding: "12px 14px",
-        marginBottom: 10,
-        boxShadow: "0 1px 4px rgba(14,123,120,.04)",
-      }}
-    >
-      <div style={{ display: "flex", gap: 9, alignItems: "flex-start" }}>
-        <div
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: 7,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-            background: t.iconBg,
-          }}
-        >
-          <Icon name={a.icon} size={14} color={t.iconFg} />
-        </div>
-        <div>
-          <div
-            style={{
-              display: "inline-flex",
-              fontSize: 9,
-              fontWeight: 600,
-              padding: "2px 7px",
-              borderRadius: 10,
-              marginBottom: 5,
-              textTransform: "uppercase",
-              letterSpacing: ".4px",
-              background: t.badgeBg,
-              color: t.badgeFg,
-            }}
-          >
-            {a.badge}
-          </div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--color-tx)" }}>
-            {a.title}
-          </div>
-          <div
-            style={{
-              fontSize: 11,
-              color: "var(--color-tx2)",
-              lineHeight: 1.55,
-              margin: "4px 0",
-            }}
-          >
-            {a.body}
-          </div>
-          <div style={{ fontSize: 10, color: "var(--color-tx3)" }}>{a.meta}</div>
-        </div>
+      <div style={{ marginTop: "1rem" }}>
+        <SectionHeader icon="ti-calendar-event" title="Next up" />
+        {next.length === 0 ? (
+          <EmptyNote>Nothing scheduled.</EmptyNote>
+        ) : (
+          next.map((event) => (
+            <div
+              key={event.id}
+              style={{
+                background: "#fff",
+                borderLeft: "3px solid var(--color-teal)",
+                border: "1px solid var(--color-bdr)",
+                borderLeftWidth: 3,
+                borderRadius: "var(--radius-s)",
+                padding: "0.625rem 0.75rem",
+                marginBottom: "0.5rem",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "var(--text-sm)",
+                  fontWeight: 600,
+                  color: "var(--color-tx)",
+                }}
+              >
+                {event.name}
+              </div>
+              <div
+                style={{
+                  marginTop: "0.1875rem",
+                  fontSize: "var(--text-xs)",
+                  color: "var(--color-tx3)",
+                  display: "flex",
+                  gap: "0.5rem",
+                  flexWrap: "wrap",
+                }}
+              >
+                <span>{formatDateFull(event.start_date)}</span>
+                <span>·</span>
+                <span>{describeWhen(event.start_date)}</span>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
-}
-
-/* Map an ActionKind to a Button variant. */
-function actionVariant(kind: string): ButtonVariant {
-  switch (kind) {
-    case "join":
-      return "join";
-    case "joined":
-      return "joined";
-    case "volunteer":
-      return "vol";
-    case "book":
-      return "book";
-    case "participant":
-      return "part";
-    default:
-      return "ghost";
-  }
 }
