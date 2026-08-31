@@ -10,6 +10,7 @@ import { EventComponent } from './events/entities/event-component.entity';
 import { EventOrganizer } from './events/entities/event-organizer.entity';
 import { Participation } from './participations/entities/participation.entity';
 import { Booking } from './participations/entities/booking.entity';
+import { BookingAttendee } from './participations/entities/booking-attendee.entity';
 import { Donation } from './donations/entities/donation.entity';
 import { SponsorshipNeed } from './donations/entities/sponsorship-need.entity';
 import { Sponsorship } from './donations/entities/sponsorship.entity';
@@ -47,6 +48,7 @@ export default new DataSource({
     EventOrganizer,
     Participation,
     Booking,
+    BookingAttendee,
     Donation,
     SponsorshipNeed,
     Sponsorship,

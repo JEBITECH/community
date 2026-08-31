@@ -40,6 +40,8 @@ import {
   Eye,
 } from "lucide-react";
 import { useOrganizationContext } from "@/contexts/OrganizationContext";
+import { useAuth } from "@/hooks/useAuth";
+import ParticipateDialog from "../components/ParticipateDialog";
 import {
   useEvent,
   useEventSchedule,
@@ -861,18 +863,25 @@ function ComponentRow({
   myParticipations: Participation[] | undefined;
   eventId: string;
 }) {
+  const { user } = useAuth();
   const createParticipation = useCreateParticipation(eventId);
   const cancelParticipation = useCancelParticipation();
   const { data: availability } = useComponentAvailability(
     component.requires_booking || component.capacity ? component.id : undefined
   );
+  const [participateOpen, setParticipateOpen] = useState(false);
 
-  const type = component.requires_booking ? "book" : "join";
-  const mine = myParticipations?.find(
-    (p) => p.event_component_id === component.id && p.type === type && p.status === "active"
+  // Join and Participate are independent — a component can offer either,
+  // both, or neither (matches how registration_enabled/requires_booking are
+  // already two separate booleans, not one type ternary).
+  const myJoin = myParticipations?.find(
+    (p) => p.event_component_id === component.id && p.type === "join" && p.status === "active"
   );
-  const canRegister = component.requires_booking ? component.requires_booking : component.registration_enabled;
+  const myBooking = myParticipations?.find(
+    (p) => p.event_component_id === component.id && p.type === "book" && p.status === "active"
+  );
   const isFull = availability?.available === 0;
+  const selfName = user ? `${user.firstName} ${user.lastName || ""}`.trim() : "You";
 
   return (
     <div className="flex items-center justify-between text-sm gap-3">
@@ -882,6 +891,9 @@ function ComponentRow({
           <span className="text-muted-foreground ml-2">
             {component.start_time}
             {component.end_time ? `–${component.end_time}` : ""}
+            {Intl.DateTimeFormat().resolvedOptions().timeZone && (
+              <span className="text-[11px] ml-1">({Intl.DateTimeFormat().resolvedOptions().timeZone})</span>
+            )}
           </span>
         )}
         {availability?.capacity != null && (
@@ -894,22 +906,47 @@ function ComponentRow({
         <Badge variant="outline" className="capitalize">
           {component.component_type.replace("_", " ")}
         </Badge>
-        {canRegister &&
-          (mine ? (
-            <Button size="sm" shape="pill" variant="outline" disabled={cancelParticipation.isPending} onClick={() => cancelParticipation.mutate(mine.id)}>
-              Cancel
+
+        {component.registration_enabled &&
+          (myJoin ? (
+            <Button size="sm" shape="pill" variant="outline" disabled={cancelParticipation.isPending} onClick={() => cancelParticipation.mutate(myJoin.id)}>
+              Cancel Join
             </Button>
           ) : (
             <Button
               size="sm"
               shape="pill"
-              disabled={createParticipation.isPending || isFull}
-              onClick={() => createParticipation.mutate({ event_id: eventId, event_component_id: component.id, type })}
+              disabled={createParticipation.isPending}
+              onClick={() => createParticipation.mutate({ event_id: eventId, event_component_id: component.id, type: "join" })}
             >
-              {isFull ? "Full" : type === "book" ? "Book" : "Join"}
+              Join
+            </Button>
+          ))}
+
+        {component.requires_booking &&
+          (myBooking ? (
+            <Button size="sm" shape="pill" variant="outline" disabled={cancelParticipation.isPending} onClick={() => cancelParticipation.mutate(myBooking.id)}>
+              Cancel
+            </Button>
+          ) : (
+            <Button size="sm" shape="pill" disabled={isFull} onClick={() => setParticipateOpen(true)}>
+              {isFull ? "Full" : "Participate"}
             </Button>
           ))}
       </div>
+
+      <ParticipateDialog
+        open={participateOpen}
+        onOpenChange={setParticipateOpen}
+        isSubmitting={createParticipation.isPending}
+        selfName={selfName}
+        onConfirm={(attendees) =>
+          createParticipation.mutate(
+            { event_id: eventId, event_component_id: component.id, type: "book", attendees },
+            { onSuccess: () => setParticipateOpen(false) }
+          )
+        }
+      />
     </div>
   );
 }

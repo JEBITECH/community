@@ -2,11 +2,13 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { ApiError } from '@shared/common';
-import { Membership } from '@shared/entities';
+import { Membership, User } from '@shared/entities';
 import { Event } from '../events/entities/event.entity';
 import { EventComponent } from '../events/entities/event-component.entity';
 import { Participation } from './entities/participation.entity';
 import { Booking } from './entities/booking.entity';
+import { BookingAttendee } from './entities/booking-attendee.entity';
+import { AttendeeDto } from './dto/attendee.dto';
 import { CreateParticipationDto } from './dto/create-participation.dto';
 import { CreatePublicParticipationDto } from './dto/create-public-participation.dto';
 import { RequestUser } from '../common/middleware/user-context.middleware';
@@ -36,14 +38,14 @@ export class ParticipationsService {
     if (dto.event_component_id) {
       assertTenantMatch(component!.organization_id, user);
     }
-    return this.createForMembership(membership, event, component, dto.type, dto.seats_requested);
+    return this.createForMembership(membership, event, component, dto.type, dto.seats_requested, dto.attendees);
   }
 
   async createGuest(dto: CreatePublicParticipationDto): Promise<Participation> {
     const { event, component } = await this.loadEventAndComponent(dto.event_id, dto.event_component_id);
     assertGuestAudienceAllowed(resolveEffectiveAudience(event, component?.eventDay, component));
     const membership = await this.guestMembershipResolver.resolve(event.organization_id, dto.guest);
-    return this.createForMembership(membership, event, component, dto.type, dto.seats_requested);
+    return this.createForMembership(membership, event, component, dto.type, dto.seats_requested, dto.attendees);
   }
 
   private async loadEventAndComponent(
@@ -73,6 +75,7 @@ export class ParticipationsService {
     component: EventComponent | null,
     type: 'join' | 'book',
     seatsRequestedInput: number | undefined,
+    attendeesInput: AttendeeDto[] | undefined,
   ): Promise<Participation> {
     if (event.status !== 'published') {
       throw new ApiError('This event is not open for registration', 409, 'EVENT_NOT_PUBLISHED');
@@ -92,7 +95,19 @@ export class ParticipationsService {
 
     const dto = { type, seats_requested: seatsRequestedInput };
     const capacity = component ? component.capacity : event.capacity;
-    const seatsRequested = dto.type === 'book' ? dto.seats_requested ?? 1 : 1;
+    const seatsRequested = dto.type === 'book' ? (attendeesInput?.length ?? dto.seats_requested ?? 1) : 1;
+
+    if (attendeesInput) {
+      const selfCount = attendeesInput.filter((a) => a.attendee_type === 'self').length;
+      if (selfCount > 1) {
+        throw new ApiError('Only one attendee can be marked "self"', 400, 'VALIDATION_ERROR');
+      }
+      for (const a of attendeesInput) {
+        if (a.attendee_type !== 'self' && !a.name && !a.membership_id) {
+          throw new ApiError('Each family/other attendee needs a name or an existing member to look up', 400, 'VALIDATION_ERROR');
+        }
+      }
+    }
 
     try {
       return await this.dataSource.transaction(async (manager) => {
@@ -130,7 +145,40 @@ export class ParticipationsService {
             participation_id: savedParticipation.id,
             seats_requested: seatsRequested,
           });
-          await manager.save(booking);
+          const savedBooking = await manager.save(booking);
+
+          if (attendeesInput) {
+            const callerUser = await manager.findOne(User, { where: { id: membership.user_id } });
+            const callerName = callerUser ? `${callerUser.firstName} ${callerUser.lastName || ''}`.trim() : 'Member';
+
+            for (const a of attendeesInput) {
+              let name = a.name;
+              if (a.attendee_type === 'self') {
+                // Never trust a client-supplied name for the caller themself.
+                name = callerName;
+              } else if (a.membership_id) {
+                // "Fetch the data" — resolve the name from an existing member
+                // rather than trusting free text, and make sure that member
+                // actually belongs to this organization.
+                const linked = await manager.findOne(Membership, {
+                  where: { id: a.membership_id, organization_id: event.organization_id },
+                });
+                if (!linked) {
+                  throw new ApiError('The membership id provided does not belong to this organization', 400, 'VALIDATION_ERROR');
+                }
+                const linkedUser = await manager.findOne(User, { where: { id: linked.user_id } });
+                name = linkedUser ? `${linkedUser.firstName} ${linkedUser.lastName || ''}`.trim() : a.name || 'Member';
+              }
+
+              const attendee = manager.create(BookingAttendee, {
+                booking_id: savedBooking.id,
+                attendee_type: a.attendee_type,
+                name: name || 'Guest',
+                membership_id: a.membership_id ?? null,
+              });
+              await manager.save(attendee);
+            }
+          }
         }
 
         return savedParticipation;
@@ -180,11 +228,30 @@ export class ParticipationsService {
     return Number(result?.total ?? 0);
   }
 
-  async findMine(user: RequestUser, type?: string): Promise<Participation[]> {
+  async findMine(user: RequestUser, type?: string): Promise<(Participation & { booking?: Booking & { attendees: BookingAttendee[] } })[]> {
     const membership = await this.membershipResolver.resolve(user);
-    return this.participationRepo.find({
+    const participations = await this.participationRepo.find({
       where: { membership_id: membership.id, ...(type ? { type: type as Participation['type'] } : {}) },
       order: { createdAt: 'DESC' },
+    });
+
+    // No ORM relation between Participation and Booking by design (see the
+    // header/detail-table split noted on Participation) — enrich 'book' rows
+    // with their booking + named attendees in one extra batch query each,
+    // rather than a relation that would blur that split.
+    const bookIds = participations.filter((p) => p.type === 'book').map((p) => p.id);
+    if (bookIds.length === 0) return participations;
+
+    const bookings = await this.bookingRepo.find({ where: bookIds.map((id) => ({ participation_id: id })) as any });
+    const bookingIds = bookings.map((b) => b.id);
+    const attendees = bookingIds.length
+      ? await this.dataSource.getRepository(BookingAttendee).find({ where: bookingIds.map((id) => ({ booking_id: id })) as any })
+      : [];
+
+    return participations.map((p) => {
+      const booking = bookings.find((b) => b.participation_id === p.id);
+      if (!booking) return p;
+      return { ...p, booking: { ...booking, attendees: attendees.filter((a) => a.booking_id === booking.id) } };
     });
   }
 

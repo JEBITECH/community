@@ -14,6 +14,23 @@ export interface Participation {
   qr_code_token: string;
   attended_at?: string | null;
   createdAt: string;
+  // Only present on 'book' rows from GET /participations/me — see AttendeeType/BookingAttendee below.
+  booking?: { id: string; seats_requested: number; attendees: BookingAttendee[] };
+}
+
+export type AttendeeType = "self" | "family" | "other";
+
+export interface AttendeeInput {
+  attendee_type: AttendeeType;
+  name?: string;
+  membership_id?: string;
+}
+
+export interface BookingAttendee {
+  id: string;
+  attendee_type: AttendeeType;
+  name: string;
+  membership_id?: string | null;
 }
 
 export interface CreateParticipationInput {
@@ -21,6 +38,7 @@ export interface CreateParticipationInput {
   event_component_id?: string;
   type: "join" | "book";
   seats_requested?: number;
+  attendees?: AttendeeInput[];
 }
 
 export interface Availability {
