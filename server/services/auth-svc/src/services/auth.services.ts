@@ -246,36 +246,52 @@ export class AuthService {
    * new numbers) or verifyOtp (for existing accounts) completes.
    */
   async requestOtp(phone: string): Promise<OtpRequestResult> {
-    if (!phone?.trim()) {
+    const normalizedPhone = phone?.trim();
+    if (!normalizedPhone) {
       throw new Error('Phone number is required');
     }
 
     const now = new Date();
-    let user = await this.userRepository.findOne({ where: { phone } });
-
-    if (user?.otp_last_requested_at &&
-      now.getTime() - user.otp_last_requested_at.getTime() < OTP_REQUEST_COOLDOWN_MS) {
-      throw new Error('Please wait before requesting another OTP');
-    }
-
     const code = String(Math.floor(100000 + Math.random() * 900000));
     const codeHash = await bcrypt.hash(code, 10);
 
-    if (!user) {
-      user = this.userRepository.create({
-        phone,
+    const issueOtp = async (manager: typeof AppDataSource.manager): Promise<User> => {
+      const existing = await manager.findOne(User, {
+        where: { phone: normalizedPhone },
+        lock: { mode: 'pessimistic_write' },
+      });
+
+      if (existing?.otp_last_requested_at &&
+        now.getTime() - existing.otp_last_requested_at.getTime() < OTP_REQUEST_COOLDOWN_MS) {
+        throw new Error('Please wait before requesting another OTP');
+      }
+
+      const user = existing ?? manager.create(User, {
+        phone: normalizedPhone,
         firstName: 'New',
         lastName: 'Member',
         role: Role.INTERNAL_MEMBER,
         isActive: false,
       });
-    }
 
-    user.otp_code_hash = codeHash;
-    user.otp_expires_at = new Date(now.getTime() + OTP_TTL_MS);
-    user.otp_attempts = 0;
-    user.otp_last_requested_at = now;
-    await this.userRepository.save(user);
+      user.otp_code_hash = codeHash;
+      user.otp_expires_at = new Date(now.getTime() + OTP_TTL_MS);
+      user.otp_attempts = 0;
+      user.otp_last_requested_at = now;
+      return manager.save(user);
+    };
+
+    let user: User;
+    try {
+      user = await AppDataSource.transaction(issueOtp);
+    } catch (error: any) {
+      // A first request for a brand-new phone has no row to lock. The unique
+      // phone constraint serializes the competing inserts; the loser must
+      // retry in a NEW transaction because the failed INSERT aborts the first
+      // transaction in PostgreSQL.
+      if (error?.code !== '23505') throw error;
+      user = await AppDataSource.transaction(issueOtp);
+    }
 
     if (process.env.NODE_ENV === 'production') {
       if (user.email) {
@@ -285,12 +301,11 @@ export class AuthService {
           console.error('[AuthService] Failed to send OTP email:', err instanceof Error ? err.message : err);
         }
       }
-      // TODO: integrate a real SMS/WhatsApp provider (e.g. Twilio, MSG91) here.
-      console.log(`[AuthService] OTP generated for ${phone} (delivery channel pending SMS integration)`);
+      console.log(`[AuthService] OTP generated for ${normalizedPhone} (delivery channel pending SMS integration)`);
       return { message: 'OTP sent' };
     }
 
-    console.log(`[DEV OTP] ${phone} -> ${code}`);
+    console.log(`[DEV OTP] ${normalizedPhone} -> ${code}`);
     return { message: 'OTP sent (dev mode)', debug_otp: code };
   }
 
@@ -300,47 +315,56 @@ export class AuthService {
    * client must present to /auth/join-community to finish registration.
    */
   async verifyOtp(phone: string, code: string): Promise<OtpVerifyResult> {
-    const user = await this.userRepository.findOne({ where: { phone } });
-    if (!user || !user.otp_code_hash || !user.otp_expires_at) {
-      throw new Error('No OTP requested for this number');
-    }
+    const normalizedPhone = phone?.trim();
+    let user!: User;
+    let membershipCount = 0;
 
-    if (user.otp_expires_at.getTime() < Date.now()) {
-      throw new Error('OTP has expired');
-    }
+    await AppDataSource.transaction(async (manager) => {
+      user = await manager.findOne(User, {
+        where: { phone: normalizedPhone },
+        lock: { mode: 'pessimistic_write' },
+      }) as User;
 
-    if (user.otp_attempts >= OTP_MAX_ATTEMPTS) {
-      throw new Error('Too many attempts. Please request a new OTP.');
-    }
+      if (!user || !user.otp_code_hash || !user.otp_expires_at) {
+        throw new Error('No OTP requested for this number');
+      }
 
-    const matches = await bcrypt.compare(code, user.otp_code_hash);
-    if (!matches) {
-      user.otp_attempts += 1;
-      await this.userRepository.save(user);
-      throw new Error('Invalid OTP');
-    }
+      if (user.otp_expires_at.getTime() < Date.now()) {
+        throw new Error('OTP has expired');
+      }
 
-    user.otp_code_hash = null;
-    user.otp_expires_at = null;
-    user.otp_attempts = 0;
-    user.phone_verified = true;
+      if (user.otp_attempts >= OTP_MAX_ATTEMPTS) {
+        throw new Error('Too many attempts. Please request a new OTP.');
+      }
 
-    const membershipCount = await this.membershipRepository.count({ where: { user_id: user.id! } });
+      const matches = await bcrypt.compare(code, user.otp_code_hash);
+      if (!matches) {
+        user.otp_attempts += 1;
+        await manager.save(user);
+        throw new Error('Invalid OTP');
+      }
+
+      user.otp_code_hash = null;
+      user.otp_expires_at = null;
+      user.otp_attempts = 0;
+      user.phone_verified = true;
+
+      membershipCount = await manager.count(Membership, { where: { user_id: user.id! } });
+
+      if (membershipCount > 0) {
+        user.isActive = true;
+      }
+      await manager.save(user);
+    });
 
     if (membershipCount === 0) {
-      // First time this phone has verified: needs to complete join-community
-      // (pick/create an organization) before an account is fully usable.
-      await this.userRepository.save(user);
       const otpVerifiedToken = jwt.sign(
-        { phone, userId: user.id },
+        { phone: normalizedPhone, userId: user.id },
         process.env.JWT_ACCESS_SECRET || 'your-access-secret',
         { expiresIn: OTP_JOIN_TOKEN_EXPIRY, issuer: 'auth-service', audience: 'community-join' },
       );
       return { isNewUser: true, otpVerifiedToken };
     }
-
-    user.isActive = true;
-    await this.userRepository.save(user);
 
     const membership = await this.resolveActiveMembership(user);
     const tokens = this.jwtService.generateTokenPair(user, membership);

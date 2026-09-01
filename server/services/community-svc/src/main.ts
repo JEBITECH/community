@@ -3,7 +3,8 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
-import { ApiExceptionFilter, initializeCommonDatabase } from '@shared/common';
+import { ApiExceptionFilter, auditService, initializeCommonDatabase } from '@shared/common';
+import { DataSource } from 'typeorm';
 import { AppModule } from './app.module';
 
 const HTTP_PORT = Number(process.env.COMMUNITY_SERVICE_PORT || 5021);
@@ -15,6 +16,8 @@ async function bootstrap() {
   await initializeCommonDatabase();
 
   const app = await NestFactory.create(AppModule);
+
+  await auditService.loadAuditConfig(app.get(DataSource));
 
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
   app.useGlobalFilters(new ApiExceptionFilter());

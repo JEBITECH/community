@@ -28,6 +28,7 @@ import { VolunteerAssignment } from './volunteers/entities/volunteer-assignment.
 import { EventComment } from './comments/entities/event-comment.entity';
 import { EventChatMessage } from './chat/entities/event-chat-message.entity';
 import { ChatConfig } from './chat/entities/chat-config.entity';
+import { CommunityAuditLogSubscriber } from './audit-logging/audit-log.subscriber';
 
 @Module({
   imports: [
@@ -73,6 +74,7 @@ import { ChatConfig } from './chat/entities/chat-config.entity';
       ],
       migrations: [__dirname + '/migrations/*.{ts,js}'],
       migrationsTableName: 'community_migrations',
+      subscribers: [CommunityAuditLogSubscriber],
     }),
     EventsModule,
     ParticipationsModule,

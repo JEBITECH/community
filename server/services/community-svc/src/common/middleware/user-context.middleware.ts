@@ -1,6 +1,7 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { runWithRequestContext } from '@shared/common';
 
 const USER_CONTEXT_SECRET = process.env.USER_CONTEXT_SECRET || 'dev-secret-change-in-production';
 
@@ -50,6 +51,21 @@ export class UserContextMiddleware implements NestMiddleware {
       // will reject the request as unauthenticated.
     }
 
-    next();
+    const requestIdHeader = req.headers['x-request-id'];
+    const transactionIdHeader = req.headers['transaction-id'];
+    const organizationIdHeader = req.headers['x-user-organization-id'];
+    const requestId = Array.isArray(requestIdHeader) ? requestIdHeader[0] : requestIdHeader;
+    const transactionId = Array.isArray(transactionIdHeader) ? transactionIdHeader[0] : transactionIdHeader;
+    const organizationId = Array.isArray(organizationIdHeader) ? organizationIdHeader[0] : organizationIdHeader;
+
+    runWithRequestContext(
+      {
+        requestId: requestId as string | undefined,
+        transactionId: transactionId as string | undefined,
+        userId: req.user?.id,
+        organizationId: (organizationId ?? req.user?.organization_id?.toString()) as string | undefined,
+      },
+      next,
+    );
   }
 }

@@ -34,3 +34,7 @@ export function getRequestId(): string | undefined {
 export function getOrganizationId(): string | undefined {
   return getRequestContext()?.organizationId;
 }
+
+export function getUserId(): string | undefined {
+  return getRequestContext()?.userId;
+}

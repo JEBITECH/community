@@ -867,6 +867,9 @@ function ComponentRow({
     component.requires_booking || component.capacity ? component.id : undefined
   );
 
+  const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
+  const [seatsRequested, setSeatsRequested] = useState(1);
+
   const type = component.requires_booking ? "book" : "join";
   const mine = myParticipations?.find(
     (p) => p.event_component_id === component.id && p.type === type && p.status === "active"
@@ -899,6 +902,18 @@ function ComponentRow({
             <Button size="sm" shape="pill" variant="outline" disabled={cancelParticipation.isPending} onClick={() => cancelParticipation.mutate(mine.id)}>
               Cancel
             </Button>
+          ) : type === "book" ? (
+            <Button
+              size="sm"
+              shape="pill"
+              disabled={isFull}
+              onClick={() => {
+                setSeatsRequested(1);
+                setBookingDialogOpen(true);
+              }}
+            >
+              {isFull ? "Full" : "Book"}
+            </Button>
           ) : (
             <Button
               size="sm"
@@ -906,10 +921,51 @@ function ComponentRow({
               disabled={createParticipation.isPending || isFull}
               onClick={() => createParticipation.mutate({ event_id: eventId, event_component_id: component.id, type })}
             >
-              {isFull ? "Full" : type === "book" ? "Book" : "Join"}
+              {isFull ? "Full" : "Join"}
             </Button>
           ))}
       </div>
+
+      {type === "book" && (
+        <Dialog open={bookingDialogOpen} onOpenChange={setBookingDialogOpen}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Book "{component.name}"</DialogTitle>
+            </DialogHeader>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">Number of seats</label>
+              <Input
+                type="number"
+                min={1}
+                max={availability?.available ?? undefined}
+                value={seatsRequested}
+                onChange={(e) => setSeatsRequested(Math.max(1, Number(e.target.value) || 1))}
+              />
+              {availability?.capacity != null && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  {availability.available} of {availability.capacity} spots left
+                </p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                disabled={
+                  createParticipation.isPending ||
+                  (availability?.available != null && seatsRequested > availability.available)
+                }
+                onClick={() =>
+                  createParticipation.mutate(
+                    { event_id: eventId, event_component_id: component.id, type, seats_requested: seatsRequested },
+                    { onSuccess: () => setBookingDialogOpen(false) }
+                  )
+                }
+              >
+                Confirm Booking
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { RegisterDto, UserService } from '../services/user.services';
 import { Body, Get, JsonController, Param, Patch, Post, Put, Res, Req, UseBefore } from 'routing-controllers';
 import { UserUpdateDto } from '../dto/userupdate.dto';
 import { AuthService } from '../services/auth.services';
-import { Paginate, PaginateQuery } from '@shared/common';
+import { Paginate, PaginateQuery, Role } from '@shared/common';
 
 @JsonController('/auth/user')
 export class UserController {
@@ -61,11 +61,21 @@ export class UserController {
 
 @Get('/organization/:organizationId')
 async getUsersByOrganizationId(
+  @Req() req: Request,
   @Param('organizationId') organizationId: number,
   @Res() res: Response
 ) {
+  const role = req.headers['x-user-role'] as string | undefined;
+  const rawOrgId = req.headers['x-user-organization-id'];
+  const callerOrgId = Number(Array.isArray(rawOrgId) ? rawOrgId[0] : rawOrgId);
+  const requestedOrgId = Number(organizationId);
+
+  if (role !== Role.MASTER_ADMIN && !(role === Role.SUPER_ADMIN && callerOrgId === requestedOrgId)) {
+    return res.status(403).json({ error: 'You are not allowed to view users in this organization' });
+  }
+
   try {
-    const result = await this.userService.getUsersByOrganizationId(Number(organizationId));
+    const result = await this.userService.getUsersByOrganizationId(requestedOrgId);
     return res.json({ users: result });
   } catch (error) {
     return res.status(500).json({

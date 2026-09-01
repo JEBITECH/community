@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { useOrganizationContext } from "@/contexts/OrganizationContext";
 import Layout from "@/components/Layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -35,14 +36,22 @@ function StatCard({ label, value, icon: Icon, sub }: { label: string; value: str
 export default function OrgDashboard() {
   const navigate = useNavigate();
   const { data: summary, isLoading } = useOrgSummary();
+  const { activeMembership } = useOrganizationContext();
 
   return (
     <Layout title="Dashboard" subtitle="How your community is doing" icon={<LayoutDashboard className="w-5 h-5" />}>
       <div className="max-w-3xl mx-auto py-6 px-4 space-y-6">
         <div className="flex justify-end">
-          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate("/reports")}>
-            <FileBarChart className="w-3.5 h-3.5" /> Reports
-          </Button>
+          <div className="flex gap-2">
+            {activeMembership?.role === "super_admin" && (
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate(`/organizations/${activeMembership.organization_id}/edit`)}>
+                Organization Settings
+              </Button>
+            )}
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => navigate("/reports")}>
+              <FileBarChart className="w-3.5 h-3.5" /> Reports
+            </Button>
+          </div>
         </div>
 
         {isLoading || !summary ? (
