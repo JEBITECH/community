@@ -35,6 +35,7 @@ export class CommentsService {
   ) {}
 
   async create(user: RequestUser, eventId: string, dto: CreateCommentDto): Promise<EventComment> {
+    const isAdmin = ADMIN_ROLES.includes(user.role);
     const membership = await this.membershipResolver.resolve(user);
     const event = await this.eventRepo.findOne({ where: { id: eventId } });
     if (!event) {
@@ -64,7 +65,7 @@ export class CommentsService {
         throw new ApiError('Discussion not found', 404, 'NOT_FOUND');
       }
 
-      if (event.status !== 'published') {
+      if (!isAdmin && event.status !== 'published') {
         throw new ApiError('Event discussions are not available', 404, 'NOT_FOUND');
       }
 
