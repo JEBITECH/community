@@ -12,8 +12,9 @@ export type EventType =
 
 export type EventAudience = "internal" | "internal_external" | "public" | "invite_only";
 export type EventStatus = "draft" | "published" | "cancelled" | "completed";
-export type ComponentType = "activity" | "seva" | "donation_drive" | "session";
+export type ComponentType = "activity" | "seva" | "donation_drive" | "session" | "book";
 export type LocationResource = "conference_room" | "lab" | "terrace" | "open_space" | "club";
+export type DayRegistrationMode = "join" | "participate" | "both";
 
 export interface EventComponent {
   id: string;
@@ -29,6 +30,7 @@ export interface EventComponent {
   capacity?: number;
   audience?: EventAudience;
   registration_enabled: boolean;
+  participation_enabled: boolean;
   donation_enabled: boolean;
   sponsorship_enabled: boolean;
   volunteer_enabled: boolean;
@@ -47,6 +49,7 @@ export interface EventDay {
   description?: string;
   sequence: number;
   audience?: EventAudience;
+  registration_mode: DayRegistrationMode;
   components?: EventComponent[];
 }
 
@@ -60,6 +63,7 @@ export interface CommunityEvent {
   start_date: string;
   end_date: string;
   venue?: string;
+  timezone: string;
   cover_image_url?: string;
   capacity?: number;
   audience: EventAudience;
@@ -82,6 +86,7 @@ export interface CreateEventInput {
   start_date: string;
   end_date: string;
   venue?: string;
+  timezone?: string;
   cover_image_url?: string;
   capacity?: number;
   audience?: EventAudience;
@@ -101,6 +106,7 @@ export interface CreateEventDayInput {
   description?: string;
   sequence?: number;
   audience?: EventAudience;
+  registration_mode?: DayRegistrationMode;
 }
 
 export interface CreateEventComponentInput {
@@ -114,6 +120,7 @@ export interface CreateEventComponentInput {
   capacity?: number;
   audience?: EventAudience;
   registration_enabled?: boolean;
+  participation_enabled?: boolean;
   donation_enabled?: boolean;
   sponsorship_enabled?: boolean;
   volunteer_enabled?: boolean;

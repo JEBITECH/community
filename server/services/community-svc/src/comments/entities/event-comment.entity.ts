@@ -8,6 +8,7 @@ export type CommentModerationStatus = 'visible' | 'hidden' | 'reported';
  * the "1-level threaded" scope in the spec. */
 @Entity('event_comment')
 @Index(['event_id'])
+@Index(['discussion_topic_id'])
 export class EventComment {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -20,6 +21,9 @@ export class EventComment {
 
   @Column({ type: 'uuid', nullable: true })
   event_component_id?: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  discussion_topic_id?: string | null;
 
   @Column({ type: 'uuid' })
   membership_id!: string;

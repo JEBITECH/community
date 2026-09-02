@@ -1,17 +1,15 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Unique } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from 'typeorm';
 
-export type VolunteerApprovalStatus = 'pending' | 'approved' | 'rejected';
+export type VolunteerApprovalStatus = 'pending' | 'approved' | 'rejected' | 'withdrawn';
 
 /**
  * 1:1 with a Participation row where type='volunteer'. membership_id is
  * denormalized from the participation (rather than joined) so a DB-level
- * @Unique(['membership_id','volunteer_role_id']) can catch double sign-up
- * races the same way Participation's partial unique indexes do — a role
- * isn't an EventComponent, so Participation's own uniqueness rules don't
- * cover it.
+ * active pending/approved assignments are kept unique by a partial database
+ * index. Rejected/withdrawn rows remain as audit history and do not block a
+ * future sign-up for the same role.
  */
 @Entity('volunteer_assignment')
-@Unique('UQ_volunteer_assignment_membership_role', ['membership_id', 'volunteer_role_id'])
 export class VolunteerAssignment {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

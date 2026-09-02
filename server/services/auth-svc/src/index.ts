@@ -37,11 +37,13 @@ app.use((req, res, next) => {
   const requestId: string = Array.isArray(req.headers['x-request-id']) ? req.headers['x-request-id'][0] : req.headers['x-request-id'];
   const transactionId: string = Array.isArray(req.headers['transaction-id']) ? req.headers['transaction-id'][0] : req.headers['transaction-id'];
   const organizationId: string = Array.isArray(req.headers['x-user-organization-id']) ? req.headers['x-user-organization-id'][0] : req.headers['x-user-organization-id'];
+  const userId: string = Array.isArray(req.headers['x-user-id']) ? req.headers['x-user-id'][0] : req.headers['x-user-id'];
   // const serviceName: string = Array.isArray(req.headers['service-name']) ? req.headers['service-name'][0] : req.headers['service-name'];
   runWithRequestContext({
     requestId,
     transactionId,
-    organizationId
+    organizationId,
+    userId
   }, () => next());
 
 });

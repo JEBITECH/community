@@ -7,6 +7,10 @@ export class CreateCommentDto {
 
   @IsOptional()
   @IsUUID()
+  discussion_topic_id?: string;
+
+  @IsOptional()
+  @IsUUID()
   parent_comment_id?: string;
 
   @IsString()

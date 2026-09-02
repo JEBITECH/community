@@ -1,8 +1,9 @@
 import { ApiError } from '@shared/common';
+import { EventAudience } from '../../events/entities/event.entity';
 import { assertGuestAudienceAllowed, resolveEffectiveAudience } from './audience.helper';
 
 describe('resolveEffectiveAudience', () => {
-  const event = { audience: 'internal' };
+  const event: { audience: EventAudience } = { audience: 'internal' };
 
   it('falls back to the event when neither day nor component override it', () => {
     expect(resolveEffectiveAudience(event, null, null)).toBe('internal');

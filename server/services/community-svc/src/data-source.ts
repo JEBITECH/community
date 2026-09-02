@@ -9,6 +9,7 @@ import { EventDay } from './events/entities/event-day.entity';
 import { EventComponent } from './events/entities/event-component.entity';
 import { EventOrganizer } from './events/entities/event-organizer.entity';
 import { Participation } from './participations/entities/participation.entity';
+import { ParticipationBeneficiary } from './participations/entities/participation-beneficiary.entity';
 import { Booking } from './participations/entities/booking.entity';
 import { Donation } from './donations/entities/donation.entity';
 import { SponsorshipNeed } from './donations/entities/sponsorship-need.entity';
@@ -16,6 +17,8 @@ import { Sponsorship } from './donations/entities/sponsorship.entity';
 import { VolunteerRole } from './volunteers/entities/volunteer-role.entity';
 import { VolunteerAssignment } from './volunteers/entities/volunteer-assignment.entity';
 import { EventComment } from './comments/entities/event-comment.entity';
+import { EventDiscussionTopic } from './discussions/entities/event-discussion-topic.entity';
+import { Announcement } from './announcements/entities/announcement.entity';
 import { EventChatMessage } from './chat/entities/event-chat-message.entity';
 import { ChatConfig } from './chat/entities/chat-config.entity';
 
@@ -46,6 +49,7 @@ export default new DataSource({
     EventComponent,
     EventOrganizer,
     Participation,
+    ParticipationBeneficiary,
     Booking,
     Donation,
     SponsorshipNeed,
@@ -53,6 +57,8 @@ export default new DataSource({
     VolunteerRole,
     VolunteerAssignment,
     EventComment,
+    EventDiscussionTopic,
+    Announcement,
     EventChatMessage,
     ChatConfig,
   ],

@@ -16,6 +16,19 @@ function callerRole(req: Request): string | undefined {
     return req.headers['x-user-role'] as string | undefined;
 }
 
+function callerOrganizationId(req: Request): number | undefined {
+    const raw = req.headers['x-user-organization-id'];
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    const id = Number(value);
+    return Number.isInteger(id) && id > 0 ? id : undefined;
+}
+
+function canManageOrganization(req: Request, organizationId: number): boolean {
+    const role = callerRole(req);
+    return role === Role.MASTER_ADMIN ||
+        (role === Role.SUPER_ADMIN && callerOrganizationId(req) === organizationId);
+}
+
 @JsonController('/auth/organizations')
 export class OrganizationController {
 
@@ -79,7 +92,10 @@ export class OrganizationController {
 
     @Get('/:id')
     @ResponseSchema(OrganizationDetailDto)
-    async findOrganizationById(@Param("id") id: number, @Res() res: Response) {
+    async findOrganizationById(@Req() req: Request, @Param("id") id: number, @Res() res: Response) {
+        if (!canManageOrganization(req, Number(id))) {
+            return res.status(403).json({ error: 'You are not allowed to view this organization' });
+        }
         try {
             const organization = await this.organizationService.getOrganizationById(id);
             if (!organization) {
@@ -93,8 +109,8 @@ export class OrganizationController {
 
     @Patch('/:id')
     async updateOrganizationById(@Req() req: Request, @Param('id') id: number, @Body() dto: OrganizationDto, @Res() res: Response) {
-        if (callerRole(req) !== Role.MASTER_ADMIN) {
-            return res.status(403).json({ error: 'Only the platform admin can update an organization' });
+        if (!canManageOrganization(req, Number(id))) {
+            return res.status(403).json({ error: 'You are not allowed to update this organization' });
         }
         try {
             const organization = await this.organizationService.updateOrganizationById(id, dto);
@@ -162,7 +178,10 @@ export class OrganizationController {
         }
     }
     @Get('/modules-by-Organization/:id')
-    async findModulesByOrganizationId(@Param("id") id: number, @Res() res: Response) {
+    async findModulesByOrganizationId(@Req() req: Request, @Param("id") id: number, @Res() res: Response) {
+        if (!canManageOrganization(req, Number(id))) {
+            return res.status(403).json({ error: 'You are not allowed to view this organization module usage' });
+        }
         try {
             const moduleList = await this.organizationService.getModulesByOrganizationId(id);
             if (!moduleList) {

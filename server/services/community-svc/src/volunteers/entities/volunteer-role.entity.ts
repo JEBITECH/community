@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 
 export type VolunteerRoleStatus = 'open' | 'filled' | 'closed';
+export type VolunteerRoleKind = 'volunteer' | 'book';
 
 /** A seva/volunteer slot on an event or a specific component within it. */
 @Entity('volunteer_role')
@@ -39,6 +40,14 @@ export class VolunteerRole {
 
   @Column({ type: 'int' })
   headcount_needed!: number;
+
+  /** 'volunteer' = the existing seva sign-up slot. 'book' = the new "Book"
+   * section shown under the same Volunteer heading — same slot mechanics
+   * (title, time window, headcount), but presented to members as a
+   * booking rather than a volunteering commitment (e.g. booking a prasad
+   * distribution slot rather than signing up to serve it). */
+  @Column({ type: 'varchar', default: 'volunteer' })
+  kind!: VolunteerRoleKind;
 
   /** Denormalized count of active (pending+approved) assignments, maintained
    * transactionally alongside VolunteerAssignment inserts/removals so slot

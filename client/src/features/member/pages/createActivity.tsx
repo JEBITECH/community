@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import AppStepper from "@/components/reusable ui/AppStepper";
 import OptionCard from "@/components/reusable ui/OptionCard";
 import {
@@ -43,6 +44,25 @@ const AUDIENCE_OPTIONS: { value: EventAudience; label: string; description: stri
   { value: "invite_only", label: "Invite Only", description: "Only people you invite can join" },
 ];
 
+const COMMON_TIMEZONES = [
+  "Asia/Kolkata",
+  "Asia/Dubai",
+  "Asia/Singapore",
+  "America/New_York",
+  "America/Los_Angeles",
+  "America/Chicago",
+  "Europe/London",
+  "Australia/Sydney",
+];
+
+function detectBrowserTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Kolkata";
+  } catch {
+    return "Asia/Kolkata";
+  }
+}
+
 export default function CreateActivity() {
   const navigate = useNavigate();
   const createEvent = useCreateEvent();
@@ -55,6 +75,7 @@ export default function CreateActivity() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [venue, setVenue] = useState("");
+  const [timezone, setTimezone] = useState<string>(detectBrowserTimezone());
   const [audience, setAudience] = useState<EventAudience>("internal");
   const [capacity, setCapacity] = useState("");
   const [registrationRequired, setRegistrationRequired] = useState(true);
@@ -80,6 +101,7 @@ export default function CreateActivity() {
         start_date: startDate,
         end_date: isMultiDay ? endDate : startDate,
         venue: venue.trim() || undefined,
+        timezone,
         audience,
         capacity: capacity ? Number(capacity) : undefined,
         registration_required: registrationRequired,
@@ -174,6 +196,24 @@ export default function CreateActivity() {
                     You'll add each day's schedule and activities after creating the festival shell.
                   </p>
                 )}
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Time zone</label>
+                  <Select value={timezone} onValueChange={setTimezone}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(COMMON_TIMEZONES.includes(timezone) ? COMMON_TIMEZONES : [timezone, ...COMMON_TIMEZONES]).map((tz) => (
+                        <SelectItem key={tz} value={tz}>
+                          {tz}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Every time shown for this event's schedule, bookings, and activities will be in this zone.
+                  </p>
+                </div>
               </div>
             )}
 
@@ -230,6 +270,7 @@ export default function CreateActivity() {
                     ["Name", name],
                     ["Venue", venue || "—"],
                     ["Dates", isMultiDay ? `${startDate} → ${endDate}` : startDate],
+                    ["Time zone", timezone],
                     ["Audience", AUDIENCE_OPTIONS.find((a) => a.value === audience)?.label],
                     ["Capacity", capacity || "Unlimited"],
                   ].map(([k, v]) => (

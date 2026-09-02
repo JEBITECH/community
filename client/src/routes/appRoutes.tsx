@@ -20,13 +20,16 @@ const Explore = lazy(() => import("@/features/member/pages/explore"));
 const CreateActivity = lazy(() => import("@/features/member/pages/createActivity"));
 const ActivityDetail = lazy(() => import("@/features/member/pages/activityDetail"));
 const MyActivities = lazy(() => import("@/features/member/pages/myActivities"));
+const Announcements = lazy(() => import("@/features/member/pages/announcements"));
 const Directory = lazy(() => import("@/features/member/pages/directory"));
 const CommunityCalendar = lazy(() => import("@/features/member/pages/calendar"));
 const OrgDashboard = lazy(() => import("@/features/member/pages/orgDashboard"));
 const PlatformDashboard = lazy(() => import("@/features/member/pages/platformDashboard"));
 const CreateOrganization = lazy(() => import("@/features/member/pages/createOrganization"));
 const Reports = lazy(() => import("@/features/member/pages/reports"));
-const OrganizationSettings=lazy(()=> import("@/features/member/pages/organizationSettings"))
+const OrganizationSettings = lazy(() => import("@/features/member/pages/organizationSettings"));
+const OrganizationDetail = lazy(() => import("@/features/member/pages/organizationDetail"));
+const SubscriptionPlans = lazy(() => import("@/features/member/pages/subscriptionPlans"));
 const GuestLanding = lazy(() => import("@/features/guest/pages/GuestLanding"));
 const GuestActivity = lazy(() => import("@/features/guest/pages/GuestActivity"));
 const GuestConfirmation = lazy(() => import("@/features/guest/pages/GuestConfirmation"));
@@ -67,11 +70,14 @@ const AppRouter = () => {
             <Route path="/create-activity" element={<CreateActivity />} />
             <Route path="/events/:id" element={<ActivityDetail />} />
             <Route path="/my-activities" element={<MyActivities />} />
+            <Route path="/announcements" element={<Announcements />} />
             <Route path="/directory" element={<Directory />} />
             <Route path="/calendar" element={<CommunityCalendar />} />
             <Route path="/org-dashboard" element={<OrgDashboard />} />
             <Route path="/platform-dashboard" element={<PlatformDashboard />} />
+            <Route path="/organizations/:id" element={<OrganizationDetail />} />
             <Route path="/organizations/:id/edit" element={<OrganizationSettings />} />
+            <Route path="/subscription-plans" element={<SubscriptionPlans />} />
             <Route path="/organizations/new" element={<CreateOrganization />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/users" element={<UserManagement />} />

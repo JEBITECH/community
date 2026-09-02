@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsString, IsUUID, Matches, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, IsUUID, Matches, Min } from 'class-validator';
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -28,4 +28,10 @@ export class CreateVolunteerRoleDto {
   @IsInt()
   @Min(1)
   headcount_needed!: number;
+
+  /** 'volunteer' (default) = existing seva sign-up. 'book' = shown under
+   * the same "Volunteer" heading's new "Book" section. */
+  @IsOptional()
+  @IsIn(['volunteer', 'book'])
+  kind?: 'volunteer' | 'book';
 }

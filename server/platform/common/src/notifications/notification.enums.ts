@@ -39,6 +39,7 @@ export const SUPPORTED_EVENT_TYPES = [
   'form.submitted',
   'auth.otp',
   'marketing.promotion',
+  'community.announcement_published',
 ] as const;
 
 export type SupportedEventType = (typeof SUPPORTED_EVENT_TYPES)[number];
@@ -50,4 +51,5 @@ export const EVENT_PRIORITY_MAP: Record<string, NotificationPriority> = {
   'reservation.cancelled': NotificationPriority.HIGH,
   'form.submitted': NotificationPriority.MEDIUM,
   'marketing.promotion': NotificationPriority.LOW,
+  'community.announcement_published': NotificationPriority.HIGH,
 };

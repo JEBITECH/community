@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import StatusChip from "@/components/reusable ui/StatusChip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +15,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import ProgressMeter from "@/components/reusable ui/ProgressMeter";
 import {
@@ -31,15 +33,12 @@ import {
   HandHeart,
   Check,
   X,
-  MessageCircle,
   MessagesSquare,
-  Flag,
-  Pencil,
-  Trash2,
-  EyeOff,
-  Eye,
 } from "lucide-react";
 import { useOrganizationContext } from "@/contexts/OrganizationContext";
+import { useAuth } from "@/hooks/useAuth";
+import BeneficiaryPicker from "../components/BeneficiaryPicker";
+import { BeneficiaryInput } from "../api/participations";
 import {
   useEvent,
   useEventSchedule,
@@ -48,7 +47,7 @@ import {
   useCreateEventDay,
   useCreateEventComponent,
 } from "../hooks/useEvents";
-import { useMyParticipations, useCreateParticipation, useCancelParticipation, useComponentAvailability } from "../hooks/useParticipations";
+import { useMyParticipations, useCreateParticipation, useCancelParticipation, useComponentAvailability, useUpdateParticipation } from "../hooks/useParticipations";
 import {
   useSponsorshipNeeds,
   useCreateSponsorshipNeed,
@@ -69,13 +68,12 @@ import {
   useApproveVolunteerAssignment,
   useRejectVolunteerAssignment,
 } from "../hooks/useVolunteers";
-import { useEventComments, useCreateComment, useUpdateComment, useDeleteComment, useReportComment, useModerateComment } from "../hooks/useComments";
 import { useEventChat } from "../hooks/useChat";
-import { EventComponent, EventAudience } from "../api/events";
+import EventDiscussionBoard from "../components/EventDiscussionBoard";
+import { EventComponent, EventAudience, DayRegistrationMode } from "../api/events";
 import { Participation } from "../api/participations";
 import { SponsorshipNeed } from "../api/donations";
 import { VolunteerRole } from "../api/volunteers";
-import { EventComment } from "../api/comments";
 
 const INHERIT_AUDIENCE = "inherit" as const;
 
@@ -87,9 +85,24 @@ const DAY_AUDIENCE_OPTIONS: { value: EventAudience | typeof INHERIT_AUDIENCE; la
   { value: "invite_only", label: "Invite Only" },
 ];
 
+/** What every activity added under a day is allowed to offer. This is a
+ * hard constraint enforced server-side (see event-components.service.ts) —
+ * this dropdown, and the Add Activity dialog only rendering the allowed
+ * checkbox(es), are just the UI reflecting that same rule up front. */
+const DAY_REGISTRATION_MODE_OPTIONS: { value: DayRegistrationMode; label: string; description: string }[] = [
+  { value: "join", label: "Join only", description: "Every activity this day can only offer one-tap Join." },
+  {
+    value: "participate",
+    label: "Participate only",
+    description: "Every activity this day can only offer detailed Participate registration.",
+  },
+  { value: "both", label: "Join and Participate", description: "Each activity can offer Join, Participate, or both, individually." },
+];
+
 export default function ActivityDetail() {
   const { id } = useParams<{ id: string }>();
   const { isSuperAdmin, activeMembership } = useOrganizationContext();
+  const { user } = useAuth();
   const canManage = isSuperAdmin || activeMembership?.role === "core_committee";
 
   const { data: event, isLoading } = useEvent(id);
@@ -100,18 +113,95 @@ export default function ActivityDetail() {
   const createComponent = useCreateEventComponent(id!);
 
   const [dayDialogOpen, setDayDialogOpen] = useState(false);
-  const [dayForm, setDayForm] = useState<{ title: string; date: string; audience: EventAudience | typeof INHERIT_AUDIENCE }>({
+  const [dayForm, setDayForm] = useState<{
+    title: string;
+    date: string;
+    audience: EventAudience | typeof INHERIT_AUDIENCE;
+    registration_mode: DayRegistrationMode;
+  }>({
     title: "",
     date: "",
     audience: INHERIT_AUDIENCE,
+    registration_mode: "both",
   });
 
   const [componentDialogFor, setComponentDialogFor] = useState<string | null>(null);
-  const [componentForm, setComponentForm] = useState({ name: "" });
+  const [componentDialogMode, setComponentDialogMode] = useState<DayRegistrationMode>("both");
+  const [componentForm, setComponentForm] = useState({
+    name: "",
+    description: "",
+    start_time: "",
+    end_time: "",
+    registration_enabled: true,
+    participation_enabled: false,
+  });
 
   const { data: myParticipations } = useMyParticipations();
   const createParticipation = useCreateParticipation(id);
   const cancelParticipation = useCancelParticipation();
+  const updateParticipation = useUpdateParticipation();
+
+  // Keep one registration dialog at page level. Mounting one dialog per row
+  // made the participation UI vulnerable to portal/state conflicts. The row
+  // now only requests that this page open the selected activity.
+  const [registrationDialog, setRegistrationDialog] = useState<{
+    component: EventComponent;
+    entry: "participate" | "book";
+    editingParticipationId: string | null;
+  } | null>(null);
+  const [registrationBeneficiaries, setRegistrationBeneficiaries] = useState<BeneficiaryInput[]>([{ relation_type: "self" }]);
+  const [registrationMode, setRegistrationMode] = useState<"single" | "multiple">("single");
+  const { data: registrationAvailability } = useComponentAvailability(registrationDialog?.component.id);
+  const selfName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "You";
+
+  const openRegistrationDialog = (component: EventComponent, entry: "participate" | "book") => {
+    setRegistrationDialog({ component, entry, editingParticipationId: null });
+    setRegistrationBeneficiaries([{ relation_type: "self" }]);
+    setRegistrationMode("single");
+  };
+
+  const openEditParticipationDialog = (participation: Participation, component: EventComponent) => {
+    const existing = (participation.beneficiaries ?? []).map((b) => ({
+      relation_type: b.relation_type,
+      full_name: b.relation_type === "self" ? undefined : b.full_name,
+      membership_id: b.membership_id ?? undefined,
+    }));
+    setRegistrationDialog({ component, entry: "participate", editingParticipationId: participation.id });
+    setRegistrationBeneficiaries(existing.length > 0 ? existing : [{ relation_type: "self" }]);
+    setRegistrationMode(participation.mode);
+  };
+
+  const closeRegistrationDialog = () => {
+    if (createParticipation.isPending || updateParticipation.isPending) return;
+    setRegistrationDialog(null);
+  };
+
+  const submitRegistrationDialog = () => {
+    if (!registrationDialog) return;
+    if (registrationDialog.editingParticipationId) {
+      updateParticipation.mutate(
+        {
+          id: registrationDialog.editingParticipationId,
+          data: { mode: registrationMode, beneficiaries: registrationBeneficiaries },
+        },
+        { onSuccess: () => setRegistrationDialog(null) },
+      );
+      return;
+    }
+
+    createParticipation.mutate(
+      {
+        event_id: id!,
+        event_component_id: registrationDialog.component.id,
+        type: registrationDialog.entry === "book" ? "book" : "join",
+        registration_method: registrationDialog.entry === "book" ? undefined : "participate",
+        mode: registrationMode,
+        beneficiaries: registrationBeneficiaries.length > 0 ? registrationBeneficiaries : undefined,
+      },
+      { onSuccess: () => setRegistrationDialog(null) },
+    );
+  };
+
 
   const myEventJoin = myParticipations?.find(
     (p) => p.event_id === id && !p.event_component_id && p.type === "join" && p.status === "active"
@@ -140,18 +230,11 @@ export default function ActivityDetail() {
   const { data: myVolunteerAssignments } = useMyVolunteerAssignments();
   const myAssignmentsForEvent = myVolunteerAssignments?.filter((a) => a.event_id === id);
 
-  const [roleDialogOpen, setRoleDialogOpen] = useState(false);
+  const [roleDialogOpen, setRoleDialogOpen] = useState<"volunteer" | "book" | false>(false);
   const [roleForm, setRoleForm] = useState({ title: "", description: "", slot_start: "", slot_end: "", headcount_needed: "" });
 
   const [manageRoleId, setManageRoleId] = useState<string | null>(null);
 
-  const { data: comments } = useEventComments(id);
-  const createComment = useCreateComment(id!);
-  const updateComment = useUpdateComment(id!);
-  const deleteComment = useDeleteComment(id!);
-  const reportComment = useReportComment(id!);
-  const moderateComment = useModerateComment(id!);
-  const [newComment, setNewComment] = useState("");
 
   const [chatOpen, setChatOpen] = useState(false);
   const { messages: chatMessages, connected: chatConnected, sendMessage: sendChatMessage } = useEventChat(chatOpen ? id : undefined);
@@ -190,6 +273,7 @@ export default function ActivityDetail() {
                 <CalendarDays className="w-4 h-4" />
                 {event.start_date}
                 {event.is_multi_day ? ` → ${event.end_date}` : ""}
+                {event.timezone && <span className="text-xs text-muted-foreground">({event.timezone})</span>}
               </span>
               {event.venue && (
                 <span className="flex items-center gap-1">
@@ -288,7 +372,18 @@ export default function ActivityDetail() {
                         size="sm"
                         variant="ghost"
                         className="gap-1"
-                        onClick={() => setComponentDialogFor(day.id)}
+                        onClick={() => {
+                          setComponentDialogMode(day.registration_mode);
+                          setComponentForm({
+                            name: "",
+                            description: "",
+                            start_time: "",
+                            end_time: "",
+                            registration_enabled: day.registration_mode !== "participate",
+                            participation_enabled: day.registration_mode === "participate",
+                          });
+                          setComponentDialogFor(day.id);
+                        }}
                       >
                         <Plus className="w-3.5 h-3.5" /> Add Activity
                       </Button>
@@ -298,7 +393,16 @@ export default function ActivityDetail() {
                   {(day.components || []).length > 0 && (
                     <div className="space-y-2 pt-2 border-t border-border">
                       {day.components!.map((c) => (
-                        <ComponentRow key={c.id} component={c} myParticipations={myParticipations} eventId={id!} />
+                        <ComponentRow
+                          key={c.id}
+                          component={c}
+                          myParticipations={myParticipations}
+                          eventId={id!}
+                          timezone={event?.timezone}
+                          canManage={canManage}
+                          onOpenRegistration={openRegistrationDialog}
+                          onEditParticipation={openEditParticipationDialog}
+                        />
                       ))}
                     </div>
                   )}
@@ -309,31 +413,65 @@ export default function ActivityDetail() {
         </div>
 
         {event.volunteer_enabled && event.status === "published" && (
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-foreground flex items-center gap-1.5">
-                <HandHeart className="w-4 h-4" /> Volunteer / Seva
-              </h3>
-              {canManage && (
-                <Button size="sm" variant="outline" className="gap-1" onClick={() => setRoleDialogOpen(true)}>
-                  <Plus className="w-3.5 h-3.5" /> Add Role
-                </Button>
+          <div className="space-y-6">
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-foreground flex items-center gap-1.5">
+                  <HandHeart className="w-4 h-4" /> Volunteer / Seva
+                </h3>
+                {canManage && (
+                  <Button size="sm" variant="outline" className="gap-1" onClick={() => setRoleDialogOpen("volunteer")}>
+                    <Plus className="w-3.5 h-3.5" /> Add Role
+                  </Button>
+                )}
+              </div>
+              {(volunteerRoles || []).filter((r) => r.kind !== "book").length === 0 && (
+                <p className="text-sm text-muted-foreground">No volunteer opportunities yet.</p>
               )}
+              <div className="space-y-3">
+                {(volunteerRoles || [])
+                  .filter((r) => r.kind !== "book")
+                  .map((role) => (
+                    <VolunteerRoleRow
+                      key={role.id}
+                      role={role}
+                      eventId={id!}
+                      canManage={canManage}
+                      myAssignment={myAssignmentsForEvent?.find((a) => a.volunteer_role_id === role.id && a.participation_status === "active" && a.approval_status !== "rejected" && a.approval_status !== "withdrawn")}
+                      onManage={() => setManageRoleId(role.id)}
+                    />
+                  ))}
+              </div>
             </div>
-            {(volunteerRoles || []).length === 0 && (
-              <p className="text-sm text-muted-foreground">No volunteer opportunities yet.</p>
-            )}
-            <div className="space-y-3">
-              {(volunteerRoles || []).map((role) => (
-                <VolunteerRoleRow
-                  key={role.id}
-                  role={role}
-                  eventId={id!}
-                  canManage={canManage}
-                  myAssignment={myAssignmentsForEvent?.find((a) => a.volunteer_role_id === role.id && a.approval_status !== "rejected")}
-                  onManage={() => setManageRoleId(role.id)}
-                />
-              ))}
+
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-foreground flex items-center gap-1.5">
+                  <CalendarCheck className="w-4 h-4" /> Book
+                </h3>
+                {canManage && (
+                  <Button size="sm" variant="outline" className="gap-1" onClick={() => setRoleDialogOpen("book")}>
+                    <Plus className="w-3.5 h-3.5" /> Add Booking Slot
+                  </Button>
+                )}
+              </div>
+              {(volunteerRoles || []).filter((r) => r.kind === "book").length === 0 && (
+                <p className="text-sm text-muted-foreground">No booking slots yet.</p>
+              )}
+              <div className="space-y-3">
+                {(volunteerRoles || [])
+                  .filter((r) => r.kind === "book")
+                  .map((role) => (
+                    <VolunteerRoleRow
+                      key={role.id}
+                      role={role}
+                      eventId={id!}
+                      canManage={canManage}
+                      myAssignment={myAssignmentsForEvent?.find((a) => a.volunteer_role_id === role.id && a.participation_status === "active" && a.approval_status !== "rejected" && a.approval_status !== "withdrawn")}
+                      onManage={() => setManageRoleId(role.id)}
+                    />
+                  ))}
+              </div>
             </div>
           </div>
         )}
@@ -429,45 +567,11 @@ export default function ActivityDetail() {
           </div>
         )}
 
-        <div>
-          <h3 className="font-semibold text-foreground mb-3 flex items-center gap-1.5">
-            <MessageCircle className="w-4 h-4" /> Discussion
-          </h3>
-          <div className="space-y-3 mb-3">
-            <Input value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Ask a question or share something..." />
-            <Button
-              size="sm"
-              shape="pill"
-              disabled={!newComment.trim() || createComment.isPending}
-              onClick={() =>
-                createComment.mutate({ body: newComment.trim() }, { onSuccess: () => setNewComment("") })
-              }
-            >
-              Post
-            </Button>
-          </div>
-          <div className="space-y-3">
-            {(comments || []).filter((c) => !c.parent_comment_id).length === 0 && (
-              <p className="text-sm text-muted-foreground">No comments yet — be the first to say something.</p>
-            )}
-            {(comments || [])
-              .filter((c) => !c.parent_comment_id)
-              .map((comment) => (
-                <CommentThread
-                  key={comment.id}
-                  comment={comment}
-                  replies={(comments || []).filter((c) => c.parent_comment_id === comment.id)}
-                  canManage={canManage}
-                  myMembershipId={activeMembership?.id}
-                  onUpdate={(commentId, body) => updateComment.mutate({ id: commentId, body })}
-                  onDelete={(commentId) => deleteComment.mutate(commentId)}
-                  onReport={(commentId) => reportComment.mutate(commentId)}
-                  onModerate={(commentId, status) => moderateComment.mutate({ id: commentId, status })}
-                  onReply={(body, parentId) => createComment.mutate({ body, parent_comment_id: parentId })}
-                />
-              ))}
-          </div>
-        </div>
+        <EventDiscussionBoard
+          eventId={event.id}
+          canManage={canManage}
+          myMembershipId={activeMembership?.id}
+        />
 
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -655,10 +759,10 @@ export default function ActivityDetail() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={roleDialogOpen} onOpenChange={setRoleDialogOpen}>
+      <Dialog open={!!roleDialogOpen} onOpenChange={(open) => !open && setRoleDialogOpen(false)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Volunteer Role</DialogTitle>
+            <DialogTitle>{roleDialogOpen === "book" ? "Add Booking Slot" : "Add Volunteer Role"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div>
@@ -718,6 +822,7 @@ export default function ActivityDetail() {
                     slot_start: roleForm.slot_start || undefined,
                     slot_end: roleForm.slot_end || undefined,
                     headcount_needed: Number(roleForm.headcount_needed),
+                    kind: roleDialogOpen === "book" ? "book" : "volunteer",
                   },
                   {
                     onSuccess: () => {
@@ -728,7 +833,7 @@ export default function ActivityDetail() {
                 )
               }
             >
-              Create Role
+              {roleDialogOpen === "book" ? "Create Booking Slot" : "Create Role"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -787,6 +892,30 @@ export default function ActivityDetail() {
                 residents-only day within an otherwise public festival.
               </p>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Registration for activities on this day
+              </label>
+              <Select
+                value={dayForm.registration_mode}
+                onValueChange={(v) => setDayForm((f) => ({ ...f, registration_mode: v as DayRegistrationMode }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DAY_REGISTRATION_MODE_OPTIONS.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                {DAY_REGISTRATION_MODE_OPTIONS.find((m) => m.value === dayForm.registration_mode)?.description}
+                {" "}This is enforced for every activity you add under this day — not just a suggestion.
+              </p>
+            </div>
           </div>
           <DialogFooter>
             <Button
@@ -798,11 +927,17 @@ export default function ActivityDetail() {
                     date: dayForm.date,
                     title: dayForm.title,
                     audience: dayForm.audience === INHERIT_AUDIENCE ? undefined : dayForm.audience,
+                    registration_mode: dayForm.registration_mode,
                   },
                   {
                     onSuccess: () => {
                       setDayDialogOpen(false);
-                      setDayForm({ title: "", date: "", audience: INHERIT_AUDIENCE });
+                      setDayForm({
+                        title: "",
+                        date: "",
+                        audience: INHERIT_AUDIENCE,
+                        registration_mode: "both",
+                      });
                     },
                   }
                 )
@@ -819,31 +954,296 @@ export default function ActivityDetail() {
           <DialogHeader>
             <DialogTitle>Add Activity</DialogTitle>
           </DialogHeader>
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Name</label>
-            <Input
-              value={componentForm.name}
-              onChange={(e) => setComponentForm({ name: e.target.value })}
-              placeholder="e.g. Decoration Seva"
-            />
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Activity name
+              </label>
+              <Input
+                value={componentForm.name}
+                onChange={(e) =>
+                  setComponentForm((form) => ({
+                    ...form,
+                    name: e.target.value,
+                  }))
+                }
+                placeholder="e.g. Puja"
+                maxLength={200}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Description
+              </label>
+              <Textarea
+                value={componentForm.description}
+                onChange={(e) =>
+                  setComponentForm((form) => ({
+                    ...form,
+                    description: e.target.value,
+                  }))
+                }
+                placeholder="Optional details for members"
+                rows={3}
+                maxLength={2000}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Time
+              </label>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">
+                    Starts
+                  </label>
+                  <Input
+                    type="time"
+                    value={componentForm.start_time}
+                    onChange={(e) =>
+                      setComponentForm((form) => ({
+                        ...form,
+                        start_time: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">
+                    Ends
+                  </label>
+                  <Input
+                    type="time"
+                    value={componentForm.end_time}
+                    min={componentForm.start_time || undefined}
+                    onChange={(e) =>
+                      setComponentForm((form) => ({
+                        ...form,
+                        end_time: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground mt-1.5">
+                Shown in the event timezone to members.
+              </p>
+
+              {componentForm.start_time &&
+                componentForm.end_time &&
+                componentForm.end_time <= componentForm.start_time && (
+                  <p className="text-xs text-destructive mt-1.5">
+                    End time must be later than start time.
+                  </p>
+                )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                How can members register?
+              </label>
+
+              {componentDialogMode !== "both" && (
+                <p className="text-xs text-muted-foreground mb-2">
+                  This day is set to "{DAY_REGISTRATION_MODE_OPTIONS.find((m) => m.value === componentDialogMode)?.label}" — only that option is available here. Change it from the day's settings if you need a mix.
+                </p>
+              )}
+
+              <div className="space-y-2">
+                {componentDialogMode !== "participate" && (
+                  <label className="flex items-start gap-2 text-sm rounded-lg border border-border p-2.5">
+                    <Checkbox
+                      checked={componentForm.registration_enabled}
+                      onCheckedChange={(checked) =>
+                        setComponentForm((form) => ({
+                          ...form,
+                          registration_enabled: checked === true,
+                        }))
+                      }
+                      className="mt-0.5"
+                    />
+                    <span>
+                      <span className="font-medium text-foreground block">
+                        Join
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        One-tap RSVP for the member themself.
+                      </span>
+                    </span>
+                  </label>
+                )}
+
+                {componentDialogMode !== "join" && (
+                  <label className="flex items-start gap-2 text-sm rounded-lg border border-border p-2.5">
+                    <Checkbox
+                      checked={componentForm.participation_enabled}
+                      onCheckedChange={(checked) =>
+                        setComponentForm((form) => ({
+                          ...form,
+                          participation_enabled: checked === true,
+                        }))
+                      }
+                      className="mt-0.5"
+                    />
+                    <span>
+                      <span className="font-medium text-foreground block">
+                        Participate
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        Detailed registration — single or multiple people, self / family / others.
+                      </span>
+                    </span>
+                  </label>
+                )}
+              </div>
+
+              {!componentForm.registration_enabled &&
+                !componentForm.participation_enabled && (
+                  <p className="text-xs text-amber-600 mt-1.5">
+                    Neither is selected — members won't see a registration button for this activity.
+                  </p>
+                )}
+            </div>
           </div>
+
           <DialogFooter>
             <Button
-              disabled={!componentForm.name || createComponent.isPending}
-              onClick={() =>
-                componentDialogFor &&
+              variant="outline"
+              onClick={() => setComponentDialogFor(null)}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              disabled={
+                !componentForm.name.trim() ||
+                createComponent.isPending ||
+                (componentForm.start_time !== "" &&
+                  componentForm.end_time !== "" &&
+                  componentForm.end_time <= componentForm.start_time)
+              }
+              onClick={() => {
+                if (!componentDialogFor) return;
+
+                const name = componentForm.name.trim();
+                const description = componentForm.description.trim();
+                const startTime = componentForm.start_time.trim();
+                const endTime = componentForm.end_time.trim();
+
+                if (!name) return;
+
+                if (
+                  startTime &&
+                  endTime &&
+                  endTime <= startTime
+                ) {
+                  return;
+                }
+
                 createComponent.mutate(
-                  { dayId: componentDialogFor, data: { name: componentForm.name } },
+                  {
+                    dayId: componentDialogFor,
+                    data: {
+                      name,
+                      description: description || undefined,
+                      start_time: startTime || undefined,
+                      end_time: endTime || undefined,
+                      registration_enabled: componentForm.registration_enabled,
+                      participation_enabled: componentForm.participation_enabled,
+                    },
+                  },
                   {
                     onSuccess: () => {
                       setComponentDialogFor(null);
-                      setComponentForm({ name: "" });
+                      setComponentForm({
+                        name: "",
+                        description: "",
+                        start_time: "",
+                        end_time: "",
+                        registration_enabled: true,
+                        participation_enabled: false,
+                      });
                     },
-                  }
-                )
-              }
+                  },
+                );
+              }}
             >
-              Add Activity
+              {createComponent.isPending ? "Adding..." : "Add Activity"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!registrationDialog}
+        onOpenChange={(open) => {
+          if (!open) closeRegistrationDialog();
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {registrationDialog?.editingParticipationId ? "Edit participation" : registrationDialog?.entry === "book" ? "Book" : "Participate"}
+              {registrationDialog?.component ? ` — ${registrationDialog.component.name}` : ""}
+            </DialogTitle>
+          </DialogHeader>
+
+          {registrationDialog && (
+            <BeneficiaryPicker
+              key={`${registrationDialog.component.id}-${registrationDialog.editingParticipationId ?? "new"}`}
+              selfName={selfName}
+              maxBeneficiaries={
+                registrationDialog.editingParticipationId
+                  ? registrationAvailability?.capacity ?? undefined
+                  : registrationAvailability?.available ?? undefined
+              }
+              initialMode={registrationMode}
+              initialBeneficiaries={registrationBeneficiaries}
+              onChange={(next, nextMode) => {
+                setRegistrationBeneficiaries(next);
+                setRegistrationMode(nextMode);
+              }}
+            />
+          )}
+
+          {registrationDialog && registrationAvailability?.available != null &&
+            registrationBeneficiaries.length > registrationAvailability.available &&
+            !registrationDialog.editingParticipationId && (
+              <p className="text-xs text-destructive">
+                Only {registrationAvailability.available} spot{registrationAvailability.available === 1 ? "" : "s"} left — remove a person to continue.
+              </p>
+            )}
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={closeRegistrationDialog}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={
+                createParticipation.isPending ||
+                updateParticipation.isPending ||
+                registrationBeneficiaries.length === 0 ||
+                (registrationMode === "single" && registrationBeneficiaries.length !== 1) ||
+                (!!registrationDialog && !registrationDialog.editingParticipationId &&
+                  registrationAvailability?.available != null &&
+                  registrationBeneficiaries.length > registrationAvailability.available)
+              }
+              onClick={submitRegistrationDialog}
+            >
+              {createParticipation.isPending || updateParticipation.isPending
+                ? "Saving…"
+                : registrationDialog?.editingParticipationId
+                  ? "Save changes"
+                  : registrationDialog?.entry === "book"
+                    ? "Confirm Booking"
+                    : "Confirm participation"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -856,22 +1256,28 @@ function ComponentRow({
   component,
   myParticipations,
   eventId,
+  timezone,
+  canManage,
+  onOpenRegistration,
+  onEditParticipation,
 }: {
   component: EventComponent;
   myParticipations: Participation[] | undefined;
   eventId: string;
+  timezone?: string;
+  canManage: boolean;
+  onOpenRegistration: (component: EventComponent, entry: "participate" | "book") => void;
+  onEditParticipation: (participation: Participation, component: EventComponent) => void;
 }) {
   const createParticipation = useCreateParticipation(eventId);
   const cancelParticipation = useCancelParticipation();
   const { data: availability } = useComponentAvailability(
     component.requires_booking || component.capacity ? component.id : undefined
   );
-
-  const type = component.requires_booking ? "book" : "join";
+  const registrationType: "join" | "book" = component.requires_booking ? "book" : "join";
   const mine = myParticipations?.find(
-    (p) => p.event_component_id === component.id && p.type === type && p.status === "active"
+    (p) => p.event_component_id === component.id && p.type === registrationType && p.status === "active"
   );
-  const canRegister = component.requires_booking ? component.requires_booking : component.registration_enabled;
   const isFull = availability?.available === 0;
 
   return (
@@ -882,7 +1288,14 @@ function ComponentRow({
           <span className="text-muted-foreground ml-2">
             {component.start_time}
             {component.end_time ? `–${component.end_time}` : ""}
+            {timezone && <span className="text-xs text-muted-foreground ml-1">({timezone})</span>}
           </span>
+        )}
+        {mine?.registration_method === "participate" && (
+          <div className="text-xs text-muted-foreground mt-1 max-w-xl">
+            <span className="font-medium text-foreground">Participants:</span>{" "}
+            {(mine.beneficiaries ?? []).map((b) => b.full_name).join(", ") || "No participant details"}
+          </div>
         )}
         {availability?.capacity != null && (
           <span className="text-xs text-muted-foreground block">
@@ -894,22 +1307,45 @@ function ComponentRow({
         <Badge variant="outline" className="capitalize">
           {component.component_type.replace("_", " ")}
         </Badge>
-        {canRegister &&
-          (mine ? (
-            <Button size="sm" shape="pill" variant="outline" disabled={cancelParticipation.isPending} onClick={() => cancelParticipation.mutate(mine.id)}>
+
+        {mine ? (
+          <div className="flex items-center gap-2">
+            {mine.registration_method === "participate" && (
+              <Button type="button" size="sm" shape="pill" variant="secondary" onClick={() => onEditParticipation(mine, component)}>
+                Edit
+              </Button>
+            )}
+            <Button type="button" size="sm" shape="pill" variant="outline" disabled={cancelParticipation.isPending} onClick={() => cancelParticipation.mutate(mine.id)}>
               Cancel
             </Button>
-          ) : (
-            <Button
-              size="sm"
-              shape="pill"
-              disabled={createParticipation.isPending || isFull}
-              onClick={() => createParticipation.mutate({ event_id: eventId, event_component_id: component.id, type })}
-            >
-              {isFull ? "Full" : type === "book" ? "Book" : "Join"}
-            </Button>
-          ))}
+          </div>
+        ) : registrationType === "book" ? (
+          <Button type="button" size="sm" shape="pill" disabled={isFull} onClick={() => onOpenRegistration(component, "book")}>
+            {isFull ? "Full" : "Book"}
+          </Button>
+        ) : (
+          <>
+            {component.registration_enabled && (
+              <Button
+                type="button"
+                size="sm"
+                shape="pill"
+                variant={component.participation_enabled ? "outline" : "default"}
+                disabled={createParticipation.isPending || isFull}
+                onClick={() => createParticipation.mutate({ event_id: eventId, event_component_id: component.id, type: "join", registration_method: "join" })}
+              >
+                {isFull ? "Full" : "Join"}
+              </Button>
+            )}
+            {component.participation_enabled && (
+              <Button type="button" size="sm" shape="pill" disabled={isFull} onClick={() => onOpenRegistration(component, "participate")}>
+                {isFull ? "Full" : "Participate"}
+              </Button>
+            )}
+          </>
+        )}
       </div>
+
     </div>
   );
 }
@@ -993,6 +1429,7 @@ function VolunteerRoleRow({
             <>
               <StatusChip status={myAssignment.approval_status} />
               <Button
+                type="button"
                 size="sm"
                 shape="pill"
                 variant="outline"
@@ -1005,13 +1442,14 @@ function VolunteerRoleRow({
           ) : (
             role.status === "open" && (
               <Button
+                type="button"
                 size="sm"
                 shape="pill"
                 className="gap-1.5"
                 disabled={createAssignment.isPending}
                 onClick={() => createAssignment.mutate(role.id)}
               >
-                <HandHeart className="w-3.5 h-3.5" /> Sign Up
+                <HandHeart className="w-3.5 h-3.5" /> {role.kind === "book" ? "Book" : "Sign Up"}
               </Button>
             )
           )}
@@ -1041,9 +1479,21 @@ function ManageRoleAssignments({ roleId, eventId }: { roleId: string; eventId: s
   return (
     <div className="space-y-2">
       {assignments.map((a) => (
-        <div key={a.id} className="flex items-center justify-between text-sm gap-2 py-1">
-          <StatusChip status={a.approval_status} />
-          {a.approval_status === "pending" && (
+        <div key={a.id} className="rounded-lg border border-border p-3 space-y-2">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-medium text-foreground truncate">{a.member_name || "Member"}</p>
+              {a.member_email && (
+                <p className="text-xs text-muted-foreground truncate">{a.member_email}</p>
+              )}
+            </div>
+            <StatusChip status={a.approval_status} />
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">
+              {a.approval_status === "withdrawn" ? "Withdrawn" : a.approval_status === "rejected" ? "Rejected" : a.approval_status === "approved" ? "Approved" : "Awaiting approval"}
+            </p>
+            {a.approval_status === "pending" && (
             <div className="flex items-center gap-2">
               <Button size="sm" shape="pill" variant="outline" className="gap-1" disabled={reject.isPending} onClick={() => reject.mutate(a.id)}>
                 <X className="w-3.5 h-3.5" /> Reject
@@ -1053,183 +1503,9 @@ function ManageRoleAssignments({ roleId, eventId }: { roleId: string; eventId: s
               </Button>
             </div>
           )}
+          </div>
         </div>
       ))}
     </div>
-  );
-}
-
-function CommentItem({
-  comment,
-  canManage,
-  myMembershipId,
-  onUpdate,
-  onDelete,
-  onReport,
-  onModerate,
-  onReply,
-  allowReply,
-}: {
-  comment: EventComment;
-  canManage: boolean;
-  myMembershipId?: string;
-  onUpdate: (id: string, body: string) => void;
-  onDelete: (id: string) => void;
-  onReport: (id: string) => void;
-  onModerate: (id: string, status: "visible" | "hidden") => void;
-  onReply?: (body: string, parentId: string) => void;
-  allowReply?: boolean;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [editBody, setEditBody] = useState(comment.body);
-  const [replying, setReplying] = useState(false);
-  const [replyBody, setReplyBody] = useState("");
-
-  const isOwner = comment.membership_id === myMembershipId;
-  const isHidden = comment.moderation_status === "hidden";
-
-  return (
-    <div className={`text-sm ${isHidden ? "opacity-50" : ""}`}>
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <span className="font-medium text-foreground">{comment.author_name}</span>
-          {comment.moderation_status === "reported" && canManage && (
-            <Badge variant="outline" className="ml-2 text-xs text-destructive border-destructive/30">
-              Reported
-            </Badge>
-          )}
-          {isHidden && (
-            <Badge variant="outline" className="ml-2 text-xs">
-              Hidden
-            </Badge>
-          )}
-        </div>
-      </div>
-      {editing ? (
-        <div className="mt-1 space-y-2">
-          <Input value={editBody} onChange={(e) => setEditBody(e.target.value)} />
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              shape="pill"
-              onClick={() => {
-                onUpdate(comment.id, editBody.trim());
-                setEditing(false);
-              }}
-            >
-              Save
-            </Button>
-            <Button size="sm" shape="pill" variant="outline" onClick={() => setEditing(false)}>
-              Cancel
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <p className="text-muted-foreground mt-0.5">{comment.body}</p>
-      )}
-      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-        {allowReply && onReply && (
-          <button className="flex items-center gap-1 hover:text-foreground" onClick={() => setReplying((v) => !v)}>
-            Reply
-          </button>
-        )}
-        {isOwner && !editing && (
-          <button className="flex items-center gap-1 hover:text-foreground" onClick={() => setEditing(true)}>
-            <Pencil className="w-3 h-3" /> Edit
-          </button>
-        )}
-        {(isOwner || canManage) && (
-          <button className="flex items-center gap-1 hover:text-destructive" onClick={() => onDelete(comment.id)}>
-            <Trash2 className="w-3 h-3" /> Delete
-          </button>
-        )}
-        {!isOwner && (
-          <button className="flex items-center gap-1 hover:text-foreground" onClick={() => onReport(comment.id)}>
-            <Flag className="w-3 h-3" /> Report
-          </button>
-        )}
-        {canManage && (
-          <button
-            className="flex items-center gap-1 hover:text-foreground"
-            onClick={() => onModerate(comment.id, isHidden ? "visible" : "hidden")}
-          >
-            {isHidden ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />} {isHidden ? "Unhide" : "Hide"}
-          </button>
-        )}
-      </div>
-      {replying && onReply && (
-        <div className="mt-2 flex gap-2">
-          <Input value={replyBody} onChange={(e) => setReplyBody(e.target.value)} placeholder="Write a reply..." />
-          <Button
-            size="sm"
-            shape="pill"
-            disabled={!replyBody.trim()}
-            onClick={() => {
-              onReply(replyBody.trim(), comment.id);
-              setReplyBody("");
-              setReplying(false);
-            }}
-          >
-            Send
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CommentThread({
-  comment,
-  replies,
-  canManage,
-  myMembershipId,
-  onUpdate,
-  onDelete,
-  onReport,
-  onModerate,
-  onReply,
-}: {
-  comment: EventComment;
-  replies: EventComment[];
-  canManage: boolean;
-  myMembershipId?: string;
-  onUpdate: (id: string, body: string) => void;
-  onDelete: (id: string) => void;
-  onReport: (id: string) => void;
-  onModerate: (id: string, status: "visible" | "hidden") => void;
-  onReply: (body: string, parentId: string) => void;
-}) {
-  return (
-    <Card>
-      <CardContent className="p-4 space-y-3">
-        <CommentItem
-          comment={comment}
-          canManage={canManage}
-          myMembershipId={myMembershipId}
-          onUpdate={onUpdate}
-          onDelete={onDelete}
-          onReport={onReport}
-          onModerate={onModerate}
-          onReply={onReply}
-          allowReply
-        />
-        {replies.length > 0 && (
-          <div className="pl-4 border-l-2 border-border space-y-3">
-            {replies.map((reply) => (
-              <CommentItem
-                key={reply.id}
-                comment={reply}
-                canManage={canManage}
-                myMembershipId={myMembershipId}
-                onUpdate={onUpdate}
-                onDelete={onDelete}
-                onReport={onReport}
-                onModerate={onModerate}
-              />
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
   );
 }

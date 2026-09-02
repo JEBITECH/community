@@ -1,7 +1,9 @@
 import { Link } from "react-router-dom";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +27,9 @@ import {
   PauseCircle, 
   PlayCircle, 
   Archive, 
-  RotateCcw 
+  RotateCcw,
+  Search,
+  CreditCard,
 } from "lucide-react";
 import { usePlatformSummary } from "../hooks/useDashboard";
 import { 
@@ -63,6 +67,7 @@ function StatCard({ label, value, icon: Icon, sub }: { label: string; value: str
 
 export default function PlatformDashboard() {
   const queryClient = useQueryClient();
+  const [search, setSearch] = useState("");
   const { data: summary, isLoading: isSummaryLoading } = usePlatformSummary();
 
   const { data: orgsData, isLoading: isOrgsLoading } = useQuery({
@@ -80,18 +85,40 @@ export default function PlatformDashboard() {
   const archiveMut = useMutation({ mutationFn: archiveOrganization, onSuccess: invalidateQueries });
   const restoreMut = useMutation({ mutationFn: restoreOrganization, onSuccess: invalidateQueries });
 
-  const organizations: OrganizationItem[] = orgsData?.organization_list ?? [];
+  const organizations: OrganizationItem[] = (orgsData?.organization_list ?? []).filter((org) => {
+    const query = search.trim().toLowerCase();
+    if (!query) return true;
+    return [org.organization_name, org.subdomain, org.organization_status]
+      .filter(Boolean)
+      .some((value) => value.toLowerCase().includes(query));
+  });
 
   return (
     <Layout title="Platform Dashboard" subtitle="Across every community on the platform" icon={<ShieldCheck className="w-5 h-5" />}>
       <div className="max-w-4xl mx-auto py-6 px-4 space-y-6">
         
-        <div className="flex justify-end">
+        <div className="flex flex-wrap justify-between gap-2">
+          <Link to="/subscription-plans">
+            <Button variant="outline" shape="pill" className="gap-1">
+              <CreditCard className="w-4 h-4" /> Plans
+            </Button>
+          </Link>
           <Link to="/organizations/new">
             <Button shape="pill" className="gap-1">
               <Plus className="w-4 h-4" /> New Organization
             </Button>
           </Link>
+        </div>
+
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search organizations by name, subdomain, or status"
+            className="pl-9"
+            aria-label="Search organizations"
+          />
         </div>
 
         {isSummaryLoading || !summary ? (
@@ -139,7 +166,7 @@ export default function PlatformDashboard() {
                     <div key={orgId} className="p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-foreground">{org.organization_name}</span>
+                          <Link to={`/organizations/${orgId}`} className="font-medium text-foreground hover:underline">{org.organization_name}</Link>
                           <Badge variant={status === "suspended" ? "destructive" : org.is_archived ? "outline" : "default"}>
                             {org.is_archived ? "Archived" : status}
                           </Badge>

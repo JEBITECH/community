@@ -12,6 +12,8 @@ import {
 import { Event, EventAudience } from './event.entity';
 import { EventComponent } from './event-component.entity';
 
+export type DayRegistrationMode = 'join' | 'participate' | 'both';
+
 @Entity('event_day')
 @Index(['event_id', 'day_number'])
 export class EventDay {
@@ -42,6 +44,14 @@ export class EventDay {
 
   @Column({ type: 'varchar', nullable: true })
   audience?: EventAudience;
+
+  /** Hard constraint on every activity added under this day — 'join' allows
+   * only the Join button, 'participate' allows only Participate, 'both'
+   * (default) leaves each activity free to enable either/both individually.
+   * Enforced server-side in EventComponentsService, not just hidden client
+   * checkboxes — see the AddDayRegistrationMode migration. */
+  @Column({ type: 'varchar', default: 'both' })
+  registration_mode!: DayRegistrationMode;
 
   @OneToMany(() => EventComponent, (component) => component.eventDay, { cascade: true })
   components?: EventComponent[];

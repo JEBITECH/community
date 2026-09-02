@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 
 import { useGetModulesWithInternal } from "@/features/shared/hooks/useOrganizations";
+import { useOrganizationContext } from "@/contexts/OrganizationContext";
 import { 
   getOrganizationById, 
   updateOrganization 
@@ -46,6 +47,7 @@ export default function OrganizationSettings() {
   const orgId = Number(id);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { isMasterAdmin } = useOrganizationContext();
 
   const { data: orgData, isLoading: isOrgLoading } = useQuery({
     queryKey: ["organization", orgId],
@@ -74,12 +76,12 @@ export default function OrganizationSettings() {
       setLocation(orgData.organization_location || "");
       setTimezone(orgData.organization_timezone || "Asia/Kolkata");
       setContactInfo(orgData.organization_contact_info || "");
-      setPrimaryColor(orgData.theme_config?.primary_color || "#2563eb");
-      setSecondaryColor(orgData.theme_config?.secondary_color || "#7c3aed");
+      setPrimaryColor(orgData.themeConfig?.primary_color || "#2563eb");
+      setSecondaryColor(orgData.themeConfig?.secondary_color || "#7c3aed");
       setLogo(orgData.organization_logo || "");
       setMembershipModel(orgData.membership_model || "open");
       setPlan(orgData.plan || "free");
-      setSelectedModuleIds(orgData.module_ids || []);
+      setSelectedModuleIds(orgData.modules?.map((module: { id: number }) => module.id) ?? []);
     }
   }, [orgData]);
 
@@ -88,7 +90,7 @@ export default function OrganizationSettings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["organization", orgId] });
       queryClient.invalidateQueries({ queryKey: ["organizations"] });
-      navigate("/platform-dashboard");
+      navigate(isMasterAdmin ? "/platform-dashboard" : "/org-dashboard");
     },
   });
 

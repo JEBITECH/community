@@ -18,7 +18,6 @@ export interface ThemeConfigInput {
 }
 
 export interface CreateOrganizationInput {
-  organization_id: number;
   organization_name: string;
   organization_email?: string;
   organization_location?: string;
@@ -30,6 +29,21 @@ export interface CreateOrganizationInput {
   plan: OrganizationPlan;
   super_admin: OrganizationUserInput;
   module_ids: number[];
+  themeConfig?: ThemeConfigInput;
+  organization_logo?: string;
+}
+
+export interface UpdateOrganizationInput {
+  organization_name?: string;
+  organization_email?: string;
+  organization_location?: string;
+  organization_timezone?: string;
+  organization_contact_info?: string;
+  organization_type?: OrganizationType;
+  subdomain?: string;
+  membership_model?: MembershipModel;
+  plan?: OrganizationPlan;
+  module_ids?: number[];
   themeConfig?: ThemeConfigInput;
   organization_logo?: string;
 }
@@ -48,11 +62,41 @@ export interface ModuleListItem {
   action_list?: ModuleAction[];
 }
 
-export const getOrganizations = () => apiRequest("GET", "/auth/organizations").then(res => res.json());
-export const getOrganizationById = (id: number) => apiRequest("GET", `/auth/organizations/${id}`).then(res => res.json());
+export interface OrganizationDetail {
+  organization_id: number;
+  organization_name: string;
+  organization_email?: string;
+  organization_location?: string;
+  organization_timezone?: string;
+  organization_contact_info?: string;
+  organization_logo?: string;
+  organization_type: OrganizationType;
+  subdomain: string;
+  plan: OrganizationPlan;
+  membership_model: MembershipModel;
+  organization_status: string;
+  is_archived: boolean;
+  super_admin_id?: string;
+  super_admin_name?: string;
+  super_admin_email?: string;
+  super_admin_phone?: string;
+  modules: Array<{ id: number; name: string; status: boolean; is_internal: boolean }>;
+  moduleSubscriptions: Array<{ module_id: number; term: string; price: number; startDate: string; endDate: string }>;
+  themeConfig?: { primary_color?: string; secondary_color?: string; font_family?: string } | null;
+}
+
+export interface OrganizationListResponse {
+  organization_list: OrganizationDetail[];
+  message: string;
+}
+
+export const getOrganizations = (): Promise<OrganizationListResponse> =>
+  apiRequest("GET", "/auth/organizations").then(res => res.json());
+export const getOrganizationById = (id: number): Promise<OrganizationDetail> =>
+  apiRequest("GET", `/auth/organizations/${id}`).then(res => res.json());
 export const checkSubdomainUnique = (subdomain: string) => apiRequest("GET", `/auth/organizations/check-subdomain/${subdomain}`).then(res => res.json());
 export const createOrganization = (data: CreateOrganizationInput) => apiRequest("POST", "/auth/organizations", data).then(res => res.json());
-export const updateOrganization = (id: number, data: Partial<CreateOrganizationInput>) => apiRequest("PATCH", `/auth/organizations/${id}`, data).then(res => res.json());
+export const updateOrganization = (id: number, data: UpdateOrganizationInput) => apiRequest("PATCH", `/auth/organizations/${id}`, data).then(res => res.json());
 export const suspendOrganization = (id: number) => apiRequest("PATCH", `/auth/organizations/${id}/suspend`).then(res => res.json());
 export const reactivateOrganization = (id: number) => apiRequest("PATCH", `/auth/organizations/${id}/reactivate`).then(res => res.json());
 export const archiveOrganization = (id: number) => apiRequest("PATCH", `/auth/organizations/archive/${id}`).then(res => res.json());
@@ -60,3 +104,5 @@ export const restoreOrganization = (id: number) => apiRequest("PATCH", `/auth/or
 export const getModules = () => apiRequest("GET", "/auth/modules").then(res => res.json());
 export const getModulesWithInternal = (): Promise<{ module_list: ModuleListItem[] }> =>
   apiRequest("GET", "/auth/modules?include_internal=true").then(res => res.json());
+export const getModulesByOrganizationId = (id: number): Promise<{ module_list: ModuleListItem[] }> =>
+  apiRequest("GET", `/auth/organizations/modules-by-Organization/${id}`).then(res => res.json());

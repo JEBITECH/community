@@ -13,7 +13,7 @@ import {
   Membership,
   ModuleEntity as Module,
 } from "@shared/entities";
-import { Role } from "@shared/common";
+import { AuditConfig, Role } from "@shared/common";
 import { NotificationBootstrapService } from "./notification-bootstrap.service";
 import { Roles } from "../entity/roles.model";
 import { SubAction } from "../entity/subaction.model";
@@ -111,6 +111,17 @@ export class OrganizationService {
                 });
                 const savedOrganization = await manager.save(organization);
                 organizationId = savedOrganization.id;
+
+                await manager.insert(AuditConfig,
+                    ['Event', 'Donation', 'Sponsorship', 'Membership'].map((entity_name) => ({
+                        organization_id: organizationId,
+                        entity_name,
+                        log_insert: true,
+                        log_update: true,
+                        log_delete: true,
+                        enabled: true,
+                    })),
+                );
 
                 if (organizationDto.themeConfig) {
                     const theme = manager.create(Theme, {
@@ -289,7 +300,7 @@ export class OrganizationService {
 
     async getOrganizationById(organizationId: number): Promise<OrganizationDetailDto> {
         const organization = await this.organizationRepo.findOne({
-            where: { id: organizationId, is_archived: false },
+            where: { id: organizationId },
             relations: ['modules', 'themeConfig', 'moduleSubscriptions'],
         });
 
