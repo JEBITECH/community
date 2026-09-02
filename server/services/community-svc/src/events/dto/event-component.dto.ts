@@ -1,6 +1,6 @@
 import { IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
-const COMPONENT_TYPES = ['activity', 'seva', 'donation_drive', 'session'];
+const COMPONENT_TYPES = ['activity', 'seva', 'donation_drive', 'session', 'book'];
 const LOCATION_RESOURCES = ['conference_room', 'lab', 'terrace', 'open_space', 'club'];
 const AUDIENCES = ['internal', 'internal_external', 'public', 'invite_only'];
 
@@ -44,6 +44,13 @@ export class CreateEventComponentDto {
   @IsOptional()
   @IsBoolean()
   registration_enabled?: boolean;
+
+  /** Drives the "Participate" button (single/multiple, self/family/other
+   * beneficiary detail) — independent of registration_enabled so a schedule
+   * item can offer Join, Participate, both, or neither. */
+  @IsOptional()
+  @IsBoolean()
+  participation_enabled?: boolean;
 
   @IsOptional()
   @IsBoolean()
@@ -113,6 +120,13 @@ export class UpdateEventComponentDto {
   @IsOptional()
   @IsBoolean()
   registration_enabled?: boolean;
+
+  /** Drives the "Participate" button (single/multiple, self/family/other
+   * beneficiary detail) — independent of registration_enabled so a schedule
+   * item can offer Join, Participate, both, or neither. */
+  @IsOptional()
+  @IsBoolean()
+  participation_enabled?: boolean;
 
   @IsOptional()
   @IsBoolean()

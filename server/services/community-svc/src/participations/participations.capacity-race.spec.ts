@@ -9,6 +9,7 @@ import { Event } from '../events/entities/event.entity';
 import { EventDay } from '../events/entities/event-day.entity';
 import { EventComponent } from '../events/entities/event-component.entity';
 import { Participation } from './entities/participation.entity';
+import { ParticipationBeneficiary } from './entities/participation-beneficiary.entity';
 import { Booking } from './entities/booking.entity';
 import { RequestUser } from '../common/middleware/user-context.middleware';
 import { createTestDataSource, TEST_ORG_ID, createTestUser, createTestMembership, deleteIfAny } from '../test/integration-test-utils';
@@ -40,7 +41,10 @@ describe('ParticipationsService — capacity race (integration, real Postgres lo
       dataSource.getRepository(Event),
       dataSource.getRepository(EventComponent),
       dataSource.getRepository(Participation),
+      dataSource.getRepository(ParticipationBeneficiary),
       dataSource.getRepository(Booking),
+      dataSource.getRepository(Membership),
+      dataSource.getRepository(User),
     );
 
     const event = await dataSource.getRepository(Event).save(

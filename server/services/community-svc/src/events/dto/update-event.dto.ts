@@ -44,6 +44,10 @@ export class UpdateEventDto {
 
   @IsOptional()
   @IsString()
+  timezone?: string;
+
+  @IsOptional()
+  @IsString()
   cover_image_url?: string;
 
   @IsOptional()

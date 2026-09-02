@@ -57,6 +57,7 @@ export class VolunteersService {
       slot_start: dto.slot_start,
       slot_end: dto.slot_end,
       headcount_needed: dto.headcount_needed,
+      kind: dto.kind ?? 'volunteer',
       headcount_filled: 0,
       status: 'open',
     });

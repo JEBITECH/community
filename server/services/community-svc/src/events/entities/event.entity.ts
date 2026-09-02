@@ -54,6 +54,11 @@ export class Event {
   @Column({ type: 'varchar', nullable: true })
   venue?: string;
 
+  /** IANA zone (e.g. "Asia/Kolkata") every start/end time on this event and
+   * its days/components/bookings is authored and displayed in. */
+  @Column({ type: 'varchar', default: 'Asia/Kolkata' })
+  timezone!: string;
+
   @Column({ type: 'text', nullable: true })
   cover_image_url?: string;
 

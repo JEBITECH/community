@@ -38,6 +38,13 @@ export class CreateEventDto {
   @IsString()
   venue?: string;
 
+  /** IANA zone, e.g. "Asia/Kolkata". Defaults to the entity default
+   * (Asia/Kolkata) when omitted — displayed alongside every time shown for
+   * this event's days/components/bookings. */
+  @IsOptional()
+  @IsString()
+  timezone?: string;
+
   @IsOptional()
   @IsString()
   cover_image_url?: string;

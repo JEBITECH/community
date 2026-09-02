@@ -52,6 +52,7 @@ export class EventDaysService {
       description: dto.description,
       sequence: dto.sequence ?? dto.day_number,
       audience: dto.audience as EventDay['audience'],
+      registration_mode: (dto.registration_mode as EventDay['registration_mode']) ?? 'both',
     });
     return this.eventDayRepo.save(day);
   }

@@ -4,6 +4,7 @@ import {
   getMyParticipations,
   cancelParticipation,
   getComponentAvailability,
+  getComponentReport,
   CreateParticipationInput,
 } from "../api/participations";
 import { useToast } from "@/hooks/use-toast";
@@ -21,6 +22,15 @@ export const useComponentAvailability = (componentId?: string) =>
     enabled: !!componentId,
   });
 
+/** Admin-only: who joined vs participated (with beneficiary detail) vs
+ * booked, for a single schedule item. */
+export const useComponentReport = (componentId?: string) =>
+  useQuery({
+    queryKey: ["component-report", componentId],
+    queryFn: () => getComponentReport(componentId!),
+    enabled: !!componentId,
+  });
+
 export const useCreateParticipation = (eventId?: string) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -30,6 +40,7 @@ export const useCreateParticipation = (eventId?: string) => {
       queryClient.invalidateQueries({ queryKey: ["my-participations"] });
       if (eventId) queryClient.invalidateQueries({ queryKey: ["community-event", eventId] });
       queryClient.invalidateQueries({ queryKey: ["component-availability"] });
+      queryClient.invalidateQueries({ queryKey: ["component-report"] });
       toast({ title: "You're in!", description: "Your registration was confirmed." });
     },
     onError: (error: Error) => {
@@ -46,6 +57,7 @@ export const useCancelParticipation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["my-participations"] });
       queryClient.invalidateQueries({ queryKey: ["component-availability"] });
+      queryClient.invalidateQueries({ queryKey: ["component-report"] });
       toast({ title: "Cancelled", description: "Your registration was cancelled." });
     },
     onError: (error: Error) => {

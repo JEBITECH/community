@@ -1,14 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { ApiError } from '@shared/common';
-import { Membership } from '@shared/entities';
+import { Membership, User } from '@shared/entities';
 import { Event } from '../events/entities/event.entity';
 import { EventComponent } from '../events/entities/event-component.entity';
 import { Participation } from './entities/participation.entity';
+import { ParticipationBeneficiary, BeneficiaryRelation } from './entities/participation-beneficiary.entity';
 import { Booking } from './entities/booking.entity';
 import { CreateParticipationDto } from './dto/create-participation.dto';
 import { CreatePublicParticipationDto } from './dto/create-public-participation.dto';
+import { BeneficiaryDto } from './dto/beneficiary.dto';
 import { RequestUser } from '../common/middleware/user-context.middleware';
 import { assertTenantMatch } from '../common/helpers/tenant.helper';
 import { assertGuestAudienceAllowed, resolveEffectiveAudience } from '../common/helpers/audience.helper';
@@ -16,6 +18,19 @@ import { MembershipResolverService } from '../common/services/membership-resolve
 import { GuestMembershipResolverService } from '../common/services/guest-membership-resolver.service';
 
 const POSTGRES_UNIQUE_VIOLATION = '23505';
+
+/** Resolved, ready-to-persist beneficiary detail — the DTO after name/
+ * membership lookups have been applied. */
+interface ResolvedBeneficiary {
+  relation_type: BeneficiaryRelation;
+  full_name: string;
+  membership_id: string | null;
+  notes?: string;
+}
+
+function displayName(user: Pick<User, 'firstName' | 'lastName'>): string {
+  return [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+}
 
 @Injectable()
 export class ParticipationsService {
@@ -26,7 +41,10 @@ export class ParticipationsService {
     @InjectRepository(Event) private readonly eventRepo: Repository<Event>,
     @InjectRepository(EventComponent) private readonly componentRepo: Repository<EventComponent>,
     @InjectRepository(Participation) private readonly participationRepo: Repository<Participation>,
+    @InjectRepository(ParticipationBeneficiary) private readonly beneficiaryRepo: Repository<ParticipationBeneficiary>,
     @InjectRepository(Booking) private readonly bookingRepo: Repository<Booking>,
+    @InjectRepository(Membership) private readonly membershipRepo: Repository<Membership>,
+    @InjectRepository(User) private readonly userRepo: Repository<User>,
   ) {}
 
   async create(user: RequestUser, dto: CreateParticipationDto): Promise<Participation> {
@@ -36,14 +54,22 @@ export class ParticipationsService {
     if (dto.event_component_id) {
       assertTenantMatch(component!.organization_id, user);
     }
-    return this.createForMembership(membership, event, component, dto.type, dto.seats_requested);
+    const beneficiaries = await this.resolveBeneficiaries(membership, event.organization_id, dto.beneficiaries);
+    return this.createForMembership(membership, event, component, dto.type, dto.seats_requested, dto.mode, beneficiaries);
   }
 
   async createGuest(dto: CreatePublicParticipationDto): Promise<Participation> {
     const { event, component } = await this.loadEventAndComponent(dto.event_id, dto.event_component_id);
     assertGuestAudienceAllowed(resolveEffectiveAudience(event, component?.eventDay, component));
     const membership = await this.guestMembershipResolver.resolve(event.organization_id, dto.guest);
-    return this.createForMembership(membership, event, component, dto.type, dto.seats_requested);
+    // A guest has no organization to grant lookup rights against, so their
+    // beneficiaries may never carry a membership_id — resolveBeneficiaries
+    // enforces this by rejecting any non-self membership_id whose
+    // organization doesn't match, which a guest can never satisfy unless the
+    // ID happens to belong to this org (then it's a legitimate existing
+    // member being registered by a guest on their behalf, which is fine).
+    const beneficiaries = await this.resolveBeneficiaries(membership, event.organization_id, dto.beneficiaries);
+    return this.createForMembership(membership, event, component, dto.type, dto.seats_requested, dto.mode, beneficiaries);
   }
 
   private async loadEventAndComponent(
@@ -67,19 +93,103 @@ export class ParticipationsService {
     return { event, component };
   }
 
+  /**
+   * Turns the raw beneficiary DTOs into persistable rows:
+   *  - 'self' always resolves to the *caller's own* membership/name — a
+   *    client-supplied full_name or membership_id for 'self' is ignored, not
+   *    trusted, matching "if self the name is added automatically".
+   *  - 'family' / 'other' resolve their name from a supplied membership_id
+   *    when it points at a real membership in the same organization
+   *    ("option to add ... the membership id, to fetch the data"); otherwise
+   *    the caller must type a full_name by hand.
+   * Returns undefined when no beneficiaries were supplied at all, so
+   * createForMembership can fall back to the legacy plain-seat-count path.
+   */
+  private async resolveBeneficiaries(
+    membership: Membership,
+    organizationId: number,
+    dtos: BeneficiaryDto[] | undefined,
+  ): Promise<ResolvedBeneficiary[] | undefined> {
+    if (!dtos || dtos.length === 0) {
+      return undefined;
+    }
+
+    const selfCount = dtos.filter((d) => d.relation_type === 'self').length;
+    if (selfCount > 1) {
+      throw new ApiError('Only one "self" beneficiary is allowed per registration', 400, 'DUPLICATE_SELF_BENEFICIARY');
+    }
+
+    let selfUser: User | null = null;
+    if (selfCount === 1) {
+      selfUser = await this.userRepo.findOne({ where: { id: membership.user_id } });
+    }
+
+    const resolved: ResolvedBeneficiary[] = [];
+    for (const dto of dtos) {
+      if (dto.relation_type === 'self') {
+        resolved.push({
+          relation_type: 'self',
+          full_name: selfUser ? displayName(selfUser) || 'Member' : 'Member',
+          membership_id: membership.id,
+        });
+        continue;
+      }
+
+      if (dto.membership_id) {
+        const target = await this.membershipRepo.findOne({ where: { id: dto.membership_id } });
+        if (!target || target.organization_id !== organizationId) {
+          throw new ApiError(
+            `Could not find a member in this organization for the supplied membership ID`,
+            404,
+            'BENEFICIARY_MEMBERSHIP_NOT_FOUND',
+          );
+        }
+        const targetUser = await this.userRepo.findOne({ where: { id: target.user_id } });
+        resolved.push({
+          relation_type: dto.relation_type,
+          full_name: (targetUser && displayName(targetUser)) || dto.full_name?.trim() || 'Member',
+          membership_id: target.id,
+          notes: dto.notes,
+        });
+        continue;
+      }
+
+      if (!dto.full_name || !dto.full_name.trim()) {
+        throw new ApiError(
+          `A name is required for each ${dto.relation_type} beneficiary (or supply their membership ID)`,
+          400,
+          'BENEFICIARY_NAME_REQUIRED',
+        );
+      }
+      resolved.push({
+        relation_type: dto.relation_type,
+        full_name: dto.full_name.trim(),
+        membership_id: null,
+        notes: dto.notes,
+      });
+    }
+
+    return resolved;
+  }
+
   private async createForMembership(
     membership: Membership,
     event: Event,
     component: EventComponent | null,
     type: 'join' | 'book',
     seatsRequestedInput: number | undefined,
+    modeInput: 'single' | 'multiple' | undefined,
+    beneficiaries: ResolvedBeneficiary[] | undefined,
   ): Promise<Participation> {
     if (event.status !== 'published') {
       throw new ApiError('This event is not open for registration', 409, 'EVENT_NOT_PUBLISHED');
     }
 
-    if (type === 'join' && !(component ? component.registration_enabled : event.registration_required)) {
-      throw new ApiError('Registration is not enabled for this activity', 409, 'REGISTRATION_DISABLED');
+    if (type === 'join') {
+      const joinAllowed = component ? component.registration_enabled || component.participation_enabled : event.registration_required;
+      if (!joinAllowed) {
+        throw new ApiError('Registration is not enabled for this activity', 409, 'REGISTRATION_DISABLED');
+      }
     }
     if (type === 'book') {
       if (!component) {
@@ -90,9 +200,16 @@ export class ParticipationsService {
       }
     }
 
-    const dto = { type, seats_requested: seatsRequestedInput };
     const capacity = component ? component.capacity : event.capacity;
-    const seatsRequested = dto.type === 'book' ? dto.seats_requested ?? 1 : 1;
+
+    // party_size: how many people this one participation covers. Beneficiary
+    // detail is authoritative when present; otherwise fall back to the plain
+    // seat count (defaulting to 1), same as before this feature existed.
+    const partySize = beneficiaries ? beneficiaries.length : type === 'book' ? seatsRequestedInput ?? 1 : 1;
+    const mode: 'single' | 'multiple' = modeInput ?? (partySize > 1 ? 'multiple' : 'single');
+    if (mode === 'single' && partySize > 1) {
+      throw new ApiError('A "single" registration can only cover one beneficiary', 400, 'MODE_BENEFICIARY_MISMATCH');
+    }
 
     try {
       return await this.dataSource.transaction(async (manager) => {
@@ -105,10 +222,10 @@ export class ParticipationsService {
             await manager.query('SELECT id FROM event WHERE id = $1 FOR UPDATE', [event.id]);
           }
 
-          const usedSeats = await this.countActiveSeats(manager, event.id, component?.id ?? null, dto.type as 'join' | 'book');
-          if (usedSeats + seatsRequested > capacity) {
+          const usedSeats = await this.countActiveSeats(manager, event.id, component?.id ?? null, type);
+          if (usedSeats + partySize > capacity) {
             throw new ApiError(
-              dto.type === 'book' ? 'This activity is fully booked' : 'This activity is at full capacity',
+              type === 'book' ? 'This activity is fully booked' : 'This activity is at full capacity',
               409,
               'CAPACITY_EXCEEDED',
             );
@@ -120,15 +237,30 @@ export class ParticipationsService {
           event_id: event.id,
           event_component_id: component?.id ?? null,
           membership_id: membership.id,
-          type: dto.type,
+          type,
           status: 'active',
+          mode,
+          party_size: partySize,
         });
         const savedParticipation = await manager.save(participation);
 
-        if (dto.type === 'book') {
+        if (beneficiaries) {
+          const rows = beneficiaries.map((b) =>
+            manager.create(ParticipationBeneficiary, {
+              participation_id: savedParticipation.id,
+              relation_type: b.relation_type,
+              full_name: b.full_name,
+              membership_id: b.membership_id,
+              notes: b.notes,
+            }),
+          );
+          await manager.save(rows);
+        }
+
+        if (type === 'book') {
           const booking = manager.create(Booking, {
             participation_id: savedParticipation.id,
-            seats_requested: seatsRequested,
+            seats_requested: partySize,
           });
           await manager.save(booking);
         }
@@ -143,12 +275,14 @@ export class ParticipationsService {
     }
   }
 
-  /** Sums currently-active seats for a capacity check: 1 per join/attendee, or
-   * the requested seat count for bookings. Scoping is by component_id when
-   * given (that alone uniquely identifies the capacity pool); otherwise by
-   * event_id with component_id IS NULL, for event-level capacity. */
+  /** Sums currently-active seats for a capacity check. Both 'join' and
+   * 'book' now sum participation.party_size — a "multiple" Join/Participate
+   * consumes as many seats as it has beneficiaries, same as a multi-seat
+   * booking always has. Scoping is by component_id when given (that alone
+   * uniquely identifies the capacity pool); otherwise by event_id with
+   * component_id IS NULL, for event-level capacity. */
   private async countActiveSeats(
-    manager: DataSource['manager'],
+    manager: EntityManager,
     eventId: string,
     componentId: string | null,
     type: 'join' | 'book',
@@ -158,23 +292,13 @@ export class ParticipationsService {
         ? qb.andWhere('p.event_component_id = :componentId', { componentId })
         : qb.andWhere('p.event_id = :eventId AND p.event_component_id IS NULL', { eventId });
 
-    if (type === 'join') {
-      return scopeQuery(
-        manager
-          .createQueryBuilder(Participation, 'p')
-          .where('p.type = :type', { type: 'join' })
-          .andWhere('p.status = :status', { status: 'active' }),
-      ).getCount();
-    }
-
     const result = await scopeQuery(
       manager
-        .createQueryBuilder(Booking, 'b')
-        .innerJoin(Participation, 'p', 'p.id = b.participation_id')
-        .where('p.type = :type', { type: 'book' })
+        .createQueryBuilder(Participation, 'p')
+        .where('p.type = :type', { type })
         .andWhere('p.status = :status', { status: 'active' }),
     )
-      .select('COALESCE(SUM(b.seats_requested), 0)', 'total')
+      .select('COALESCE(SUM(p.party_size), 0)', 'total')
       .getRawOne();
 
     return Number(result?.total ?? 0);
@@ -184,6 +308,7 @@ export class ParticipationsService {
     const membership = await this.membershipResolver.resolve(user);
     return this.participationRepo.find({
       where: { membership_id: membership.id, ...(type ? { type: type as Participation['type'] } : {}) },
+      relations: ['beneficiaries'],
       order: { createdAt: 'DESC' },
     });
   }
@@ -249,5 +374,60 @@ export class ParticipationsService {
     participation.status = 'attended';
     participation.attended_at = new Date();
     return this.participationRepo.save(participation);
+  }
+
+  /**
+   * Admin-facing breakdown for a single component: who joined vs who
+   * participated (with beneficiary detail) vs who booked, satisfying "when
+   * an activity is joined, in backend we have to store who all have
+   * selected joined and participated, a report should be displayed".
+   */
+  async componentReport(componentId: string, user: RequestUser): Promise<{
+    component_id: string;
+    total_registrations: number;
+    total_people: number;
+    registrations: Array<{
+      participation_id: string;
+      membership_id: string;
+      type: Participation['type'];
+      mode: Participation['mode'];
+      status: Participation['status'];
+      party_size: number;
+      created_at: Date;
+      beneficiaries: Array<{ relation_type: BeneficiaryRelation; full_name: string; membership_id: string | null }>;
+    }>;
+  }> {
+    const component = await this.componentRepo.findOne({ where: { id: componentId } });
+    if (!component) {
+      throw new ApiError('Component not found', 404, 'NOT_FOUND');
+    }
+    assertTenantMatch(component.organization_id, user);
+
+    const participations = await this.participationRepo.find({
+      where: { event_component_id: componentId },
+      relations: ['beneficiaries'],
+      order: { createdAt: 'ASC' },
+    });
+
+    const active = participations.filter((p) => p.status !== 'cancelled');
+    return {
+      component_id: componentId,
+      total_registrations: active.length,
+      total_people: active.reduce((sum, p) => sum + p.party_size, 0),
+      registrations: participations.map((p) => ({
+        participation_id: p.id,
+        membership_id: p.membership_id,
+        type: p.type,
+        mode: p.mode,
+        status: p.status,
+        party_size: p.party_size,
+        created_at: p.createdAt,
+        beneficiaries: (p.beneficiaries ?? []).map((b) => ({
+          relation_type: b.relation_type,
+          full_name: b.full_name,
+          membership_id: b.membership_id ?? null,
+        })),
+      })),
+    };
   }
 }

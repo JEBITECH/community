@@ -38,6 +38,7 @@ export class EventsService {
       start_date: dto.start_date,
       end_date: dto.end_date,
       venue: dto.venue,
+      timezone: dto.timezone ?? 'Asia/Kolkata',
       cover_image_url: dto.cover_image_url,
       capacity: dto.capacity,
       audience: (dto.audience as Event['audience']) ?? 'internal',

@@ -14,6 +14,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import ProgressMeter from "@/components/reusable ui/ProgressMeter";
 import {
@@ -40,6 +41,9 @@ import {
   Eye,
 } from "lucide-react";
 import { useOrganizationContext } from "@/contexts/OrganizationContext";
+import { useAuth } from "@/hooks/useAuth";
+import BeneficiaryPicker from "../components/BeneficiaryPicker";
+import { BeneficiaryInput } from "../api/participations";
 import {
   useEvent,
   useEventSchedule,
@@ -71,7 +75,7 @@ import {
 } from "../hooks/useVolunteers";
 import { useEventComments, useCreateComment, useUpdateComment, useDeleteComment, useReportComment, useModerateComment } from "../hooks/useComments";
 import { useEventChat } from "../hooks/useChat";
-import { EventComponent, EventAudience } from "../api/events";
+import { EventComponent, EventAudience, DayRegistrationMode } from "../api/events";
 import { Participation } from "../api/participations";
 import { SponsorshipNeed } from "../api/donations";
 import { VolunteerRole } from "../api/volunteers";
@@ -87,6 +91,20 @@ const DAY_AUDIENCE_OPTIONS: { value: EventAudience | typeof INHERIT_AUDIENCE; la
   { value: "invite_only", label: "Invite Only" },
 ];
 
+/** What every activity added under a day is allowed to offer. This is a
+ * hard constraint enforced server-side (see event-components.service.ts) —
+ * this dropdown, and the Add Activity dialog only rendering the allowed
+ * checkbox(es), are just the UI reflecting that same rule up front. */
+const DAY_REGISTRATION_MODE_OPTIONS: { value: DayRegistrationMode; label: string; description: string }[] = [
+  { value: "join", label: "Join only", description: "Every activity this day can only offer one-tap Join." },
+  {
+    value: "participate",
+    label: "Participate only",
+    description: "Every activity this day can only offer detailed Participate registration.",
+  },
+  { value: "both", label: "Join or Participate", description: "Each activity can offer either or both, individually." },
+];
+
 export default function ActivityDetail() {
   const { id } = useParams<{ id: string }>();
   const { isSuperAdmin, activeMembership } = useOrganizationContext();
@@ -100,14 +118,25 @@ export default function ActivityDetail() {
   const createComponent = useCreateEventComponent(id!);
 
   const [dayDialogOpen, setDayDialogOpen] = useState(false);
-  const [dayForm, setDayForm] = useState<{ title: string; date: string; audience: EventAudience | typeof INHERIT_AUDIENCE }>({
+  const [dayForm, setDayForm] = useState<{
+    title: string;
+    date: string;
+    audience: EventAudience | typeof INHERIT_AUDIENCE;
+    registration_mode: DayRegistrationMode;
+  }>({
     title: "",
     date: "",
     audience: INHERIT_AUDIENCE,
+    registration_mode: "both",
   });
 
   const [componentDialogFor, setComponentDialogFor] = useState<string | null>(null);
-  const [componentForm, setComponentForm] = useState({ name: "" });
+  const [componentDialogMode, setComponentDialogMode] = useState<DayRegistrationMode>("both");
+  const [componentForm, setComponentForm] = useState({
+    name: "",
+    registration_enabled: true,
+    participation_enabled: false,
+  });
 
   const { data: myParticipations } = useMyParticipations();
   const createParticipation = useCreateParticipation(id);
@@ -140,7 +169,7 @@ export default function ActivityDetail() {
   const { data: myVolunteerAssignments } = useMyVolunteerAssignments();
   const myAssignmentsForEvent = myVolunteerAssignments?.filter((a) => a.event_id === id);
 
-  const [roleDialogOpen, setRoleDialogOpen] = useState(false);
+  const [roleDialogOpen, setRoleDialogOpen] = useState<"volunteer" | "book" | false>(false);
   const [roleForm, setRoleForm] = useState({ title: "", description: "", slot_start: "", slot_end: "", headcount_needed: "" });
 
   const [manageRoleId, setManageRoleId] = useState<string | null>(null);
@@ -190,6 +219,7 @@ export default function ActivityDetail() {
                 <CalendarDays className="w-4 h-4" />
                 {event.start_date}
                 {event.is_multi_day ? ` → ${event.end_date}` : ""}
+                {event.timezone && <span className="text-xs text-muted-foreground">({event.timezone})</span>}
               </span>
               {event.venue && (
                 <span className="flex items-center gap-1">
@@ -288,7 +318,15 @@ export default function ActivityDetail() {
                         size="sm"
                         variant="ghost"
                         className="gap-1"
-                        onClick={() => setComponentDialogFor(day.id)}
+                        onClick={() => {
+                          setComponentDialogMode(day.registration_mode);
+                          setComponentForm({
+                            name: "",
+                            registration_enabled: day.registration_mode !== "participate",
+                            participation_enabled: day.registration_mode === "participate",
+                          });
+                          setComponentDialogFor(day.id);
+                        }}
                       >
                         <Plus className="w-3.5 h-3.5" /> Add Activity
                       </Button>
@@ -298,7 +336,7 @@ export default function ActivityDetail() {
                   {(day.components || []).length > 0 && (
                     <div className="space-y-2 pt-2 border-t border-border">
                       {day.components!.map((c) => (
-                        <ComponentRow key={c.id} component={c} myParticipations={myParticipations} eventId={id!} />
+                        <ComponentRow key={c.id} component={c} myParticipations={myParticipations} eventId={id!} timezone={event?.timezone} />
                       ))}
                     </div>
                   )}
@@ -309,31 +347,65 @@ export default function ActivityDetail() {
         </div>
 
         {event.volunteer_enabled && event.status === "published" && (
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-semibold text-foreground flex items-center gap-1.5">
-                <HandHeart className="w-4 h-4" /> Volunteer / Seva
-              </h3>
-              {canManage && (
-                <Button size="sm" variant="outline" className="gap-1" onClick={() => setRoleDialogOpen(true)}>
-                  <Plus className="w-3.5 h-3.5" /> Add Role
-                </Button>
+          <div className="space-y-6">
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-foreground flex items-center gap-1.5">
+                  <HandHeart className="w-4 h-4" /> Volunteer / Seva
+                </h3>
+                {canManage && (
+                  <Button size="sm" variant="outline" className="gap-1" onClick={() => setRoleDialogOpen("volunteer")}>
+                    <Plus className="w-3.5 h-3.5" /> Add Role
+                  </Button>
+                )}
+              </div>
+              {(volunteerRoles || []).filter((r) => r.kind !== "book").length === 0 && (
+                <p className="text-sm text-muted-foreground">No volunteer opportunities yet.</p>
               )}
+              <div className="space-y-3">
+                {(volunteerRoles || [])
+                  .filter((r) => r.kind !== "book")
+                  .map((role) => (
+                    <VolunteerRoleRow
+                      key={role.id}
+                      role={role}
+                      eventId={id!}
+                      canManage={canManage}
+                      myAssignment={myAssignmentsForEvent?.find((a) => a.volunteer_role_id === role.id && a.approval_status !== "rejected")}
+                      onManage={() => setManageRoleId(role.id)}
+                    />
+                  ))}
+              </div>
             </div>
-            {(volunteerRoles || []).length === 0 && (
-              <p className="text-sm text-muted-foreground">No volunteer opportunities yet.</p>
-            )}
-            <div className="space-y-3">
-              {(volunteerRoles || []).map((role) => (
-                <VolunteerRoleRow
-                  key={role.id}
-                  role={role}
-                  eventId={id!}
-                  canManage={canManage}
-                  myAssignment={myAssignmentsForEvent?.find((a) => a.volunteer_role_id === role.id && a.approval_status !== "rejected")}
-                  onManage={() => setManageRoleId(role.id)}
-                />
-              ))}
+
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-foreground flex items-center gap-1.5">
+                  <CalendarCheck className="w-4 h-4" /> Book
+                </h3>
+                {canManage && (
+                  <Button size="sm" variant="outline" className="gap-1" onClick={() => setRoleDialogOpen("book")}>
+                    <Plus className="w-3.5 h-3.5" /> Add Booking Slot
+                  </Button>
+                )}
+              </div>
+              {(volunteerRoles || []).filter((r) => r.kind === "book").length === 0 && (
+                <p className="text-sm text-muted-foreground">No booking slots yet.</p>
+              )}
+              <div className="space-y-3">
+                {(volunteerRoles || [])
+                  .filter((r) => r.kind === "book")
+                  .map((role) => (
+                    <VolunteerRoleRow
+                      key={role.id}
+                      role={role}
+                      eventId={id!}
+                      canManage={canManage}
+                      myAssignment={myAssignmentsForEvent?.find((a) => a.volunteer_role_id === role.id && a.approval_status !== "rejected")}
+                      onManage={() => setManageRoleId(role.id)}
+                    />
+                  ))}
+              </div>
             </div>
           </div>
         )}
@@ -655,10 +727,10 @@ export default function ActivityDetail() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={roleDialogOpen} onOpenChange={setRoleDialogOpen}>
+      <Dialog open={!!roleDialogOpen} onOpenChange={(open) => !open && setRoleDialogOpen(false)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Volunteer Role</DialogTitle>
+            <DialogTitle>{roleDialogOpen === "book" ? "Add Booking Slot" : "Add Volunteer Role"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div>
@@ -718,6 +790,7 @@ export default function ActivityDetail() {
                     slot_start: roleForm.slot_start || undefined,
                     slot_end: roleForm.slot_end || undefined,
                     headcount_needed: Number(roleForm.headcount_needed),
+                    kind: roleDialogOpen === "book" ? "book" : "volunteer",
                   },
                   {
                     onSuccess: () => {
@@ -728,7 +801,7 @@ export default function ActivityDetail() {
                 )
               }
             >
-              Create Role
+              {roleDialogOpen === "book" ? "Create Booking Slot" : "Create Role"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -787,6 +860,30 @@ export default function ActivityDetail() {
                 residents-only day within an otherwise public festival.
               </p>
             </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Registration for activities on this day
+              </label>
+              <Select
+                value={dayForm.registration_mode}
+                onValueChange={(v) => setDayForm((f) => ({ ...f, registration_mode: v as DayRegistrationMode }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DAY_REGISTRATION_MODE_OPTIONS.map((m) => (
+                    <SelectItem key={m.value} value={m.value}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                {DAY_REGISTRATION_MODE_OPTIONS.find((m) => m.value === dayForm.registration_mode)?.description}
+                {" "}This is enforced for every activity you add under this day — not just a suggestion.
+              </p>
+            </div>
           </div>
           <DialogFooter>
             <Button
@@ -798,11 +895,17 @@ export default function ActivityDetail() {
                     date: dayForm.date,
                     title: dayForm.title,
                     audience: dayForm.audience === INHERIT_AUDIENCE ? undefined : dayForm.audience,
+                    registration_mode: dayForm.registration_mode,
                   },
                   {
                     onSuccess: () => {
                       setDayDialogOpen(false);
-                      setDayForm({ title: "", date: "", audience: INHERIT_AUDIENCE });
+                      setDayForm({
+                        title: "",
+                        date: "",
+                        audience: INHERIT_AUDIENCE,
+                        registration_mode: "both",
+                      });
                     },
                   }
                 )
@@ -823,9 +926,55 @@ export default function ActivityDetail() {
             <label className="block text-sm font-medium text-foreground mb-1">Name</label>
             <Input
               value={componentForm.name}
-              onChange={(e) => setComponentForm({ name: e.target.value })}
+              onChange={(e) => setComponentForm({ ...componentForm, name: e.target.value })}
               placeholder="e.g. Decoration Seva"
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">
+              How can members register?
+            </label>
+            {componentDialogMode !== "both" && (
+              <p className="text-xs text-muted-foreground mb-2">
+                This day is set to "{DAY_REGISTRATION_MODE_OPTIONS.find((m) => m.value === componentDialogMode)?.label}"
+                — only that option is available here. Change it from the day's settings if you need a mix.
+              </p>
+            )}
+            <div className="space-y-2">
+              {componentDialogMode !== "participate" && (
+                <label className="flex items-start gap-2 text-sm rounded-lg border border-border p-2.5">
+                  <Checkbox
+                    checked={componentForm.registration_enabled}
+                    onCheckedChange={(checked) => setComponentForm({ ...componentForm, registration_enabled: !!checked })}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <span className="font-medium text-foreground block">Join</span>
+                    <span className="text-xs text-muted-foreground">One-tap RSVP for the member themself.</span>
+                  </span>
+                </label>
+              )}
+              {componentDialogMode !== "join" && (
+                <label className="flex items-start gap-2 text-sm rounded-lg border border-border p-2.5">
+                  <Checkbox
+                    checked={componentForm.participation_enabled}
+                    onCheckedChange={(checked) => setComponentForm({ ...componentForm, participation_enabled: !!checked })}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <span className="font-medium text-foreground block">Participate</span>
+                    <span className="text-xs text-muted-foreground">
+                      Detailed registration — single or multiple people, self / family / others.
+                    </span>
+                  </span>
+                </label>
+              )}
+            </div>
+            {!componentForm.registration_enabled && !componentForm.participation_enabled && (
+              <p className="text-xs text-amber-600 mt-1.5">
+                Neither is selected — members won't see a registration button for this activity.
+              </p>
+            )}
           </div>
           <DialogFooter>
             <Button
@@ -833,11 +982,18 @@ export default function ActivityDetail() {
               onClick={() =>
                 componentDialogFor &&
                 createComponent.mutate(
-                  { dayId: componentDialogFor, data: { name: componentForm.name } },
+                  {
+                    dayId: componentDialogFor,
+                    data: {
+                      name: componentForm.name,
+                      registration_enabled: componentForm.registration_enabled,
+                      participation_enabled: componentForm.participation_enabled,
+                    },
+                  },
                   {
                     onSuccess: () => {
                       setComponentDialogFor(null);
-                      setComponentForm({ name: "" });
+                      setComponentForm({ name: "", registration_enabled: true, participation_enabled: false });
                     },
                   }
                 )
@@ -856,26 +1012,57 @@ function ComponentRow({
   component,
   myParticipations,
   eventId,
+  timezone,
 }: {
   component: EventComponent;
   myParticipations: Participation[] | undefined;
   eventId: string;
+  timezone?: string;
 }) {
+  const { user } = useAuth();
+  const selfName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "You";
+
   const createParticipation = useCreateParticipation(eventId);
   const cancelParticipation = useCancelParticipation();
   const { data: availability } = useComponentAvailability(
     component.requires_booking || component.capacity ? component.id : undefined
   );
 
-  const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
-  const [seatsRequested, setSeatsRequested] = useState(1);
+  // 'entry' distinguishes which button opened the dialog — Join skips the
+  // beneficiary picker entirely (it's the quick one-tap path), Participate
+  // and Book both go through it.
+  const [detailDialog, setDetailDialog] = useState<{ entry: "participate" | "book" } | null>(null);
+  const [beneficiaries, setBeneficiaries] = useState<BeneficiaryInput[]>([{ relation_type: "self" }]);
+  const [mode, setMode] = useState<"single" | "multiple">("single");
 
-  const type = component.requires_booking ? "book" : "join";
+  const registrationType: "join" | "book" = component.requires_booking ? "book" : "join";
   const mine = myParticipations?.find(
-    (p) => p.event_component_id === component.id && p.type === type && p.status === "active"
+    (p) => p.event_component_id === component.id && p.type === registrationType && p.status === "active"
   );
-  const canRegister = component.requires_booking ? component.requires_booking : component.registration_enabled;
   const isFull = availability?.available === 0;
+
+  const openDetailDialog = (entry: "participate" | "book") => {
+    setBeneficiaries([{ relation_type: "self" }]);
+    setMode("single");
+    setDetailDialog({ entry });
+  };
+
+  const submitDetailDialog = () => {
+    if (!detailDialog) return;
+    createParticipation.mutate(
+      {
+        event_id: eventId,
+        event_component_id: component.id,
+        type: detailDialog.entry === "book" ? "book" : "join",
+        mode,
+        beneficiaries: beneficiaries.length > 0 ? beneficiaries : undefined,
+      },
+      { onSuccess: () => setDetailDialog(null) }
+    );
+  };
+
+  const beneficiaryCountValid = beneficiaries.length > 0 && (mode === "single" ? beneficiaries.length === 1 : true);
+  const overCapacity = availability?.available != null && beneficiaries.length > availability.available;
 
   return (
     <div className="flex items-center justify-between text-sm gap-3">
@@ -885,6 +1072,7 @@ function ComponentRow({
           <span className="text-muted-foreground ml-2">
             {component.start_time}
             {component.end_time ? `–${component.end_time}` : ""}
+            {timezone && <span className="text-xs text-muted-foreground ml-1">({timezone})</span>}
           </span>
         )}
         {availability?.capacity != null && (
@@ -897,75 +1085,67 @@ function ComponentRow({
         <Badge variant="outline" className="capitalize">
           {component.component_type.replace("_", " ")}
         </Badge>
-        {canRegister &&
-          (mine ? (
-            <Button size="sm" shape="pill" variant="outline" disabled={cancelParticipation.isPending} onClick={() => cancelParticipation.mutate(mine.id)}>
-              Cancel
-            </Button>
-          ) : type === "book" ? (
-            <Button
-              size="sm"
-              shape="pill"
-              disabled={isFull}
-              onClick={() => {
-                setSeatsRequested(1);
-                setBookingDialogOpen(true);
-              }}
-            >
-              {isFull ? "Full" : "Book"}
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              shape="pill"
-              disabled={createParticipation.isPending || isFull}
-              onClick={() => createParticipation.mutate({ event_id: eventId, event_component_id: component.id, type })}
-            >
-              {isFull ? "Full" : "Join"}
-            </Button>
-          ))}
+
+        {mine ? (
+          <Button size="sm" shape="pill" variant="outline" disabled={cancelParticipation.isPending} onClick={() => cancelParticipation.mutate(mine.id)}>
+            Cancel
+          </Button>
+        ) : registrationType === "book" ? (
+          <Button size="sm" shape="pill" disabled={isFull} onClick={() => openDetailDialog("book")}>
+            {isFull ? "Full" : "Book"}
+          </Button>
+        ) : (
+          <>
+            {component.registration_enabled && (
+              <Button
+                size="sm"
+                shape="pill"
+                variant={component.participation_enabled ? "outline" : "default"}
+                disabled={createParticipation.isPending || isFull}
+                onClick={() => createParticipation.mutate({ event_id: eventId, event_component_id: component.id, type: "join" })}
+              >
+                {isFull ? "Full" : "Join"}
+              </Button>
+            )}
+            {component.participation_enabled && (
+              <Button size="sm" shape="pill" disabled={isFull} onClick={() => openDetailDialog("participate")}>
+                {isFull ? "Full" : "Participate"}
+              </Button>
+            )}
+          </>
+        )}
       </div>
 
-      {type === "book" && (
-        <Dialog open={bookingDialogOpen} onOpenChange={setBookingDialogOpen}>
-          <DialogContent className="sm:max-w-sm">
-            <DialogHeader>
-              <DialogTitle>Book "{component.name}"</DialogTitle>
-            </DialogHeader>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1">Number of seats</label>
-              <Input
-                type="number"
-                min={1}
-                max={availability?.available ?? undefined}
-                value={seatsRequested}
-                onChange={(e) => setSeatsRequested(Math.max(1, Number(e.target.value) || 1))}
-              />
-              {availability?.capacity != null && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {availability.available} of {availability.capacity} spots left
-                </p>
-              )}
-            </div>
-            <DialogFooter>
-              <Button
-                disabled={
-                  createParticipation.isPending ||
-                  (availability?.available != null && seatsRequested > availability.available)
-                }
-                onClick={() =>
-                  createParticipation.mutate(
-                    { event_id: eventId, event_component_id: component.id, type, seats_requested: seatsRequested },
-                    { onSuccess: () => setBookingDialogOpen(false) }
-                  )
-                }
-              >
-                Confirm Booking
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+      <Dialog open={!!detailDialog} onOpenChange={(open) => !open && setDetailDialog(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {detailDialog?.entry === "book" ? "Book" : "Participate in"} "{component.name}"
+            </DialogTitle>
+          </DialogHeader>
+          <BeneficiaryPicker
+            selfName={selfName}
+            maxBeneficiaries={availability?.available ?? undefined}
+            onChange={(next, nextMode) => {
+              setBeneficiaries(next);
+              setMode(nextMode);
+            }}
+          />
+          {overCapacity && (
+            <p className="text-xs text-destructive">
+              Only {availability?.available} spot{availability?.available === 1 ? "" : "s"} left — remove a person to continue.
+            </p>
+          )}
+          <DialogFooter>
+            <Button
+              disabled={createParticipation.isPending || !beneficiaryCountValid || overCapacity}
+              onClick={submitDetailDialog}
+            >
+              {detailDialog?.entry === "book" ? "Confirm Booking" : "Confirm"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -1067,7 +1247,7 @@ function VolunteerRoleRow({
                 disabled={createAssignment.isPending}
                 onClick={() => createAssignment.mutate(role.id)}
               >
-                <HandHeart className="w-3.5 h-3.5" /> Sign Up
+                <HandHeart className="w-3.5 h-3.5" /> {role.kind === "book" ? "Book" : "Sign Up"}
               </Button>
             )
           )}

@@ -59,4 +59,10 @@ export class ComponentAvailabilityController {
   availability(@CurrentUser() user: RequestUser, @Param('id') id: string) {
     return this.participationsService.availability(id, user);
   }
+
+  @Get(':id/report')
+  @Roles(...ATTENDANCE_SCANNERS)
+  report(@CurrentUser() user: RequestUser, @Param('id') id: string) {
+    return this.participationsService.componentReport(id, user);
+  }
 }

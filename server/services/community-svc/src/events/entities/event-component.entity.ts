@@ -11,7 +11,9 @@ import {
 import { EventDay } from './event-day.entity';
 import { EventAudience } from './event.entity';
 
-export type ComponentType = 'activity' | 'seva' | 'donation_drive' | 'session';
+export type ComponentType = 'activity' | 'seva' | 'donation_drive' | 'session' | 'book';
+export type BeneficiaryRelation = 'self' | 'family' | 'other';
+export type ParticipationMode = 'single' | 'multiple';
 export type LocationResource = 'conference_room' | 'lab' | 'terrace' | 'open_space' | 'club';
 export type ComponentStatus = 'draft' | 'published' | 'cancelled' | 'completed';
 
@@ -65,6 +67,14 @@ export class EventComponent {
 
   @Column({ type: 'boolean', default: true })
   registration_enabled!: boolean;
+
+  /** Drives the "Participate" button — same underlying 'join' participation
+   * as registration_enabled, but captured through the single/multiple,
+   * self/family/other beneficiary flow. Independent of registration_enabled
+   * so an admin can offer either, both, or neither from the Add Schedule
+   * dialog's Join/Participate dropdown. */
+  @Column({ type: 'boolean', default: false })
+  participation_enabled!: boolean;
 
   @Column({ type: 'boolean', default: false })
   donation_enabled!: boolean;

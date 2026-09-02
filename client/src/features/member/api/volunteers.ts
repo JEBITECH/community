@@ -2,6 +2,7 @@ import { apiRequest } from "@/lib/queryClient";
 
 export type VolunteerRoleStatus = "open" | "filled" | "closed";
 export type VolunteerApprovalStatus = "pending" | "approved" | "rejected";
+export type VolunteerRoleKind = "volunteer" | "book";
 
 export interface VolunteerRole {
   id: string;
@@ -14,6 +15,7 @@ export interface VolunteerRole {
   slot_end?: string;
   headcount_needed: number;
   headcount_filled: number;
+  kind: VolunteerRoleKind;
   status: VolunteerRoleStatus;
   createdAt: string;
 }
@@ -45,6 +47,7 @@ export const createVolunteerRole = (data: {
   slot_start?: string;
   slot_end?: string;
   headcount_needed: number;
+  kind?: VolunteerRoleKind;
 }) => apiRequest("POST", "/community/volunteer-roles", data).then((r) => json<VolunteerRole>(r));
 
 export const getRoleAssignments = (roleId: string) =>
