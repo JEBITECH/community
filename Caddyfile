@@ -1,4 +1,4 @@
-societyhub.jebitech.com {
+eoorai.com {
 	# Socket.io mounts at NestJS's default /socket.io/ regardless of namespace
 	# (community-svc's chat gateway uses namespace "/community/chat", not a
 	# custom HTTP path) — routing this one prefix to community-svc is what
@@ -20,7 +20,7 @@ societyhub.jebitech.com {
 # Resident-facing community website (Next.js). Served on its own subdomain so
 # it stays independent of the admin dashboard on the root host above, while
 # still sharing the same API gateway and chat service over same-origin paths.
-community.societyhub.jebitech.com {
+community.eoorai.com {
 	handle /socket.io/* {
 		reverse_proxy community-svc:5021
 	}
