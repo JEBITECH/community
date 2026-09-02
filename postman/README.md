@@ -5,7 +5,7 @@
 ## Setup
 
 1. Import both files into Postman: the collection and `Community_App_Local.postman_environment.json`.
-2. Select the "Community App - Local" environment, and set `baseUrl` to wherever the gateway is actually running (defaults to `http://localhost:4000`; use `https://societyhub.jebitech.com` for the deployed droplet).
+2. Select the "Community App - Local" environment, and set `baseUrl` to wherever the gateway is actually running (defaults to `http://localhost:4000`; use `https://eoorai.com` for the deployed droplet).
 3. Confirm `masterAdminEmail`/`masterAdminPassword` in the environment (defaults match the seeded local dev admin).
 4. Run **Auth > Login** once. Its test script captures `accessToken` into a collection variable — every other request inherits it automatically as a Bearer token, since the gateway derives all the internal `x-user-*` headers from that JWT itself.
 
