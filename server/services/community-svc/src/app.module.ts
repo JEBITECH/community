@@ -7,6 +7,8 @@ import { ParticipationsModule } from './participations/participations.module';
 import { DonationsModule } from './donations/donations.module';
 import { VolunteersModule } from './volunteers/volunteers.module';
 import { CommentsModule } from './comments/comments.module';
+import { DiscussionsModule } from './discussions/discussions.module';
+import { AnnouncementsModule } from './announcements/announcements.module';
 import { ChatModule } from './chat/chat.module';
 import { MembersModule } from './members/members.module';
 import { DashboardModule } from './dashboard/dashboard.module';
@@ -27,6 +29,8 @@ import { Sponsorship } from './donations/entities/sponsorship.entity';
 import { VolunteerRole } from './volunteers/entities/volunteer-role.entity';
 import { VolunteerAssignment } from './volunteers/entities/volunteer-assignment.entity';
 import { EventComment } from './comments/entities/event-comment.entity';
+import { EventDiscussionTopic } from './discussions/entities/event-discussion-topic.entity';
+import { Announcement } from './announcements/entities/announcement.entity';
 import { EventChatMessage } from './chat/entities/event-chat-message.entity';
 import { ChatConfig } from './chat/entities/chat-config.entity';
 import { CommunityAuditLogSubscriber } from './audit-logging/audit-log.subscriber';
@@ -71,6 +75,8 @@ import { CommunityAuditLogSubscriber } from './audit-logging/audit-log.subscribe
         VolunteerRole,
         VolunteerAssignment,
         EventComment,
+        EventDiscussionTopic,
+        Announcement,
         EventChatMessage,
         ChatConfig,
       ],
@@ -83,6 +89,8 @@ import { CommunityAuditLogSubscriber } from './audit-logging/audit-log.subscribe
     DonationsModule,
     VolunteersModule,
     CommentsModule,
+    DiscussionsModule,
+    AnnouncementsModule,
     ChatModule,
     MembersModule,
     DashboardModule,

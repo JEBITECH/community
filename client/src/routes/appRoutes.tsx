@@ -20,6 +20,7 @@ const Explore = lazy(() => import("@/features/member/pages/explore"));
 const CreateActivity = lazy(() => import("@/features/member/pages/createActivity"));
 const ActivityDetail = lazy(() => import("@/features/member/pages/activityDetail"));
 const MyActivities = lazy(() => import("@/features/member/pages/myActivities"));
+const Announcements = lazy(() => import("@/features/member/pages/announcements"));
 const Directory = lazy(() => import("@/features/member/pages/directory"));
 const CommunityCalendar = lazy(() => import("@/features/member/pages/calendar"));
 const OrgDashboard = lazy(() => import("@/features/member/pages/orgDashboard"));
@@ -69,6 +70,7 @@ const AppRouter = () => {
             <Route path="/create-activity" element={<CreateActivity />} />
             <Route path="/events/:id" element={<ActivityDetail />} />
             <Route path="/my-activities" element={<MyActivities />} />
+            <Route path="/announcements" element={<Announcements />} />
             <Route path="/directory" element={<Directory />} />
             <Route path="/calendar" element={<CommunityCalendar />} />
             <Route path="/org-dashboard" element={<OrgDashboard />} />

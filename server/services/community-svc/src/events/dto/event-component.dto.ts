@@ -1,8 +1,9 @@
-import { IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsNumber, IsOptional, IsString, Matches, Min } from 'class-validator';
 
 const COMPONENT_TYPES = ['activity', 'seva', 'donation_drive', 'session', 'book'];
 const LOCATION_RESOURCES = ['conference_room', 'lab', 'terrace', 'open_space', 'club'];
 const AUDIENCES = ['internal', 'internal_external', 'public', 'invite_only'];
+const HH_MM = /^(?:[01]\d|2[0-3]):[0-5]\d$/;
 
 export class CreateEventComponentDto {
   @IsString()
@@ -18,10 +19,12 @@ export class CreateEventComponentDto {
 
   @IsOptional()
   @IsString()
+  @Matches(HH_MM, { message: 'start_time must be in HH:mm format' })
   start_time?: string;
 
   @IsOptional()
   @IsString()
+  @Matches(HH_MM, { message: 'end_time must be in HH:mm format' })
   end_time?: string;
 
   @IsOptional()
@@ -94,10 +97,12 @@ export class UpdateEventComponentDto {
 
   @IsOptional()
   @IsString()
+  @Matches(HH_MM, { message: 'start_time must be in HH:mm format' })
   start_time?: string;
 
   @IsOptional()
   @IsString()
+  @Matches(HH_MM, { message: 'end_time must be in HH:mm format' })
   end_time?: string;
 
   @IsOptional()

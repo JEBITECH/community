@@ -16,8 +16,13 @@ export class EventCommentsController {
   constructor(private readonly commentsService: CommentsService) {}
 
   @Get(':eventId/comments')
-  findForEvent(@CurrentUser() user: RequestUser, @Param('eventId') eventId: string, @Query('event_component_id') componentId?: string) {
-    return this.commentsService.findForEvent(eventId, user, componentId);
+  findForEvent(
+    @CurrentUser() user: RequestUser,
+    @Param('eventId') eventId: string,
+    @Query('event_component_id') componentId?: string,
+    @Query('discussion_topic_id') discussionTopicId?: string,
+  ) {
+    return this.commentsService.findForEvent(eventId, user, componentId, discussionTopicId);
   }
 
   @Post(':eventId/comments')

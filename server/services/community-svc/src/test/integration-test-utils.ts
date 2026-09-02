@@ -27,6 +27,7 @@ import { Sponsorship } from '../donations/entities/sponsorship.entity';
 import { VolunteerRole } from '../volunteers/entities/volunteer-role.entity';
 import { VolunteerAssignment } from '../volunteers/entities/volunteer-assignment.entity';
 import { EventComment } from '../comments/entities/event-comment.entity';
+import { ParticipationBeneficiary } from '../participations/entities/participation-beneficiary.entity';
 import { EventChatMessage } from '../chat/entities/event-chat-message.entity';
 import { ChatConfig } from '../chat/entities/chat-config.entity';
 
@@ -66,6 +67,7 @@ export function createTestDataSource(): DataSource {
       EventComponent,
       EventOrganizer,
       Participation,
+      ParticipationBeneficiary,
       Booking,
       Donation,
       SponsorshipNeed,

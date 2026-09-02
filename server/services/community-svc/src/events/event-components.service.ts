@@ -85,6 +85,10 @@ export class EventComponentsService {
       participation_enabled: dto.participation_enabled,
     });
 
+    if (dto.start_time && dto.end_time && dto.end_time <= dto.start_time) {
+      throw new ApiError('Activity end time must be later than its start time', 400, 'INVALID_TIME_RANGE');
+    }
+
     const component = this.componentRepo.create({
       event_day_id: dayId,
       organization_id: day.event!.organization_id,
@@ -126,6 +130,14 @@ export class EventComponentsService {
         participation_enabled: dto.participation_enabled ?? component.participation_enabled,
       });
       dto = { ...dto, registration_enabled, participation_enabled };
+    }
+
+    if (dto.start_time !== undefined || dto.end_time !== undefined) {
+      const nextStart = dto.start_time ?? component.start_time;
+      const nextEnd = dto.end_time ?? component.end_time;
+      if (nextStart && nextEnd && nextEnd <= nextStart) {
+        throw new ApiError('Activity end time must be later than its start time', 400, 'INVALID_TIME_RANGE');
+      }
     }
 
     Object.assign(component, dto);

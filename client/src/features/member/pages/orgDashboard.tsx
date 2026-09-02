@@ -15,6 +15,7 @@ import {
   FileBarChart,
 } from "lucide-react";
 import { useOrgSummary } from "../hooks/useDashboard";
+import AnnouncementsPanel from "../components/AnnouncementsPanel";
 
 function StatCard({ label, value, icon: Icon, sub }: { label: string; value: string | number; icon: any; sub?: string }) {
   return (
@@ -41,6 +42,8 @@ export default function OrgDashboard() {
   return (
     <Layout title="Dashboard" subtitle="How your community is doing" icon={<LayoutDashboard className="w-5 h-5" />}>
       <div className="max-w-3xl mx-auto py-6 px-4 space-y-6">
+        <AnnouncementsPanel />
+
         <div className="flex justify-end">
           <div className="flex gap-2">
             {activeMembership?.role === "super_admin" && (

@@ -76,7 +76,7 @@ function ContributionRow({
   );
 }
 
-function SevaCard({ assignment }: { assignment: { id: string; event_id: string; event_name: string; role_title: string; approval_status: string } }) {
+function SevaCard({ assignment }: { assignment: { id: string; event_id: string; event_name: string; role_title: string; approval_status: string; participation_status?: string } }) {
   const navigate = useNavigate();
   const cancelAssignment = useCancelVolunteerAssignment();
 
@@ -89,7 +89,7 @@ function SevaCard({ assignment }: { assignment: { id: string; event_id: string; 
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <StatusChip status={assignment.approval_status} />
-          {assignment.approval_status !== "rejected" && (
+          {assignment.participation_status === "active" && assignment.approval_status !== "rejected" && assignment.approval_status !== "withdrawn" && (
             <Button
               size="sm"
               shape="pill"

@@ -111,6 +111,84 @@ describe('VolunteersService — slot race (integration, real Postgres locking)',
     expect(assignmentCount).toBe(HEADCOUNT_NEEDED);
   });
 
+  it('allows a member to sign up again after withdrawing from the same role', async () => {
+    const roleRepo = dataSource.getRepository(VolunteerRole);
+    const testRole = await roleRepo.save(
+      roleRepo.create({
+        organization_id: TEST_ORG_ID,
+        event_id: eventId,
+        title: '[TEST] Re-signup Role',
+        headcount_needed: 2,
+        headcount_filled: 0,
+        status: 'open',
+      }),
+    );
+
+    try {
+      const user = requestUsers[0];
+      const first = await service.create(user, { volunteer_role_id: testRole.id });
+      expect(first.approval_status).toBe('pending');
+
+      await service.cancel(first.id, user);
+
+      const second = await service.create(user, { volunteer_role_id: testRole.id });
+      expect(second.id).not.toBe(first.id);
+      expect(second.approval_status).toBe('pending');
+
+      const assignments = await dataSource.getRepository(VolunteerAssignment).find({
+        where: { volunteer_role_id: testRole.id, membership_id: membershipIds[0] },
+        order: { createdAt: 'ASC' },
+      });
+      expect(assignments).toHaveLength(2);
+      expect(assignments[0].approval_status).toBe('withdrawn');
+      expect(assignments[1].approval_status).toBe('pending');
+    } finally {
+      await dataSource.getRepository(VolunteerAssignment).delete({ volunteer_role_id: testRole.id });
+      await dataSource.getRepository(Participation).delete({ event_id: eventId, membership_id: membershipIds[0], type: 'volunteer' });
+      await roleRepo.delete({ id: testRole.id });
+    }
+  });
+
+  it('allows the same member to sign up for two different roles on the same event', async () => {
+    const roleRepo = dataSource.getRepository(VolunteerRole);
+    const [firstRole, secondRole] = await Promise.all([
+      roleRepo.save(
+        roleRepo.create({
+          organization_id: TEST_ORG_ID,
+          event_id: eventId,
+          title: '[TEST] Same Event Role A',
+          headcount_needed: 2,
+          headcount_filled: 0,
+          status: 'open',
+        }),
+      ),
+      roleRepo.save(
+        roleRepo.create({
+          organization_id: TEST_ORG_ID,
+          event_id: eventId,
+          title: '[TEST] Same Event Role B',
+          headcount_needed: 2,
+          headcount_filled: 0,
+          status: 'open',
+        }),
+      ),
+    ]);
+
+    try {
+      const user = requestUsers[1];
+      const first = await service.create(user, { volunteer_role_id: firstRole.id });
+      const second = await service.create(user, { volunteer_role_id: secondRole.id });
+
+      expect(first.volunteer_role_id).toBe(firstRole.id);
+      expect(second.volunteer_role_id).toBe(secondRole.id);
+    } finally {
+      await dataSource.getRepository(VolunteerAssignment).delete({ volunteer_role_id: firstRole.id });
+      await dataSource.getRepository(VolunteerAssignment).delete({ volunteer_role_id: secondRole.id });
+      await dataSource.getRepository(Participation).delete({ event_id: eventId, membership_id: membershipIds[1], type: 'volunteer' });
+      await roleRepo.delete([firstRole.id, secondRole.id]);
+    }
+  });
+
   it('rejecting an assignment releases the slot and re-opens the role', async () => {
     const assignments = await dataSource.getRepository(VolunteerAssignment).find({ where: { volunteer_role_id: roleId } });
     expect(assignments.length).toBe(HEADCOUNT_NEEDED);

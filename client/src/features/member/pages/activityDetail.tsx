@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import StatusChip from "@/components/reusable ui/StatusChip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -32,13 +33,7 @@ import {
   HandHeart,
   Check,
   X,
-  MessageCircle,
   MessagesSquare,
-  Flag,
-  Pencil,
-  Trash2,
-  EyeOff,
-  Eye,
 } from "lucide-react";
 import { useOrganizationContext } from "@/contexts/OrganizationContext";
 import { useAuth } from "@/hooks/useAuth";
@@ -73,13 +68,12 @@ import {
   useApproveVolunteerAssignment,
   useRejectVolunteerAssignment,
 } from "../hooks/useVolunteers";
-import { useEventComments, useCreateComment, useUpdateComment, useDeleteComment, useReportComment, useModerateComment } from "../hooks/useComments";
 import { useEventChat } from "../hooks/useChat";
+import EventDiscussionBoard from "../components/EventDiscussionBoard";
 import { EventComponent, EventAudience, DayRegistrationMode } from "../api/events";
 import { Participation } from "../api/participations";
 import { SponsorshipNeed } from "../api/donations";
 import { VolunteerRole } from "../api/volunteers";
-import { EventComment } from "../api/comments";
 
 const INHERIT_AUDIENCE = "inherit" as const;
 
@@ -134,6 +128,9 @@ export default function ActivityDetail() {
   const [componentDialogMode, setComponentDialogMode] = useState<DayRegistrationMode>("both");
   const [componentForm, setComponentForm] = useState({
     name: "",
+    description: "",
+    start_time: "",
+    end_time: "",
     registration_enabled: true,
     participation_enabled: false,
   });
@@ -174,13 +171,6 @@ export default function ActivityDetail() {
 
   const [manageRoleId, setManageRoleId] = useState<string | null>(null);
 
-  const { data: comments } = useEventComments(id);
-  const createComment = useCreateComment(id!);
-  const updateComment = useUpdateComment(id!);
-  const deleteComment = useDeleteComment(id!);
-  const reportComment = useReportComment(id!);
-  const moderateComment = useModerateComment(id!);
-  const [newComment, setNewComment] = useState("");
 
   const [chatOpen, setChatOpen] = useState(false);
   const { messages: chatMessages, connected: chatConnected, sendMessage: sendChatMessage } = useEventChat(chatOpen ? id : undefined);
@@ -322,6 +312,9 @@ export default function ActivityDetail() {
                           setComponentDialogMode(day.registration_mode);
                           setComponentForm({
                             name: "",
+                            description: "",
+                            start_time: "",
+                            end_time: "",
                             registration_enabled: day.registration_mode !== "participate",
                             participation_enabled: day.registration_mode === "participate",
                           });
@@ -371,7 +364,7 @@ export default function ActivityDetail() {
                       role={role}
                       eventId={id!}
                       canManage={canManage}
-                      myAssignment={myAssignmentsForEvent?.find((a) => a.volunteer_role_id === role.id && a.approval_status !== "rejected")}
+                      myAssignment={myAssignmentsForEvent?.find((a) => a.volunteer_role_id === role.id && a.participation_status === "active" && a.approval_status !== "rejected" && a.approval_status !== "withdrawn")}
                       onManage={() => setManageRoleId(role.id)}
                     />
                   ))}
@@ -401,7 +394,7 @@ export default function ActivityDetail() {
                       role={role}
                       eventId={id!}
                       canManage={canManage}
-                      myAssignment={myAssignmentsForEvent?.find((a) => a.volunteer_role_id === role.id && a.approval_status !== "rejected")}
+                      myAssignment={myAssignmentsForEvent?.find((a) => a.volunteer_role_id === role.id && a.participation_status === "active" && a.approval_status !== "rejected" && a.approval_status !== "withdrawn")}
                       onManage={() => setManageRoleId(role.id)}
                     />
                   ))}
@@ -501,45 +494,11 @@ export default function ActivityDetail() {
           </div>
         )}
 
-        <div>
-          <h3 className="font-semibold text-foreground mb-3 flex items-center gap-1.5">
-            <MessageCircle className="w-4 h-4" /> Discussion
-          </h3>
-          <div className="space-y-3 mb-3">
-            <Input value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Ask a question or share something..." />
-            <Button
-              size="sm"
-              shape="pill"
-              disabled={!newComment.trim() || createComment.isPending}
-              onClick={() =>
-                createComment.mutate({ body: newComment.trim() }, { onSuccess: () => setNewComment("") })
-              }
-            >
-              Post
-            </Button>
-          </div>
-          <div className="space-y-3">
-            {(comments || []).filter((c) => !c.parent_comment_id).length === 0 && (
-              <p className="text-sm text-muted-foreground">No comments yet — be the first to say something.</p>
-            )}
-            {(comments || [])
-              .filter((c) => !c.parent_comment_id)
-              .map((comment) => (
-                <CommentThread
-                  key={comment.id}
-                  comment={comment}
-                  replies={(comments || []).filter((c) => c.parent_comment_id === comment.id)}
-                  canManage={canManage}
-                  myMembershipId={activeMembership?.id}
-                  onUpdate={(commentId, body) => updateComment.mutate({ id: commentId, body })}
-                  onDelete={(commentId) => deleteComment.mutate(commentId)}
-                  onReport={(commentId) => reportComment.mutate(commentId)}
-                  onModerate={(commentId, status) => moderateComment.mutate({ id: commentId, status })}
-                  onReply={(body, parentId) => createComment.mutate({ body, parent_comment_id: parentId })}
-                />
-              ))}
-          </div>
-        </div>
+        <EventDiscussionBoard
+          eventId={event.id}
+          canManage={canManage}
+          myMembershipId={activeMembership?.id}
+        />
 
         <div>
           <div className="flex items-center justify-between mb-3">
@@ -922,70 +881,206 @@ export default function ActivityDetail() {
           <DialogHeader>
             <DialogTitle>Add Activity</DialogTitle>
           </DialogHeader>
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Name</label>
-            <Input
-              value={componentForm.name}
-              onChange={(e) => setComponentForm({ ...componentForm, name: e.target.value })}
-              placeholder="e.g. Decoration Seva"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-2">
-              How can members register?
-            </label>
-            {componentDialogMode !== "both" && (
-              <p className="text-xs text-muted-foreground mb-2">
-                This day is set to "{DAY_REGISTRATION_MODE_OPTIONS.find((m) => m.value === componentDialogMode)?.label}"
-                — only that option is available here. Change it from the day's settings if you need a mix.
-              </p>
-            )}
-            <div className="space-y-2">
-              {componentDialogMode !== "participate" && (
-                <label className="flex items-start gap-2 text-sm rounded-lg border border-border p-2.5">
-                  <Checkbox
-                    checked={componentForm.registration_enabled}
-                    onCheckedChange={(checked) => setComponentForm({ ...componentForm, registration_enabled: !!checked })}
-                    className="mt-0.5"
-                  />
-                  <span>
-                    <span className="font-medium text-foreground block">Join</span>
-                    <span className="text-xs text-muted-foreground">One-tap RSVP for the member themself.</span>
-                  </span>
-                </label>
-              )}
-              {componentDialogMode !== "join" && (
-                <label className="flex items-start gap-2 text-sm rounded-lg border border-border p-2.5">
-                  <Checkbox
-                    checked={componentForm.participation_enabled}
-                    onCheckedChange={(checked) => setComponentForm({ ...componentForm, participation_enabled: !!checked })}
-                    className="mt-0.5"
-                  />
-                  <span>
-                    <span className="font-medium text-foreground block">Participate</span>
-                    <span className="text-xs text-muted-foreground">
-                      Detailed registration — single or multiple people, self / family / others.
-                    </span>
-                  </span>
-                </label>
-              )}
+
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Activity name
+              </label>
+              <Input
+                value={componentForm.name}
+                onChange={(e) =>
+                  setComponentForm((form) => ({
+                    ...form,
+                    name: e.target.value,
+                  }))
+                }
+                placeholder="e.g. Puja"
+                maxLength={200}
+              />
             </div>
-            {!componentForm.registration_enabled && !componentForm.participation_enabled && (
-              <p className="text-xs text-amber-600 mt-1.5">
-                Neither is selected — members won't see a registration button for this activity.
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Description
+              </label>
+              <Textarea
+                value={componentForm.description}
+                onChange={(e) =>
+                  setComponentForm((form) => ({
+                    ...form,
+                    description: e.target.value,
+                  }))
+                }
+                placeholder="Optional details for members"
+                rows={3}
+                maxLength={2000}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                Time
+              </label>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">
+                    Starts
+                  </label>
+                  <Input
+                    type="time"
+                    value={componentForm.start_time}
+                    onChange={(e) =>
+                      setComponentForm((form) => ({
+                        ...form,
+                        start_time: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs text-muted-foreground mb-1">
+                    Ends
+                  </label>
+                  <Input
+                    type="time"
+                    value={componentForm.end_time}
+                    min={componentForm.start_time || undefined}
+                    onChange={(e) =>
+                      setComponentForm((form) => ({
+                        ...form,
+                        end_time: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground mt-1.5">
+                Shown in the event timezone to members.
               </p>
-            )}
+
+              {componentForm.start_time &&
+                componentForm.end_time &&
+                componentForm.end_time <= componentForm.start_time && (
+                  <p className="text-xs text-destructive mt-1.5">
+                    End time must be later than start time.
+                  </p>
+                )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">
+                How can members register?
+              </label>
+
+              {componentDialogMode !== "both" && (
+                <p className="text-xs text-muted-foreground mb-2">
+                  This day is set to "{DAY_REGISTRATION_MODE_OPTIONS.find((m) => m.value === componentDialogMode)?.label}" — only that option is available here. Change it from the day's settings if you need a mix.
+                </p>
+              )}
+
+              <div className="space-y-2">
+                {componentDialogMode !== "participate" && (
+                  <label className="flex items-start gap-2 text-sm rounded-lg border border-border p-2.5">
+                    <Checkbox
+                      checked={componentForm.registration_enabled}
+                      onCheckedChange={(checked) =>
+                        setComponentForm((form) => ({
+                          ...form,
+                          registration_enabled: checked === true,
+                        }))
+                      }
+                      className="mt-0.5"
+                    />
+                    <span>
+                      <span className="font-medium text-foreground block">
+                        Join
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        One-tap RSVP for the member themself.
+                      </span>
+                    </span>
+                  </label>
+                )}
+
+                {componentDialogMode !== "join" && (
+                  <label className="flex items-start gap-2 text-sm rounded-lg border border-border p-2.5">
+                    <Checkbox
+                      checked={componentForm.participation_enabled}
+                      onCheckedChange={(checked) =>
+                        setComponentForm((form) => ({
+                          ...form,
+                          participation_enabled: checked === true,
+                        }))
+                      }
+                      className="mt-0.5"
+                    />
+                    <span>
+                      <span className="font-medium text-foreground block">
+                        Participate
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        Detailed registration — single or multiple people, self / family / others.
+                      </span>
+                    </span>
+                  </label>
+                )}
+              </div>
+
+              {!componentForm.registration_enabled &&
+                !componentForm.participation_enabled && (
+                  <p className="text-xs text-amber-600 mt-1.5">
+                    Neither is selected — members won't see a registration button for this activity.
+                  </p>
+                )}
+            </div>
           </div>
+
           <DialogFooter>
             <Button
-              disabled={!componentForm.name || createComponent.isPending}
-              onClick={() =>
-                componentDialogFor &&
+              variant="outline"
+              onClick={() => setComponentDialogFor(null)}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              disabled={
+                !componentForm.name.trim() ||
+                createComponent.isPending ||
+                (componentForm.start_time !== "" &&
+                  componentForm.end_time !== "" &&
+                  componentForm.end_time <= componentForm.start_time)
+              }
+              onClick={() => {
+                if (!componentDialogFor) return;
+
+                const name = componentForm.name.trim();
+                const description = componentForm.description.trim();
+                const startTime = componentForm.start_time.trim();
+                const endTime = componentForm.end_time.trim();
+
+                if (!name) return;
+
+                if (
+                  startTime &&
+                  endTime &&
+                  endTime <= startTime
+                ) {
+                  return;
+                }
+
                 createComponent.mutate(
                   {
                     dayId: componentDialogFor,
                     data: {
-                      name: componentForm.name,
+                      name,
+                      description: description || undefined,
+                      start_time: startTime || undefined,
+                      end_time: endTime || undefined,
                       registration_enabled: componentForm.registration_enabled,
                       participation_enabled: componentForm.participation_enabled,
                     },
@@ -993,13 +1088,20 @@ export default function ActivityDetail() {
                   {
                     onSuccess: () => {
                       setComponentDialogFor(null);
-                      setComponentForm({ name: "", registration_enabled: true, participation_enabled: false });
+                      setComponentForm({
+                        name: "",
+                        description: "",
+                        start_time: "",
+                        end_time: "",
+                        registration_enabled: true,
+                        participation_enabled: false,
+                      });
                     },
-                  }
-                )
-              }
+                  },
+                );
+              }}
             >
-              Add Activity
+              {createComponent.isPending ? "Adding..." : "Add Activity"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1277,9 +1379,21 @@ function ManageRoleAssignments({ roleId, eventId }: { roleId: string; eventId: s
   return (
     <div className="space-y-2">
       {assignments.map((a) => (
-        <div key={a.id} className="flex items-center justify-between text-sm gap-2 py-1">
-          <StatusChip status={a.approval_status} />
-          {a.approval_status === "pending" && (
+        <div key={a.id} className="rounded-lg border border-border p-3 space-y-2">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-medium text-foreground truncate">{a.member_name || "Member"}</p>
+              {a.member_email && (
+                <p className="text-xs text-muted-foreground truncate">{a.member_email}</p>
+              )}
+            </div>
+            <StatusChip status={a.approval_status} />
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">
+              {a.approval_status === "withdrawn" ? "Withdrawn" : a.approval_status === "rejected" ? "Rejected" : a.approval_status === "approved" ? "Approved" : "Awaiting approval"}
+            </p>
+            {a.approval_status === "pending" && (
             <div className="flex items-center gap-2">
               <Button size="sm" shape="pill" variant="outline" className="gap-1" disabled={reject.isPending} onClick={() => reject.mutate(a.id)}>
                 <X className="w-3.5 h-3.5" /> Reject
@@ -1289,183 +1403,9 @@ function ManageRoleAssignments({ roleId, eventId }: { roleId: string; eventId: s
               </Button>
             </div>
           )}
+          </div>
         </div>
       ))}
     </div>
-  );
-}
-
-function CommentItem({
-  comment,
-  canManage,
-  myMembershipId,
-  onUpdate,
-  onDelete,
-  onReport,
-  onModerate,
-  onReply,
-  allowReply,
-}: {
-  comment: EventComment;
-  canManage: boolean;
-  myMembershipId?: string;
-  onUpdate: (id: string, body: string) => void;
-  onDelete: (id: string) => void;
-  onReport: (id: string) => void;
-  onModerate: (id: string, status: "visible" | "hidden") => void;
-  onReply?: (body: string, parentId: string) => void;
-  allowReply?: boolean;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [editBody, setEditBody] = useState(comment.body);
-  const [replying, setReplying] = useState(false);
-  const [replyBody, setReplyBody] = useState("");
-
-  const isOwner = comment.membership_id === myMembershipId;
-  const isHidden = comment.moderation_status === "hidden";
-
-  return (
-    <div className={`text-sm ${isHidden ? "opacity-50" : ""}`}>
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <span className="font-medium text-foreground">{comment.author_name}</span>
-          {comment.moderation_status === "reported" && canManage && (
-            <Badge variant="outline" className="ml-2 text-xs text-destructive border-destructive/30">
-              Reported
-            </Badge>
-          )}
-          {isHidden && (
-            <Badge variant="outline" className="ml-2 text-xs">
-              Hidden
-            </Badge>
-          )}
-        </div>
-      </div>
-      {editing ? (
-        <div className="mt-1 space-y-2">
-          <Input value={editBody} onChange={(e) => setEditBody(e.target.value)} />
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              shape="pill"
-              onClick={() => {
-                onUpdate(comment.id, editBody.trim());
-                setEditing(false);
-              }}
-            >
-              Save
-            </Button>
-            <Button size="sm" shape="pill" variant="outline" onClick={() => setEditing(false)}>
-              Cancel
-            </Button>
-          </div>
-        </div>
-      ) : (
-        <p className="text-muted-foreground mt-0.5">{comment.body}</p>
-      )}
-      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-        {allowReply && onReply && (
-          <button className="flex items-center gap-1 hover:text-foreground" onClick={() => setReplying((v) => !v)}>
-            Reply
-          </button>
-        )}
-        {isOwner && !editing && (
-          <button className="flex items-center gap-1 hover:text-foreground" onClick={() => setEditing(true)}>
-            <Pencil className="w-3 h-3" /> Edit
-          </button>
-        )}
-        {(isOwner || canManage) && (
-          <button className="flex items-center gap-1 hover:text-destructive" onClick={() => onDelete(comment.id)}>
-            <Trash2 className="w-3 h-3" /> Delete
-          </button>
-        )}
-        {!isOwner && (
-          <button className="flex items-center gap-1 hover:text-foreground" onClick={() => onReport(comment.id)}>
-            <Flag className="w-3 h-3" /> Report
-          </button>
-        )}
-        {canManage && (
-          <button
-            className="flex items-center gap-1 hover:text-foreground"
-            onClick={() => onModerate(comment.id, isHidden ? "visible" : "hidden")}
-          >
-            {isHidden ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />} {isHidden ? "Unhide" : "Hide"}
-          </button>
-        )}
-      </div>
-      {replying && onReply && (
-        <div className="mt-2 flex gap-2">
-          <Input value={replyBody} onChange={(e) => setReplyBody(e.target.value)} placeholder="Write a reply..." />
-          <Button
-            size="sm"
-            shape="pill"
-            disabled={!replyBody.trim()}
-            onClick={() => {
-              onReply(replyBody.trim(), comment.id);
-              setReplyBody("");
-              setReplying(false);
-            }}
-          >
-            Send
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CommentThread({
-  comment,
-  replies,
-  canManage,
-  myMembershipId,
-  onUpdate,
-  onDelete,
-  onReport,
-  onModerate,
-  onReply,
-}: {
-  comment: EventComment;
-  replies: EventComment[];
-  canManage: boolean;
-  myMembershipId?: string;
-  onUpdate: (id: string, body: string) => void;
-  onDelete: (id: string) => void;
-  onReport: (id: string) => void;
-  onModerate: (id: string, status: "visible" | "hidden") => void;
-  onReply: (body: string, parentId: string) => void;
-}) {
-  return (
-    <Card>
-      <CardContent className="p-4 space-y-3">
-        <CommentItem
-          comment={comment}
-          canManage={canManage}
-          myMembershipId={myMembershipId}
-          onUpdate={onUpdate}
-          onDelete={onDelete}
-          onReport={onReport}
-          onModerate={onModerate}
-          onReply={onReply}
-          allowReply
-        />
-        {replies.length > 0 && (
-          <div className="pl-4 border-l-2 border-border space-y-3">
-            {replies.map((reply) => (
-              <CommentItem
-                key={reply.id}
-                comment={reply}
-                canManage={canManage}
-                myMembershipId={myMembershipId}
-                onUpdate={onUpdate}
-                onDelete={onDelete}
-                onReport={onReport}
-                onModerate={onModerate}
-              />
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
   );
 }

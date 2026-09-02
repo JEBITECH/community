@@ -28,6 +28,7 @@ export const allMenuItems: MenuItem[] = [
  * role-based guards instead of the full ACL matrix).
  */
 export const memberMenuItems: MenuItem[] = [
+  { path: "/announcements", icon: Bell, label: "Announcements", exact: true },
   { path: "/explore", icon: Compass, label: "Explore", exact: true },
   { path: "/my-activities", icon: Ticket, label: "My Activities", exact: true },
   { path: "/calendar", icon: CalendarDays, label: "Calendar", exact: true },

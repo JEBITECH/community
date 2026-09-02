@@ -1,7 +1,7 @@
 import { apiRequest } from "@/lib/queryClient";
 
 export type VolunteerRoleStatus = "open" | "filled" | "closed";
-export type VolunteerApprovalStatus = "pending" | "approved" | "rejected";
+export type VolunteerApprovalStatus = "pending" | "approved" | "rejected" | "withdrawn";
 export type VolunteerRoleKind = "volunteer" | "book";
 
 export interface VolunteerRole {
@@ -30,6 +30,9 @@ export interface VolunteerAssignment {
   approved_at?: string | null;
   attendance_marked: boolean;
   createdAt: string;
+  participation_status?: "active" | "cancelled" | "attended" | "no_show";
+  member_name?: string;
+  member_email?: string | null;
 }
 
 async function json<T>(res: Response): Promise<T> {

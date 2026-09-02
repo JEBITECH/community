@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { ApiError } from '@shared/common';
-import { Membership } from '@shared/entities';
+import { Membership, User } from '@shared/entities';
 import { Event } from '../events/entities/event.entity';
 import { EventComponent } from '../events/entities/event-component.entity';
 import { Participation } from '../participations/entities/participation.entity';
@@ -73,13 +73,38 @@ export class VolunteersService {
     return this.roleRepo.find({ where: { event_id: eventId }, order: { createdAt: 'ASC' } });
   }
 
-  async findAssignmentsForRole(roleId: string, user: RequestUser): Promise<VolunteerAssignment[]> {
+  async findAssignmentsForRole(
+    roleId: string,
+    user: RequestUser,
+  ): Promise<Array<VolunteerAssignment & {
+    participation_status: Participation['status'];
+    member_name: string;
+    member_email: string | null;
+  }>> {
     const role = await this.roleRepo.findOne({ where: { id: roleId } });
     if (!role) {
       throw new ApiError('Volunteer role not found', 404, 'NOT_FOUND');
     }
     assertTenantMatch(role.organization_id, user);
-    return this.assignmentRepo.find({ where: { volunteer_role_id: roleId }, order: { createdAt: 'ASC' } });
+
+    const rows = await this.assignmentRepo
+      .createQueryBuilder('a')
+      .innerJoin(Participation, 'p', 'p.id = a.participation_id')
+      .innerJoin(Membership, 'm', 'm.id = a.membership_id')
+      .innerJoin(User, 'u', 'u.id = m.user_id')
+      .addSelect('p.status', 'participation_status')
+      .addSelect(`TRIM(CONCAT(u.firstName, ' ', COALESCE(u.lastName, '')))`, 'member_name')
+      .addSelect('u.email', 'member_email')
+      .where('a.volunteer_role_id = :roleId', { roleId })
+      .orderBy('a.createdAt', 'ASC')
+      .getRawAndEntities();
+
+    return rows.entities.map((assignment, index) => ({
+      ...assignment,
+      participation_status: rows.raw[index].participation_status as Participation['status'],
+      member_name: (rows.raw[index].member_name as string)?.trim() || 'Member',
+      member_email: (rows.raw[index].member_email as string | null) ?? null,
+    }));
   }
 
   async create(user: RequestUser, dto: CreateVolunteerAssignmentDto): Promise<VolunteerAssignment> {
@@ -146,14 +171,24 @@ export class VolunteersService {
     }
   }
 
-  async findMine(user: RequestUser): Promise<(VolunteerAssignment & { event_id: string; event_name: string; role_title: string })[]> {
+  async findMine(user: RequestUser): Promise<Array<VolunteerAssignment & {
+    event_id: string;
+    event_name: string;
+    role_title: string;
+    participation_status: Participation['status'];
+  }>> {
     const membership = await this.membershipResolver.resolve(user);
     const { entities, raw } = await this.assignmentRepo
       .createQueryBuilder('a')
       .innerJoin(Participation, 'p', 'p.id = a.participation_id')
       .innerJoin(Event, 'e', 'e.id = p.event_id')
       .innerJoin(VolunteerRole, 'r', 'r.id = a.volunteer_role_id')
-      .addSelect(['p.event_id AS event_id', 'e.name AS event_name', 'r.title AS role_title'])
+      .addSelect([
+        'p.event_id AS event_id',
+        'e.name AS event_name',
+        'r.title AS role_title',
+        'p.status AS participation_status',
+      ])
       .where('a.membership_id = :membershipId', { membershipId: membership.id })
       .orderBy('a.createdAt', 'DESC')
       .getRawAndEntities();
@@ -163,6 +198,7 @@ export class VolunteersService {
       event_id: raw[i].event_id,
       event_name: raw[i].event_name,
       role_title: raw[i].role_title,
+      participation_status: raw[i].participation_status as Participation['status'],
     }));
   }
 
@@ -198,9 +234,12 @@ export class VolunteersService {
   }
 
   async approve(id: string, user: RequestUser): Promise<VolunteerAssignment> {
-    const { assignment, role } = await this.loadWithContext(id, user);
+    const { assignment, participation, role } = await this.loadWithContext(id, user);
+    if (participation.status !== 'active') {
+      throw new ApiError('Cannot approve an inactive volunteer sign-up', 409, 'INVALID_STATUS_TRANSITION');
+    }
     if (assignment.approval_status !== 'pending') {
-      throw new ApiError(`Cannot approve an assignment with status "${assignment.approval_status}"`, 409, 'INVALID_STATUS_TRANSITION');
+      throw new ApiError(`Cannot approve an assignment with status \"${assignment.approval_status}\"`, 409, 'INVALID_STATUS_TRANSITION');
     }
     assignment.approval_status = 'approved';
     assignment.approved_by_user_id = user.id;
@@ -230,8 +269,15 @@ export class VolunteersService {
 
   async reject(id: string, user: RequestUser): Promise<VolunteerAssignment> {
     const { assignment, participation, role } = await this.loadWithContext(id, user);
-    if (assignment.approval_status === 'rejected') {
-      throw new ApiError('This assignment has already been rejected', 409, 'INVALID_STATUS_TRANSITION');
+    if (participation.status !== 'active') {
+      throw new ApiError('Cannot reject an inactive volunteer sign-up', 409, 'INVALID_STATUS_TRANSITION');
+    }
+    if (assignment.approval_status !== 'pending') {
+      throw new ApiError(
+        `Cannot reject an assignment with status "${assignment.approval_status}"`,
+        409,
+        'INVALID_STATUS_TRANSITION',
+      );
     }
 
     const saved = await this.dataSource.transaction(async (manager) => {
@@ -267,15 +313,27 @@ export class VolunteersService {
       participation.status = 'cancelled';
       await manager.save(participation);
 
-      if (assignment.approval_status !== 'rejected') {
-        await this.releaseSlot(manager, assignment.volunteer_role_id);
-      }
+      // Keep the assignment row as an audit record, but make its current
+      // lifecycle state explicit so the member/admin UI cannot display
+      // "approved" and "withdrawn" simultaneously.
+      assignment.approval_status = 'withdrawn';
+      await manager.save(assignment);
+
+      await this.releaseSlot(
+        manager,
+        assignment.volunteer_role_id,
+      );
+
       return assignment;
     });
   }
 
   async reassign(id: string, user: RequestUser, dto: ReassignVolunteerAssignmentDto): Promise<VolunteerAssignment> {
     const { assignment, participation, role: oldRole } = await this.loadWithContext(id, user);
+
+    if (participation.status !== 'active' || !['pending', 'approved'].includes(assignment.approval_status)) {
+      throw new ApiError('Only an active pending or approved volunteer sign-up can be reassigned', 409, 'INVALID_STATUS_TRANSITION');
+    }
 
     const newRole = await this.roleRepo.findOne({ where: { id: dto.volunteer_role_id } });
     if (!newRole) {
