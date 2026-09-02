@@ -17,6 +17,12 @@ export class CreateParticipationDto {
   @IsIn(['join', 'book'])
   type!: 'join' | 'book';
 
+  /** Required when type='join' to distinguish quick RSVP from the detailed
+   * Participate flow. Omit for legacy callers; the server defaults to 'join'. */
+  @IsOptional()
+  @IsIn(['join', 'participate'])
+  registration_method?: 'join' | 'participate';
+
   /** Legacy path: a plain seat count with no per-person detail. Still
    * honoured when beneficiaries isn't supplied (e.g. simple "Join" / the
    * existing prasad-style seat-count booking), for backward compatibility. */

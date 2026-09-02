@@ -11,6 +11,7 @@ import { ParticipationBeneficiary } from './participation-beneficiary.entity';
 export type ParticipationType = 'join' | 'book' | 'donate' | 'sponsor' | 'volunteer';
 export type ParticipationStatus = 'active' | 'cancelled' | 'attended' | 'no_show';
 export type ParticipationMode = 'single' | 'multiple';
+export type RegistrationMethod = 'join' | 'participate' | 'book';
 
 /**
  * Header row for "who did what, against which event/component" — one row per
@@ -46,6 +47,13 @@ export class Participation {
 
   @Column({ type: 'varchar' })
   type!: ParticipationType;
+
+  /** How a member registered for this row. `join` is the one-tap RSVP;
+   * `participate` is the detailed self/family/other flow. Both intentionally
+   * share type='join' so legacy consumers and capacity/reporting remain stable,
+   * while this field makes the user's chosen path explicit. */
+  @Column({ type: 'varchar', default: 'join' })
+  registration_method!: RegistrationMethod;
 
   @Column({ type: 'varchar', default: 'active' })
   status!: ParticipationStatus;

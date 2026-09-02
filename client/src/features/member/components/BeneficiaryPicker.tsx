@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -35,6 +35,8 @@ const RELATION_LABELS: Record<BeneficiaryRelation, string> = {
 export default function BeneficiaryPicker({
   selfName,
   maxBeneficiaries,
+  initialMode,
+  initialBeneficiaries,
   onChange,
 }: {
   /** Display name for the "Self" row — comes from the logged-in member's own
@@ -42,13 +44,25 @@ export default function BeneficiaryPicker({
    * sent from the client, this is purely for the UI preview. */
   selfName: string;
   maxBeneficiaries?: number;
+  initialMode?: "single" | "multiple";
+  initialBeneficiaries?: BeneficiaryInput[];
   onChange: (beneficiaries: BeneficiaryInput[], mode: "single" | "multiple") => void;
 }) {
-  const [mode, setMode] = useState<"single" | "multiple">("single");
-  const [singleRelation, setSingleRelation] = useState<BeneficiaryRelation>("self");
-  const [singleName, setSingleName] = useState("");
-  const [singleMembershipId, setSingleMembershipId] = useState("");
-  const [multiRows, setMultiRows] = useState<DraftBeneficiary[]>([{ key: newKey(), relation_type: "self", full_name: "", membership_id: "" }]);
+  const initial = initialBeneficiaries && initialBeneficiaries.length > 0 ? initialBeneficiaries : [{ relation_type: "self" as BeneficiaryRelation }];
+  const initialModeValue = initialMode ?? (initial.length > 1 ? "multiple" : "single");
+  const initialSingle = initial[0];
+  const [mode, setMode] = useState<"single" | "multiple">(initialModeValue);
+  const [singleRelation, setSingleRelation] = useState<BeneficiaryRelation>(initialSingle.relation_type);
+  const [singleName, setSingleName] = useState(initialSingle.full_name ?? "");
+  const [singleMembershipId, setSingleMembershipId] = useState(initialSingle.membership_id ?? "");
+  const [multiRows, setMultiRows] = useState<DraftBeneficiary[]>(initial.map((b) => ({
+    key: newKey(),
+    relation_type: b.relation_type,
+    full_name: b.full_name ?? "",
+    membership_id: b.membership_id ?? "",
+  })));
+  const idPrefix = useId();
+
 
   const emit = (nextMode: "single" | "multiple", rows: DraftBeneficiary[]) => {
     const valid = rows
@@ -60,6 +74,7 @@ export default function BeneficiaryPicker({
       }));
     onChange(valid, nextMode);
   };
+
 
   const setSingle = (relation: BeneficiaryRelation, name: string, membershipId: string) => {
     setSingleRelation(relation);
@@ -74,8 +89,10 @@ export default function BeneficiaryPicker({
     emit("multiple", next);
   };
 
+  const canAddAnotherPerson = maxBeneficiaries == null || multiRows.length < maxBeneficiaries;
+
   const addMultiRow = () => {
-    if (maxBeneficiaries && multiRows.length >= maxBeneficiaries) return;
+    if (!canAddAnotherPerson) return;
     const next = [...multiRows, { key: newKey(), relation_type: "family" as BeneficiaryRelation, full_name: "", membership_id: "" }];
     setMultiRows(next);
     emit("multiple", next);
@@ -102,11 +119,11 @@ export default function BeneficiaryPicker({
         <label className="block text-sm font-medium text-foreground mb-2">Registering for</label>
         <RadioGroup value={mode} onValueChange={(v) => switchMode(v as "single" | "multiple")} className="flex gap-4">
           <label className="flex items-center gap-2 text-sm">
-            <RadioGroupItem value="single" id="mode-single" />
+            <RadioGroupItem value="single" id={`${idPrefix}-mode-single`} />
             Single
           </label>
           <label className="flex items-center gap-2 text-sm">
-            <RadioGroupItem value="multiple" id="mode-multiple" />
+            <RadioGroupItem value="multiple" id={`${idPrefix}-mode-multiple`} />
             Multiple
           </label>
         </RadioGroup>
@@ -153,7 +170,7 @@ export default function BeneficiaryPicker({
                   ))}
                 </RadioGroup>
                 {multiRows.length > 1 && (
-                  <Button size="sm" variant="ghost" onClick={() => removeMultiRow(row.key)} className="h-7 w-7 p-0">
+                  <Button size="sm" variant="ghost" type="button" onClick={() => removeMultiRow(row.key)} className="h-7 w-7 p-0">
                     <Trash2 className="w-3.5 h-3.5 text-destructive" />
                   </Button>
                 )}
@@ -175,7 +192,8 @@ export default function BeneficiaryPicker({
             variant="outline"
             shape="pill"
             className="gap-1"
-            disabled={!!maxBeneficiaries && multiRows.length >= maxBeneficiaries}
+            type="button"
+            disabled={!canAddAnotherPerson}
             onClick={addMultiRow}
           >
             <Plus className="w-3.5 h-3.5" /> Add another person
@@ -230,7 +248,7 @@ function BeneficiaryDetailFields({
           />
           {isFetching && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground shrink-0" />}
           {!isFetching && lookedUp && (
-            <Button size="sm" variant="outline" className="shrink-0 gap-1" onClick={applyLookup}>
+            <Button size="sm" variant="outline" className="shrink-0 gap-1" type="button" onClick={applyLookup}>
               <CheckCircle2 className="w-3.5 h-3.5" />
               Use "{[lookedUp.first_name, lookedUp.last_name].filter(Boolean).join(" ")}"
             </Button>

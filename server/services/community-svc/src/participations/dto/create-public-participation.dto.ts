@@ -17,6 +17,10 @@ export class CreatePublicParticipationDto {
   type!: 'join' | 'book';
 
   @IsOptional()
+  @IsIn(['join', 'participate'])
+  registration_method?: 'join' | 'participate';
+
+  @IsOptional()
   @IsInt()
   @Min(1)
   seats_requested?: number;

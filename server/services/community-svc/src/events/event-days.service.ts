@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { EventComponent } from './entities/event-component.entity';
 import { ApiError } from '@shared/common';
 import { Event } from './entities/event.entity';
 import { EventDay } from './entities/event-day.entity';
@@ -13,6 +14,7 @@ export class EventDaysService {
   constructor(
     @InjectRepository(Event) private readonly eventRepo: Repository<Event>,
     @InjectRepository(EventDay) private readonly eventDayRepo: Repository<EventDay>,
+    @InjectRepository(EventComponent) private readonly eventComponentRepo: Repository<EventComponent>,
   ) {}
 
   private async loadParentEvent(eventId: string, user: RequestUser): Promise<Event> {
@@ -59,6 +61,23 @@ export class EventDaysService {
 
   async update(dayId: string, user: RequestUser, dto: UpdateEventDayDto): Promise<EventDay> {
     const day = await this.loadDay(dayId, user);
+
+    if (dto.registration_mode && dto.registration_mode !== day.registration_mode) {
+      const components = await this.eventComponentRepo.find({ where: { event_day_id: day.id } });
+      const nextMode = dto.registration_mode as EventDay['registration_mode'];
+      const invalid = components.find((component) =>
+        (nextMode === 'join' && component.participation_enabled) ||
+        (nextMode === 'participate' && component.registration_enabled),
+      );
+      if (invalid) {
+        throw new ApiError(
+          `Cannot change this day to "${nextMode}" because activity "${invalid.name}" already exposes the other registration option`,
+          409,
+          'REGISTRATION_MODE_CONFLICT',
+        );
+      }
+    }
+
     Object.assign(day, dto, { audience: (dto.audience as EventDay['audience']) ?? day.audience });
     return this.eventDayRepo.save(day);
   }

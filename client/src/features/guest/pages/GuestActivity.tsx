@@ -132,7 +132,7 @@ export default function GuestActivity() {
               disabled={!isGuestValid(joinGuest) || joinMutation.isPending}
               onClick={() =>
                 joinMutation.mutate(
-                  { event_id: event.id, type: "join", guest: joinGuest },
+                  { event_id: event.id, type: "join", registration_method: "join", guest: joinGuest },
                   {
                     onSuccess: () => {
                       setJoinDialogOpen(false);

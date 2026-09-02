@@ -32,6 +32,7 @@ export const guestCreateParticipation = (data: {
   event_id: string;
   event_component_id?: string;
   type: "join" | "book";
+  registration_method?: "join";
   seats_requested?: number;
   guest: GuestInfo;
 }) => apiRequest("POST", "/community/public/participations", data).then((r) => json<{ id: string }>(r));

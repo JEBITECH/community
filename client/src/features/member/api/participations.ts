@@ -6,6 +6,7 @@ export type ParticipationMode = "single" | "multiple";
 export type BeneficiaryRelation = "self" | "family" | "other";
 
 export interface ParticipationBeneficiary {
+  id?: string;
   relation_type: BeneficiaryRelation;
   full_name: string;
   membership_id?: string | null;
@@ -19,6 +20,7 @@ export interface Participation {
   membership_id: string;
   type: ParticipationType;
   status: ParticipationStatus;
+  registration_method: "join" | "participate" | "book";
   mode: ParticipationMode;
   party_size: number;
   qr_code_token: string;
@@ -42,7 +44,14 @@ export interface CreateParticipationInput {
   event_id: string;
   event_component_id?: string;
   type: "join" | "book";
+  registration_method?: "join" | "participate";
   seats_requested?: number;
+  mode?: ParticipationMode;
+  beneficiaries?: BeneficiaryInput[];
+}
+
+
+export interface UpdateParticipationInput {
   mode?: ParticipationMode;
   beneficiaries?: BeneficiaryInput[];
 }
@@ -57,6 +66,7 @@ export interface ComponentReportEntry {
   participation_id: string;
   membership_id: string;
   type: ParticipationType;
+  registration_method: "join" | "participate" | "book";
   mode: ParticipationMode;
   status: ParticipationStatus;
   party_size: number;
@@ -78,8 +88,16 @@ async function json<T>(res: Response): Promise<T> {
 export const createParticipation = (data: CreateParticipationInput) =>
   apiRequest("POST", "/community/participations", data).then((r) => json<Participation>(r));
 
-export const getMyParticipations = (type?: string) =>
-  apiRequest("GET", `/community/participations/me${type ? `?type=${type}` : ""}`).then((r) => json<Participation[]>(r));
+export const getMyParticipations = (type?: string, registrationMethod?: "join" | "participate" | "book") => {
+  const params = new URLSearchParams();
+  if (type) params.set("type", type);
+  if (registrationMethod) params.set("registration_method", registrationMethod);
+  const query = params.toString() ? `?${params.toString()}` : "";
+  return apiRequest("GET", `/community/participations/me${query}`).then((r) => json<Participation[]>(r));
+};
+
+export const updateParticipation = (id: string, data: UpdateParticipationInput) =>
+  apiRequest("PATCH", `/community/participations/${id}`, data).then((r) => json<Participation>(r));
 
 export const cancelParticipation = (id: string) =>
   apiRequest("POST", `/community/participations/${id}/cancel`).then((r) => json<Participation>(r));

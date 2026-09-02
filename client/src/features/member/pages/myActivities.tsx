@@ -1,46 +1,125 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import Layout from "@/components/Layout";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import StatusChip from "@/components/reusable ui/StatusChip";
-import { CalendarCheck, Ticket, QrCode, HeartHandshake, HandHeart, MessageCircle } from "lucide-react";
-import { useMyParticipations, useCancelParticipation } from "../hooks/useParticipations";
+import { CalendarCheck, Ticket, QrCode, HeartHandshake, HandHeart, MessageCircle, Pencil } from "lucide-react";
+import { useMyParticipations, useCancelParticipation, useUpdateParticipation } from "../hooks/useParticipations";
 import { useEvent } from "../hooks/useEvents";
 import { useMyDonations, useMySponsorships } from "../hooks/useDonations";
 import { useMyVolunteerAssignments, useCancelVolunteerAssignment } from "../hooks/useVolunteers";
 import { useMyComments } from "../hooks/useComments";
-import { Participation } from "../api/participations";
+import { BeneficiaryInput, Participation } from "../api/participations";
+import BeneficiaryPicker from "../components/BeneficiaryPicker";
 
 function ParticipationCard({ participation }: { participation: Participation }) {
   const navigate = useNavigate();
-  const { data: event } = useEvent(participation.event_id);
+  const { user } = useAuth();
   const cancelParticipation = useCancelParticipation();
+  const updateParticipation = useUpdateParticipation();
+  const [editOpen, setEditOpen] = useState(false);
+  const [beneficiaries, setBeneficiaries] = useState<BeneficiaryInput[]>([]);
+  const [mode, setMode] = useState<"single" | "multiple">(participation.mode);
+  const eventQuery = useEvent(participation.event_id);
+  const event = eventQuery.data;
+  const selfName = [user?.firstName, user?.lastName].filter(Boolean).join(" " ) || "You";
+
+  const openEdit = () => {
+    setMode(participation.mode);
+    setBeneficiaries((participation.beneficiaries ?? []).map((b) => ({
+      relation_type: b.relation_type,
+      full_name: b.relation_type === "self" ? undefined : b.full_name,
+      membership_id: b.membership_id ?? undefined,
+    })));
+    setEditOpen(true);
+  };
 
   return (
-    <Card>
-      <CardContent className="p-4 flex items-center justify-between gap-3">
-        <div className="min-w-0 cursor-pointer" onClick={() => navigate(`/events/${participation.event_id}`)}>
-          <p className="font-medium text-foreground truncate">{event?.name || "Loading..."}</p>
-          {event?.start_date && <p className="text-xs text-muted-foreground">{event.start_date}</p>}
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <StatusChip status={participation.status} />
-          {participation.status === "active" && (
-            <Button
-              size="sm"
-              shape="pill"
-              variant="outline"
-              disabled={cancelParticipation.isPending}
-              onClick={() => cancelParticipation.mutate(participation.id)}
-            >
-              Cancel
-            </Button>
+    <>
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 cursor-pointer" onClick={() => navigate(`/events/${participation.event_id}`)}>
+              <p className="font-medium text-foreground truncate">{event?.name || "Loading..."}</p>
+              {event?.start_date && <p className="text-xs text-muted-foreground">{event.start_date}</p>}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <StatusChip status={participation.status} />
+              {participation.status === "active" && participation.registration_method === "participate" && (
+                <Button size="sm" variant="ghost" className="gap-1" onClick={openEdit}>
+                  <Pencil className="w-3.5 h-3.5" /> Edit
+                </Button>
+              )}
+              {participation.status === "active" && (
+                <Button
+                  size="sm"
+                  shape="pill"
+                  variant="outline"
+                  disabled={cancelParticipation.isPending}
+                  onClick={() => cancelParticipation.mutate(participation.id)}
+                >
+                  Cancel
+                </Button>
+              )}
+            </div>
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {participation.registration_method === "participate" ? "Participate" : participation.registration_method === "join" ? "Joined" : "Booking"}
+            {participation.registration_method === "participate" && (
+              <> · {participation.party_size} participant{participation.party_size === 1 ? "" : "s"}</>
+            )}
+          </div>
+          {participation.registration_method === "participate" && participation.beneficiaries && participation.beneficiaries.length > 0 && (
+            <div className="rounded-lg bg-muted/40 px-3 py-2">
+              <p className="text-xs font-medium text-foreground mb-1">Participants</p>
+              <div className="text-sm text-muted-foreground space-y-0.5">
+                {participation.beneficiaries.map((b) => (
+                  <div key={b.id ?? `${b.full_name}-${b.relation_type}`}>
+                    {b.full_name} <span className="text-xs">({b.relation_type})</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+
+      {participation.registration_method === "participate" && (
+        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit participation</DialogTitle>
+            </DialogHeader>
+            <BeneficiaryPicker
+              key={`${participation.id}-${editOpen ? "edit" : "closed"}`}
+              selfName={selfName}
+              initialMode={mode}
+              initialBeneficiaries={beneficiaries}
+              onChange={(next, nextMode) => {
+                setBeneficiaries(next);
+                setMode(nextMode);
+              }}
+            />
+            <DialogFooter>
+              <Button
+                disabled={updateParticipation.isPending || beneficiaries.length === 0 || (mode === "single" && beneficiaries.length !== 1)}
+                onClick={() => updateParticipation.mutate(
+                  { id: participation.id, data: { mode, beneficiaries } },
+                  { onSuccess: () => setEditOpen(false) },
+                )}
+              >
+                {updateParticipation.isPending ? "Saving…" : "Save changes"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
   );
 }
 
@@ -120,8 +199,9 @@ function MyCommentCard({ eventId, eventName, body, createdAt }: { eventId: strin
 }
 
 export default function MyActivities() {
-  const { data: joins, isLoading: loadingJoins } = useMyParticipations("join");
-  const { data: bookings, isLoading: loadingBookings } = useMyParticipations("book");
+  const { data: joins, isLoading: loadingJoins } = useMyParticipations("join", "join");
+  const { data: participations, isLoading: loadingParticipations } = useMyParticipations("join", "participate");
+  const { data: bookings, isLoading: loadingBookings } = useMyParticipations("book", "book");
   const { data: donations, isLoading: loadingDonations } = useMyDonations();
   const { data: sponsorships, isLoading: loadingSponsorships } = useMySponsorships();
   const { data: sevaAssignments, isLoading: loadingSeva } = useMyVolunteerAssignments();
@@ -157,6 +237,9 @@ export default function MyActivities() {
             <TabsTrigger value="events" className="gap-1.5 shrink-0">
               <CalendarCheck className="w-4 h-4" /> Events
             </TabsTrigger>
+            <TabsTrigger value="participations" className="gap-1.5 shrink-0">
+              <CalendarCheck className="w-4 h-4" /> Participations
+            </TabsTrigger>
             <TabsTrigger value="bookings" className="gap-1.5 shrink-0">
               <QrCode className="w-4 h-4" /> Bookings
             </TabsTrigger>
@@ -172,6 +255,9 @@ export default function MyActivities() {
           </TabsList>
           <TabsContent value="events" className="pt-4">
             {renderList(joins, loadingJoins, "You haven't joined any events yet.")}
+          </TabsContent>
+          <TabsContent value="participations" className="pt-4">
+            {renderList(participations, loadingParticipations, "You haven't registered any participants yet.")}
           </TabsContent>
           <TabsContent value="bookings" className="pt-4">
             {renderList(bookings, loadingBookings, "No bookings yet.")}

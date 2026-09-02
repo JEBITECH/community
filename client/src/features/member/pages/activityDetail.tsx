@@ -47,7 +47,7 @@ import {
   useCreateEventDay,
   useCreateEventComponent,
 } from "../hooks/useEvents";
-import { useMyParticipations, useCreateParticipation, useCancelParticipation, useComponentAvailability } from "../hooks/useParticipations";
+import { useMyParticipations, useCreateParticipation, useCancelParticipation, useComponentAvailability, useUpdateParticipation } from "../hooks/useParticipations";
 import {
   useSponsorshipNeeds,
   useCreateSponsorshipNeed,
@@ -96,12 +96,13 @@ const DAY_REGISTRATION_MODE_OPTIONS: { value: DayRegistrationMode; label: string
     label: "Participate only",
     description: "Every activity this day can only offer detailed Participate registration.",
   },
-  { value: "both", label: "Join or Participate", description: "Each activity can offer either or both, individually." },
+  { value: "both", label: "Join and Participate", description: "Each activity can offer Join, Participate, or both, individually." },
 ];
 
 export default function ActivityDetail() {
   const { id } = useParams<{ id: string }>();
   const { isSuperAdmin, activeMembership } = useOrganizationContext();
+  const { user } = useAuth();
   const canManage = isSuperAdmin || activeMembership?.role === "core_committee";
 
   const { data: event, isLoading } = useEvent(id);
@@ -138,6 +139,69 @@ export default function ActivityDetail() {
   const { data: myParticipations } = useMyParticipations();
   const createParticipation = useCreateParticipation(id);
   const cancelParticipation = useCancelParticipation();
+  const updateParticipation = useUpdateParticipation();
+
+  // Keep one registration dialog at page level. Mounting one dialog per row
+  // made the participation UI vulnerable to portal/state conflicts. The row
+  // now only requests that this page open the selected activity.
+  const [registrationDialog, setRegistrationDialog] = useState<{
+    component: EventComponent;
+    entry: "participate" | "book";
+    editingParticipationId: string | null;
+  } | null>(null);
+  const [registrationBeneficiaries, setRegistrationBeneficiaries] = useState<BeneficiaryInput[]>([{ relation_type: "self" }]);
+  const [registrationMode, setRegistrationMode] = useState<"single" | "multiple">("single");
+  const { data: registrationAvailability } = useComponentAvailability(registrationDialog?.component.id);
+  const selfName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "You";
+
+  const openRegistrationDialog = (component: EventComponent, entry: "participate" | "book") => {
+    setRegistrationDialog({ component, entry, editingParticipationId: null });
+    setRegistrationBeneficiaries([{ relation_type: "self" }]);
+    setRegistrationMode("single");
+  };
+
+  const openEditParticipationDialog = (participation: Participation, component: EventComponent) => {
+    const existing = (participation.beneficiaries ?? []).map((b) => ({
+      relation_type: b.relation_type,
+      full_name: b.relation_type === "self" ? undefined : b.full_name,
+      membership_id: b.membership_id ?? undefined,
+    }));
+    setRegistrationDialog({ component, entry: "participate", editingParticipationId: participation.id });
+    setRegistrationBeneficiaries(existing.length > 0 ? existing : [{ relation_type: "self" }]);
+    setRegistrationMode(participation.mode);
+  };
+
+  const closeRegistrationDialog = () => {
+    if (createParticipation.isPending || updateParticipation.isPending) return;
+    setRegistrationDialog(null);
+  };
+
+  const submitRegistrationDialog = () => {
+    if (!registrationDialog) return;
+    if (registrationDialog.editingParticipationId) {
+      updateParticipation.mutate(
+        {
+          id: registrationDialog.editingParticipationId,
+          data: { mode: registrationMode, beneficiaries: registrationBeneficiaries },
+        },
+        { onSuccess: () => setRegistrationDialog(null) },
+      );
+      return;
+    }
+
+    createParticipation.mutate(
+      {
+        event_id: id!,
+        event_component_id: registrationDialog.component.id,
+        type: registrationDialog.entry === "book" ? "book" : "join",
+        registration_method: registrationDialog.entry === "book" ? undefined : "participate",
+        mode: registrationMode,
+        beneficiaries: registrationBeneficiaries.length > 0 ? registrationBeneficiaries : undefined,
+      },
+      { onSuccess: () => setRegistrationDialog(null) },
+    );
+  };
+
 
   const myEventJoin = myParticipations?.find(
     (p) => p.event_id === id && !p.event_component_id && p.type === "join" && p.status === "active"
@@ -329,7 +393,16 @@ export default function ActivityDetail() {
                   {(day.components || []).length > 0 && (
                     <div className="space-y-2 pt-2 border-t border-border">
                       {day.components!.map((c) => (
-                        <ComponentRow key={c.id} component={c} myParticipations={myParticipations} eventId={id!} timezone={event?.timezone} />
+                        <ComponentRow
+                          key={c.id}
+                          component={c}
+                          myParticipations={myParticipations}
+                          eventId={id!}
+                          timezone={event?.timezone}
+                          canManage={canManage}
+                          onOpenRegistration={openRegistrationDialog}
+                          onEditParticipation={openEditParticipationDialog}
+                        />
                       ))}
                     </div>
                   )}
@@ -1106,6 +1179,75 @@ export default function ActivityDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog
+        open={!!registrationDialog}
+        onOpenChange={(open) => {
+          if (!open) closeRegistrationDialog();
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {registrationDialog?.editingParticipationId ? "Edit participation" : registrationDialog?.entry === "book" ? "Book" : "Participate"}
+              {registrationDialog?.component ? ` — ${registrationDialog.component.name}` : ""}
+            </DialogTitle>
+          </DialogHeader>
+
+          {registrationDialog && (
+            <BeneficiaryPicker
+              key={`${registrationDialog.component.id}-${registrationDialog.editingParticipationId ?? "new"}`}
+              selfName={selfName}
+              maxBeneficiaries={
+                registrationDialog.editingParticipationId
+                  ? registrationAvailability?.capacity ?? undefined
+                  : registrationAvailability?.available ?? undefined
+              }
+              initialMode={registrationMode}
+              initialBeneficiaries={registrationBeneficiaries}
+              onChange={(next, nextMode) => {
+                setRegistrationBeneficiaries(next);
+                setRegistrationMode(nextMode);
+              }}
+            />
+          )}
+
+          {registrationDialog && registrationAvailability?.available != null &&
+            registrationBeneficiaries.length > registrationAvailability.available &&
+            !registrationDialog.editingParticipationId && (
+              <p className="text-xs text-destructive">
+                Only {registrationAvailability.available} spot{registrationAvailability.available === 1 ? "" : "s"} left — remove a person to continue.
+              </p>
+            )}
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={closeRegistrationDialog}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={
+                createParticipation.isPending ||
+                updateParticipation.isPending ||
+                registrationBeneficiaries.length === 0 ||
+                (registrationMode === "single" && registrationBeneficiaries.length !== 1) ||
+                (!!registrationDialog && !registrationDialog.editingParticipationId &&
+                  registrationAvailability?.available != null &&
+                  registrationBeneficiaries.length > registrationAvailability.available)
+              }
+              onClick={submitRegistrationDialog}
+            >
+              {createParticipation.isPending || updateParticipation.isPending
+                ? "Saving…"
+                : registrationDialog?.editingParticipationId
+                  ? "Save changes"
+                  : registrationDialog?.entry === "book"
+                    ? "Confirm Booking"
+                    : "Confirm participation"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }
@@ -1115,56 +1257,28 @@ function ComponentRow({
   myParticipations,
   eventId,
   timezone,
+  canManage,
+  onOpenRegistration,
+  onEditParticipation,
 }: {
   component: EventComponent;
   myParticipations: Participation[] | undefined;
   eventId: string;
   timezone?: string;
+  canManage: boolean;
+  onOpenRegistration: (component: EventComponent, entry: "participate" | "book") => void;
+  onEditParticipation: (participation: Participation, component: EventComponent) => void;
 }) {
-  const { user } = useAuth();
-  const selfName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "You";
-
   const createParticipation = useCreateParticipation(eventId);
   const cancelParticipation = useCancelParticipation();
   const { data: availability } = useComponentAvailability(
     component.requires_booking || component.capacity ? component.id : undefined
   );
-
-  // 'entry' distinguishes which button opened the dialog — Join skips the
-  // beneficiary picker entirely (it's the quick one-tap path), Participate
-  // and Book both go through it.
-  const [detailDialog, setDetailDialog] = useState<{ entry: "participate" | "book" } | null>(null);
-  const [beneficiaries, setBeneficiaries] = useState<BeneficiaryInput[]>([{ relation_type: "self" }]);
-  const [mode, setMode] = useState<"single" | "multiple">("single");
-
   const registrationType: "join" | "book" = component.requires_booking ? "book" : "join";
   const mine = myParticipations?.find(
     (p) => p.event_component_id === component.id && p.type === registrationType && p.status === "active"
   );
   const isFull = availability?.available === 0;
-
-  const openDetailDialog = (entry: "participate" | "book") => {
-    setBeneficiaries([{ relation_type: "self" }]);
-    setMode("single");
-    setDetailDialog({ entry });
-  };
-
-  const submitDetailDialog = () => {
-    if (!detailDialog) return;
-    createParticipation.mutate(
-      {
-        event_id: eventId,
-        event_component_id: component.id,
-        type: detailDialog.entry === "book" ? "book" : "join",
-        mode,
-        beneficiaries: beneficiaries.length > 0 ? beneficiaries : undefined,
-      },
-      { onSuccess: () => setDetailDialog(null) }
-    );
-  };
-
-  const beneficiaryCountValid = beneficiaries.length > 0 && (mode === "single" ? beneficiaries.length === 1 : true);
-  const overCapacity = availability?.available != null && beneficiaries.length > availability.available;
 
   return (
     <div className="flex items-center justify-between text-sm gap-3">
@@ -1176,6 +1290,12 @@ function ComponentRow({
             {component.end_time ? `–${component.end_time}` : ""}
             {timezone && <span className="text-xs text-muted-foreground ml-1">({timezone})</span>}
           </span>
+        )}
+        {mine?.registration_method === "participate" && (
+          <div className="text-xs text-muted-foreground mt-1 max-w-xl">
+            <span className="font-medium text-foreground">Participants:</span>{" "}
+            {(mine.beneficiaries ?? []).map((b) => b.full_name).join(", ") || "No participant details"}
+          </div>
         )}
         {availability?.capacity != null && (
           <span className="text-xs text-muted-foreground block">
@@ -1189,28 +1309,36 @@ function ComponentRow({
         </Badge>
 
         {mine ? (
-          <Button size="sm" shape="pill" variant="outline" disabled={cancelParticipation.isPending} onClick={() => cancelParticipation.mutate(mine.id)}>
-            Cancel
-          </Button>
+          <div className="flex items-center gap-2">
+            {mine.registration_method === "participate" && (
+              <Button type="button" size="sm" shape="pill" variant="secondary" onClick={() => onEditParticipation(mine, component)}>
+                Edit
+              </Button>
+            )}
+            <Button type="button" size="sm" shape="pill" variant="outline" disabled={cancelParticipation.isPending} onClick={() => cancelParticipation.mutate(mine.id)}>
+              Cancel
+            </Button>
+          </div>
         ) : registrationType === "book" ? (
-          <Button size="sm" shape="pill" disabled={isFull} onClick={() => openDetailDialog("book")}>
+          <Button type="button" size="sm" shape="pill" disabled={isFull} onClick={() => onOpenRegistration(component, "book")}>
             {isFull ? "Full" : "Book"}
           </Button>
         ) : (
           <>
             {component.registration_enabled && (
               <Button
+                type="button"
                 size="sm"
                 shape="pill"
                 variant={component.participation_enabled ? "outline" : "default"}
                 disabled={createParticipation.isPending || isFull}
-                onClick={() => createParticipation.mutate({ event_id: eventId, event_component_id: component.id, type: "join" })}
+                onClick={() => createParticipation.mutate({ event_id: eventId, event_component_id: component.id, type: "join", registration_method: "join" })}
               >
                 {isFull ? "Full" : "Join"}
               </Button>
             )}
             {component.participation_enabled && (
-              <Button size="sm" shape="pill" disabled={isFull} onClick={() => openDetailDialog("participate")}>
+              <Button type="button" size="sm" shape="pill" disabled={isFull} onClick={() => onOpenRegistration(component, "participate")}>
                 {isFull ? "Full" : "Participate"}
               </Button>
             )}
@@ -1218,36 +1346,6 @@ function ComponentRow({
         )}
       </div>
 
-      <Dialog open={!!detailDialog} onOpenChange={(open) => !open && setDetailDialog(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {detailDialog?.entry === "book" ? "Book" : "Participate in"} "{component.name}"
-            </DialogTitle>
-          </DialogHeader>
-          <BeneficiaryPicker
-            selfName={selfName}
-            maxBeneficiaries={availability?.available ?? undefined}
-            onChange={(next, nextMode) => {
-              setBeneficiaries(next);
-              setMode(nextMode);
-            }}
-          />
-          {overCapacity && (
-            <p className="text-xs text-destructive">
-              Only {availability?.available} spot{availability?.available === 1 ? "" : "s"} left — remove a person to continue.
-            </p>
-          )}
-          <DialogFooter>
-            <Button
-              disabled={createParticipation.isPending || !beneficiaryCountValid || overCapacity}
-              onClick={submitDetailDialog}
-            >
-              {detailDialog?.entry === "book" ? "Confirm Booking" : "Confirm"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
@@ -1331,6 +1429,7 @@ function VolunteerRoleRow({
             <>
               <StatusChip status={myAssignment.approval_status} />
               <Button
+                type="button"
                 size="sm"
                 shape="pill"
                 variant="outline"
@@ -1343,6 +1442,7 @@ function VolunteerRoleRow({
           ) : (
             role.status === "open" && (
               <Button
+                type="button"
                 size="sm"
                 shape="pill"
                 className="gap-1.5"

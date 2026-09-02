@@ -5,12 +5,13 @@ import { ApiError } from '@shared/common';
 import { Membership, User } from '@shared/entities';
 import { Event } from '../events/entities/event.entity';
 import { EventComponent } from '../events/entities/event-component.entity';
-import { Participation } from './entities/participation.entity';
+import { Participation, RegistrationMethod } from './entities/participation.entity';
 import { ParticipationBeneficiary, BeneficiaryRelation } from './entities/participation-beneficiary.entity';
 import { Booking } from './entities/booking.entity';
 import { CreateParticipationDto } from './dto/create-participation.dto';
 import { CreatePublicParticipationDto } from './dto/create-public-participation.dto';
 import { BeneficiaryDto } from './dto/beneficiary.dto';
+import { UpdateParticipationDto } from './dto/update-participation.dto';
 import { RequestUser } from '../common/middleware/user-context.middleware';
 import { assertTenantMatch } from '../common/helpers/tenant.helper';
 import { assertGuestAudienceAllowed, resolveEffectiveAudience } from '../common/helpers/audience.helper';
@@ -55,7 +56,16 @@ export class ParticipationsService {
       assertTenantMatch(component!.organization_id, user);
     }
     const beneficiaries = await this.resolveBeneficiaries(membership, event.organization_id, dto.beneficiaries);
-    return this.createForMembership(membership, event, component, dto.type, dto.seats_requested, dto.mode, beneficiaries);
+    return this.createForMembership(
+      membership,
+      event,
+      component,
+      dto.type,
+      dto.seats_requested,
+      dto.mode,
+      dto.registration_method,
+      beneficiaries,
+    );
   }
 
   async createGuest(dto: CreatePublicParticipationDto): Promise<Participation> {
@@ -69,7 +79,16 @@ export class ParticipationsService {
     // ID happens to belong to this org (then it's a legitimate existing
     // member being registered by a guest on their behalf, which is fine).
     const beneficiaries = await this.resolveBeneficiaries(membership, event.organization_id, dto.beneficiaries);
-    return this.createForMembership(membership, event, component, dto.type, dto.seats_requested, dto.mode, beneficiaries);
+    return this.createForMembership(
+      membership,
+      event,
+      component,
+      dto.type,
+      dto.seats_requested,
+      dto.mode,
+      dto.registration_method,
+      beneficiaries,
+    );
   }
 
   private async loadEventAndComponent(
@@ -179,16 +198,35 @@ export class ParticipationsService {
     type: 'join' | 'book',
     seatsRequestedInput: number | undefined,
     modeInput: 'single' | 'multiple' | undefined,
+    registrationMethodInput: 'join' | 'participate' | undefined,
     beneficiaries: ResolvedBeneficiary[] | undefined,
   ): Promise<Participation> {
     if (event.status !== 'published') {
       throw new ApiError('This event is not open for registration', 409, 'EVENT_NOT_PUBLISHED');
     }
 
+    const registrationMethod: RegistrationMethod = type === 'book'
+      ? 'book'
+      : registrationMethodInput ?? (beneficiaries?.length ? 'participate' : 'join');
+
     if (type === 'join') {
-      const joinAllowed = component ? component.registration_enabled || component.participation_enabled : event.registration_required;
-      if (!joinAllowed) {
-        throw new ApiError('Registration is not enabled for this activity', 409, 'REGISTRATION_DISABLED');
+      if (registrationMethod === 'join') {
+        if (beneficiaries?.length) {
+          throw new ApiError('Quick Join cannot include participant details; use Participate instead', 400, 'BENEFICIARIES_NOT_ALLOWED_FOR_JOIN');
+        }
+        const joinAllowed = component ? component.registration_enabled : event.registration_required;
+        if (!joinAllowed) {
+          throw new ApiError('Join is not enabled for this activity', 409, 'JOIN_DISABLED');
+        }
+      } else if (registrationMethod === 'participate') {
+        if (!component?.participation_enabled) {
+          throw new ApiError('Participate is not enabled for this activity', 409, 'PARTICIPATION_DISABLED');
+        }
+        if (!beneficiaries || beneficiaries.length === 0) {
+          throw new ApiError('At least one participant is required', 400, 'BENEFICIARIES_REQUIRED');
+        }
+      } else {
+        throw new ApiError('Invalid registration method', 400, 'INVALID_REGISTRATION_METHOD');
       }
     }
     if (type === 'book') {
@@ -205,14 +243,42 @@ export class ParticipationsService {
     // party_size: how many people this one participation covers. Beneficiary
     // detail is authoritative when present; otherwise fall back to the plain
     // seat count (defaulting to 1), same as before this feature existed.
-    const partySize = beneficiaries ? beneficiaries.length : type === 'book' ? seatsRequestedInput ?? 1 : 1;
+    const partySize = registrationMethod === 'join'
+      ? 1
+      : beneficiaries
+        ? beneficiaries.length
+        : seatsRequestedInput ?? 1;
     const mode: 'single' | 'multiple' = modeInput ?? (partySize > 1 ? 'multiple' : 'single');
+    if (registrationMethod === 'participate' && (!beneficiaries || beneficiaries.length === 0)) {
+      throw new ApiError('At least one participant is required', 400, 'BENEFICIARIES_REQUIRED');
+    }
     if (mode === 'single' && partySize > 1) {
       throw new ApiError('A "single" registration can only cover one beneficiary', 400, 'MODE_BENEFICIARY_MISMATCH');
     }
 
     try {
       return await this.dataSource.transaction(async (manager) => {
+        const existing = await manager.findOne(Participation, {
+          where: {
+            membership_id: membership.id,
+            event_id: event.id,
+            event_component_id: component?.id ?? null,
+            type,
+            status: 'active',
+          },
+        });
+        if (existing) {
+          const existingMethod = existing.registration_method || (existing.type === 'book' ? 'book' : 'join');
+          throw new ApiError(
+            existingMethod === 'participate'
+              ? 'You have already registered using Participate for this activity'
+              : existingMethod === 'join'
+                ? 'You have already joined this activity'
+                : 'You have already registered for this activity',
+            409,
+            'ALREADY_REGISTERED',
+          );
+        }
         if (capacity != null) {
           // Lock the capacity-bearing row so two concurrent requests can't both
           // read "N seats free" and both insert, over-booking the component.
@@ -238,6 +304,7 @@ export class ParticipationsService {
           event_component_id: component?.id ?? null,
           membership_id: membership.id,
           type,
+          registration_method: registrationMethod,
           status: 'active',
           mode,
           party_size: partySize,
@@ -265,7 +332,10 @@ export class ParticipationsService {
           await manager.save(booking);
         }
 
-        return savedParticipation;
+        return manager.findOneOrFail(Participation, {
+          where: { id: savedParticipation.id },
+          relations: ['beneficiaries'],
+        });
       });
     } catch (err: any) {
       if (err?.code === POSTGRES_UNIQUE_VIOLATION) {
@@ -304,12 +374,116 @@ export class ParticipationsService {
     return Number(result?.total ?? 0);
   }
 
-  async findMine(user: RequestUser, type?: string): Promise<Participation[]> {
+  async findMine(
+    user: RequestUser,
+    type?: string,
+    registrationMethod?: RegistrationMethod,
+  ): Promise<Participation[]> {
     const membership = await this.membershipResolver.resolve(user);
     return this.participationRepo.find({
-      where: { membership_id: membership.id, ...(type ? { type: type as Participation['type'] } : {}) },
+      where: {
+        membership_id: membership.id,
+        ...(type ? { type: type as Participation['type'] } : {}),
+        ...(registrationMethod ? { registration_method: registrationMethod } : {}),
+      },
       relations: ['beneficiaries'],
       order: { createdAt: 'DESC' },
+    });
+  }
+
+  async update(id: string, user: RequestUser, dto: UpdateParticipationDto): Promise<Participation> {
+    const membership = await this.membershipResolver.resolve(user);
+    const participation = await this.participationRepo.findOne({
+      where: { id },
+      relations: ['beneficiaries'],
+    });
+    if (!participation) {
+      throw new ApiError('Participation not found', 404, 'NOT_FOUND');
+    }
+    assertTenantMatch(participation.organization_id, user);
+    if (participation.membership_id !== membership.id) {
+      throw new ApiError('You can only edit your own registration', 403, 'FORBIDDEN');
+    }
+    if (participation.status !== 'active') {
+      throw new ApiError(`Cannot edit a participation with status "${participation.status}"`, 409, 'INVALID_STATUS_TRANSITION');
+    }
+    if (participation.registration_method !== 'participate') {
+      throw new ApiError('Only detailed Participate registrations can be edited', 409, 'PARTICIPATION_NOT_EDITABLE');
+    }
+    if (!dto.beneficiaries || dto.beneficiaries.length === 0) {
+      throw new ApiError('At least one participant is required', 400, 'BENEFICIARIES_REQUIRED');
+    }
+
+    const event = await this.eventRepo.findOne({ where: { id: participation.event_id } });
+    if (!event) throw new ApiError('Event not found', 404, 'NOT_FOUND');
+    if (event.status !== 'published') {
+      throw new ApiError('This event is not open for participation changes', 409, 'EVENT_NOT_PUBLISHED');
+    }
+    const component = participation.event_component_id
+      ? await this.componentRepo.findOne({ where: { id: participation.event_component_id }, relations: ['eventDay'] })
+      : null;
+    if (participation.event_component_id && !component) {
+      throw new ApiError('Activity not found', 404, 'NOT_FOUND');
+    }
+    if (participation.registration_method === 'participate' && !component?.participation_enabled) {
+      throw new ApiError('Participate is no longer enabled for this activity', 409, 'PARTICIPATION_DISABLED');
+    }
+
+    const beneficiaries = await this.resolveBeneficiaries(membership, event.organization_id, dto.beneficiaries);
+    const partySize = beneficiaries?.length ?? 0;
+    const mode = dto.mode ?? (partySize > 1 ? 'multiple' : 'single');
+    if (mode === 'single' && partySize !== 1) {
+      throw new ApiError('A "single" registration must contain exactly one participant', 400, 'MODE_BENEFICIARY_MISMATCH');
+    }
+    if (mode === 'multiple' && partySize < 1) {
+      throw new ApiError('A "multiple" registration must contain at least one participant', 400, 'MODE_BENEFICIARY_MISMATCH');
+    }
+
+    const capacity = component ? component.capacity : event.capacity;
+    return this.dataSource.transaction(async (manager) => {
+      if (capacity != null) {
+        if (component) {
+          await manager.query('SELECT id FROM event_component WHERE id = $1 FOR UPDATE', [component.id]);
+        } else {
+          await manager.query('SELECT id FROM event WHERE id = $1 FOR UPDATE', [event.id]);
+        }
+        const result = await manager
+          .createQueryBuilder(Participation, 'p')
+          .where('p.type = :type', { type: participation.type })
+          .andWhere('p.status = :status', { status: 'active' })
+          .andWhere('p.id <> :participationId', { participationId: participation.id })
+          .andWhere(component
+            ? 'p.event_component_id = :componentId'
+            : 'p.event_id = :eventId AND p.event_component_id IS NULL',
+            component ? { componentId: component.id } : { eventId: event.id },
+          )
+          .select('COALESCE(SUM(p.party_size), 0)', 'total')
+          .getRawOne();
+        const usedSeats = Number(result?.total ?? 0);
+        if (usedSeats + partySize > capacity) {
+          throw new ApiError('This activity does not have enough remaining capacity for the updated participant list', 409, 'CAPACITY_EXCEEDED');
+        }
+      }
+
+      participation.mode = mode;
+      participation.party_size = partySize;
+      const saved = await manager.save(participation);
+      await manager.delete(ParticipationBeneficiary, { participation_id: saved.id });
+      const rows = beneficiaries!.map((b) =>
+        manager.create(ParticipationBeneficiary, {
+          participation_id: saved.id,
+          relation_type: b.relation_type,
+          full_name: b.full_name,
+          membership_id: b.membership_id,
+          notes: b.notes,
+        }),
+      );
+      await manager.save(rows);
+
+      return manager.findOneOrFail(Participation, {
+        where: { id: saved.id },
+        relations: ['beneficiaries'],
+      });
     });
   }
 
@@ -390,6 +564,7 @@ export class ParticipationsService {
       participation_id: string;
       membership_id: string;
       type: Participation['type'];
+      registration_method: RegistrationMethod;
       mode: Participation['mode'];
       status: Participation['status'];
       party_size: number;
@@ -418,6 +593,7 @@ export class ParticipationsService {
         participation_id: p.id,
         membership_id: p.membership_id,
         type: p.type,
+        registration_method: p.registration_method,
         mode: p.mode,
         status: p.status,
         party_size: p.party_size,
