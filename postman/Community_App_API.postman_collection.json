@@ -185,10 +185,10 @@
             "method": "POST",
             "header": [],
             "url": "{{baseUrl}}/api/auth/otp/request",
-            "description": "Public. Sends a 6-digit OTP to the given phone number.",
+            "description": "Public. Sends a 6-digit OTP to the given email address.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"phone\": \"9998887770\"\n}",
+              "raw": "{\n  \"email\": \"member@example.com\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -206,10 +206,10 @@
             "method": "POST",
             "header": [],
             "url": "{{baseUrl}}/api/auth/otp/verify",
-            "description": "Public. If the phone belongs to an existing user, logs in directly (sets refresh cookie). If new, returns { isNewUser: true, otpVerifiedToken } to continue into Join Community.",
+            "description": "Public. If the email belongs to an existing user, logs in directly (sets refresh cookie). If new, returns { isNewUser: true, otpVerifiedToken } to continue into Join Community.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"phone\": \"9998887770\",\n  \"code\": \"123456\"\n}",
+              "raw": "{\n  \"email\": \"member@example.com\",\n  \"code\": \"123456\"\n}",
               "options": {
                 "raw": {
                   "language": "json"

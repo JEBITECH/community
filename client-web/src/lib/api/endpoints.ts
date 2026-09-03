@@ -33,17 +33,23 @@ import type {
  */
 
 export const authApi = {
-  requestOtp: (phone: string) =>
+  // Member sign-in switched from phone/SMS OTP to email OTP.
+  // LEGACY (SMS):
+  //   requestOtp: (phone: string) =>
+  //     api.post<OtpRequestResult>("/api/auth/otp/request", { phone }, { anonymous: true }),
+  //   verifyOtp: (phone: string, code: string) =>
+  //     api.post<OtpVerifyResult>("/api/auth/otp/verify", { phone, code }, { anonymous: true }),
+  requestOtp: (email: string) =>
     api.post<OtpRequestResult>(
       "/api/auth/otp/request",
-      { phone },
+      { email },
       { anonymous: true },
     ),
 
-  verifyOtp: (phone: string, code: string) =>
+  verifyOtp: (email: string, code: string) =>
     api.post<OtpVerifyResult>(
       "/api/auth/otp/verify",
-      { phone, code },
+      { email, code },
       { anonymous: true },
     ),
 

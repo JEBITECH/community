@@ -33,10 +33,13 @@ export type LoginResponse = {
   module_list_access_by_user: ModuleAccess[],
 };
 
-export type OtpRequestInput = { phone: string };
+// Member auth switched from phone/SMS OTP to email OTP.
+// LEGACY (SMS): export type OtpRequestInput = { phone: string };
+// LEGACY (SMS): export type OtpVerifyInput = { phone: string; code: string };
+export type OtpRequestInput = { email: string };
 export type OtpRequestResponse = { message: string; debug_otp?: string };
 
-export type OtpVerifyInput = { phone: string; code: string };
+export type OtpVerifyInput = { email: string; code: string };
 export type OtpVerifyResponse =
   | { isNewUser: true; otpVerifiedToken: string }
   | ({ isNewUser: false; message: string } & LoginResponse);
