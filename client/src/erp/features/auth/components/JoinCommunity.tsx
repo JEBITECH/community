@@ -37,9 +37,9 @@ export default function JoinCommunity() {
       <div className="flex justify-center items-center min-h-screen bg-background">
         <Card className="w-full max-w-md shadow-lg rounded-2xl">
           <CardContent className="p-8 space-y-4 text-center">
-            <h2 className="text-xl font-bold text-foreground">Verify your phone first</h2>
+            <h2 className="text-xl font-bold text-foreground">Verify your email first</h2>
             <p className="text-sm text-muted-foreground">
-              Joining a community starts with verifying your mobile number.
+              Joining a community starts with verifying your email address.
             </p>
             <Button className="w-full" onClick={() => navigate("/login")}>
               Go to Login

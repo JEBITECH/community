@@ -8,22 +8,29 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { useOrganization } from "@/lib/org/useOrganization";
 import type { Membership, User } from "@/lib/api/types";
 
-/** auth-svc enforces a 60s per-phone cooldown; mirror it in the UI. */
+/** auth-svc enforces a 60s per-email cooldown; mirror it in the UI. */
 const RESEND_COOLDOWN = 60;
 
+// LEGACY (SMS): type Step =
+//   | { kind: "phone" }
+//   | { kind: "code"; phone: string; devOtp?: string }
+//   | { kind: "join"; otpVerifiedToken: string };
 type Step =
-  | { kind: "phone" }
-  | { kind: "code"; phone: string; devOtp?: string }
+  | { kind: "email" }
+  | { kind: "code"; email: string; devOtp?: string }
   | { kind: "join"; otpVerifiedToken: string };
 
 /**
- * Phone-OTP sign-in.
+ * Email-OTP sign-in.
  *
  * This is the resident flow auth-svc actually implements: request a code,
- * verify it, and for an unrecognised number complete a join request.
+ * verify it, and for an unrecognised email complete a join request.
+ *
+ * NOTE: switched from phone/SMS OTP to email OTP — the old phone steps are
+ * preserved as commented blocks below.
  */
 export function SignInScreen() {
-  const [step, setStep] = useState<Step>({ kind: "phone" });
+  const [step, setStep] = useState<Step>({ kind: "email" });
   const { data: org } = useOrganization();
   const { adoptSession } = useAuth();
 
@@ -80,7 +87,7 @@ export function SignInScreen() {
           <p style={{ fontSize: "var(--text-base)", color: "rgba(255,255,255,.75)", margin: "0rem" }}>
             {step.kind === "join"
               ? "A few details and you're in."
-              : "Sign in with your phone number"}
+              : "Sign in with your email"}
           </p>
         </div>
 
@@ -92,17 +99,24 @@ export function SignInScreen() {
             boxShadow: "0 8px 28px rgba(0,0,0,.18)",
           }}
         >
+          {/* LEGACY (SMS):
           {step.kind === "phone" && (
             <PhoneStep
               onSent={(phone, devOtp) => setStep({ kind: "code", phone, devOtp })}
+            />
+          )} */}
+
+          {step.kind === "email" && (
+            <EmailStep
+              onSent={(email, devOtp) => setStep({ kind: "code", email, devOtp })}
             />
           )}
 
           {step.kind === "code" && (
             <CodeStep
-              phone={step.phone}
+              email={step.email}
               devOtp={step.devOtp}
-              onBack={() => setStep({ kind: "phone" })}
+              onBack={() => setStep({ kind: "email" })}
               onNewMember={(token) =>
                 setStep({ kind: "join", otpVerifiedToken: token })
               }
@@ -182,6 +196,69 @@ function ErrorNote({ message }: { message: string }) {
   );
 }
 
+function EmailStep({
+  onSent,
+}: {
+  onSent: (email: string, devOtp?: string) => void;
+}) {
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const trimmed = email.trim();
+  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!valid) return setError("Enter a valid email address.");
+
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await authApi.requestOtp(trimmed);
+      onSent(trimmed, res.debug_otp);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} noValidate>
+      <label htmlFor="email" style={labelStyle}>
+        Email address
+      </label>
+      <input
+        id="email"
+        type="email"
+        inputMode="email"
+        autoComplete="email"
+        autoFocus
+        placeholder="you@example.com"
+        value={email}
+        onChange={(e) => {
+          setEmail(e.target.value);
+          setError(null);
+        }}
+        style={inputStyle}
+      />
+      <p style={{ margin: "0.375rem 0 0", fontSize: "var(--text-xs)", color: "var(--color-tx3)" }}>
+        We&apos;ll email you a 6-digit code.
+      </p>
+
+      {error && <ErrorNote message={error} />}
+
+      <button type="submit" disabled={busy || !valid} style={submitStyle}>
+        {busy ? "Sending…" : "Send code"}
+      </button>
+    </form>
+  );
+}
+
+/* LEGACY (SMS) — phone-number entry step. Restore this (and the phone Step
+   variants / CodeStep props) to switch member sign-in back to SMS OTP.
+
 function PhoneStep({
   onSent,
 }: {
@@ -212,64 +289,29 @@ function PhoneStep({
 
   return (
     <form onSubmit={submit} noValidate>
-      <label htmlFor="phone" style={labelStyle}>
-        Phone number
-      </label>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          border: "1px solid var(--color-bdr2)",
-          borderRadius: "var(--radius-s)",
-          background: "#fff",
-        }}
-      >
-        <span
-          style={{
-            paddingLeft: "0.6875rem",
-            fontSize: "var(--text-base)",
-            fontWeight: 600,
-            color: "var(--color-tx3)",
-          }}
-        >
-          +91
-        </span>
-        <input
-          id="phone"
-          type="tel"
-          inputMode="numeric"
-          autoComplete="tel"
-          autoFocus
-          placeholder="98765 43210"
-          value={phone}
-          onChange={(e) => {
-            setPhone(e.target.value);
-            setError(null);
-          }}
-          style={{ ...inputStyle, border: "none", flex: 1 }}
-        />
-      </div>
-      <p style={{ margin: "0.375rem 0 0", fontSize: "var(--text-xs)", color: "var(--color-tx3)" }}>
-        We&apos;ll text you a 6-digit code.
-      </p>
-
+      <label htmlFor="phone" style={labelStyle}>Phone number</label>
+      <input id="phone" type="tel" inputMode="numeric" autoComplete="tel" autoFocus
+        placeholder="98765 43210" value={phone}
+        onChange={(e) => { setPhone(e.target.value); setError(null); }}
+        style={inputStyle} />
+      <p>We&apos;ll text you a 6-digit code.</p>
       {error && <ErrorNote message={error} />}
-
       <button type="submit" disabled={busy || !valid} style={submitStyle}>
         {busy ? "Sending…" : "Send code"}
       </button>
     </form>
   );
 }
+*/
 
 function CodeStep({
-  phone,
+  email,
   devOtp,
   onBack,
   onNewMember,
   onSignedIn,
 }: {
-  phone: string;
+  email: string;
   devOtp?: string;
   onBack: () => void;
   onNewMember: (token: string) => void;
@@ -297,7 +339,7 @@ function CodeStep({
     setBusy(true);
     setError(null);
     try {
-      const res = await authApi.verifyOtp(phone, code);
+      const res = await authApi.verifyOtp(email, code);
       if (res.isNewUser) {
         onNewMember(res.otpVerifiedToken);
         return;
@@ -318,7 +360,7 @@ function CodeStep({
     setBusy(true);
     setError(null);
     try {
-      await authApi.requestOtp(phone);
+      await authApi.requestOtp(email);
       setCooldown(RESEND_COOLDOWN);
     } catch (err) {
       setError(errorMessage(err));
@@ -347,7 +389,7 @@ function CodeStep({
           cursor: "pointer",
         }}
       >
-        <Icon name="ti-arrow-left" size={13} /> Change number
+        <Icon name="ti-arrow-left" size={13} /> Change email
       </button>
 
       <label htmlFor="code" style={labelStyle}>
@@ -368,12 +410,12 @@ function CodeStep({
         style={{ ...inputStyle, letterSpacing: "0.35em", fontWeight: 600 }}
       />
       <p style={{ margin: "0.375rem 0 0", fontSize: "var(--text-xs)", color: "var(--color-tx3)" }}>
-        Sent to +91 {phone}
+        Sent to {email}
       </p>
 
       {/*
         auth-svc returns the code in non-production so local dev works without
-        an SMS provider (none is wired up yet).
+        a configured SMTP server.
       */}
       {devOtp && (
         <p

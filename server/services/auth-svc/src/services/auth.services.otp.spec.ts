@@ -4,17 +4,18 @@ import { AuthService } from './auth.services';
 import { AppDataSource } from '../db';
 import { User } from '@shared/entities';
 
+// Member auth uses email OTP now (was phone/SMS OTP).
 describe('AuthService OTP concurrency', () => {
   let dataSource: DataSource;
   let service: AuthService;
-  let phone: string;
+  let email: string;
   let userId: string;
 
   beforeAll(async () => {
     dataSource = AppDataSource;
     if (!dataSource.isInitialized) await dataSource.initialize();
     service = new AuthService();
-    phone = `91${Date.now().toString().slice(-8)}`;
+    email = `otp-test-${Date.now()}@example.com`;
   });
 
   afterAll(async () => {
@@ -24,7 +25,7 @@ describe('AuthService OTP concurrency', () => {
   });
 
   it('allows only one concurrent OTP request through the cooldown window', async () => {
-    const results = await Promise.allSettled([service.requestOtp(phone), service.requestOtp(phone)]);
+    const results = await Promise.allSettled([service.requestOtp(email), service.requestOtp(email)]);
     console.log(results.map(r => r.status === "rejected" ? r.reason : "ok"));
 
     const succeeded = results.filter((result) => result.status === 'fulfilled');
@@ -34,7 +35,7 @@ describe('AuthService OTP concurrency', () => {
     expect(failed).toHaveLength(1);
     expect((failed[0] as PromiseRejectedResult).reason.message).toBe('Please wait before requesting another OTP');
 
-    const user = await dataSource.getRepository(User).findOneByOrFail({ phone });
+    const user = await dataSource.getRepository(User).findOneByOrFail({ email });
     userId = user.id!;
     expect(user.otp_attempts).toBe(0);
     expect(user.otp_last_requested_at).toBeTruthy();

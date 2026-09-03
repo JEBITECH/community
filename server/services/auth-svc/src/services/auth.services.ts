@@ -240,15 +240,18 @@ export class AuthService {
   }
 
   /**
-   * Request an OTP for phone-based login/registration (member-facing auth).
+   * Request an OTP for email-based login/registration (member-facing auth).
    * Creates an inactive placeholder User on first request for a brand-new
-   * phone number; the account only becomes active once join-community (for
-   * new numbers) or verifyOtp (for existing accounts) completes.
+   * email address; the account only becomes active once join-community (for
+   * new emails) or verifyOtp (for existing accounts) completes.
+   *
+   * NOTE: this flow was switched from phone/SMS OTP to email OTP. The original
+   * phone-based implementation is preserved (commented out) directly below.
    */
-  async requestOtp(phone: string): Promise<OtpRequestResult> {
-    const normalizedPhone = phone?.trim();
-    if (!normalizedPhone) {
-      throw new Error('Phone number is required');
+  async requestOtp(email: string): Promise<OtpRequestResult> {
+    const normalizedEmail = email?.trim().toLowerCase();
+    if (!normalizedEmail) {
+      throw new Error('Email address is required');
     }
 
     const now = new Date();
@@ -257,7 +260,7 @@ export class AuthService {
 
     const issueOtp = async (manager: typeof AppDataSource.manager): Promise<User> => {
       const existing = await manager.findOne(User, {
-        where: { phone: normalizedPhone },
+        where: { email: normalizedEmail },
         lock: { mode: 'pessimistic_write' },
       });
 
@@ -267,7 +270,7 @@ export class AuthService {
       }
 
       const user = existing ?? manager.create(User, {
-        phone: normalizedPhone,
+        email: normalizedEmail,
         firstName: 'New',
         lastName: 'Member',
         role: Role.INTERNAL_MEMBER,
@@ -281,52 +284,122 @@ export class AuthService {
       return manager.save(user);
     };
 
-    let user: User;
     try {
-      user = await AppDataSource.transaction(issueOtp);
+      await AppDataSource.transaction(issueOtp);
     } catch (error: any) {
-      // A first request for a brand-new phone has no row to lock. The unique
-      // phone constraint serializes the competing inserts; the loser must
+      // A first request for a brand-new email has no row to lock. The unique
+      // email constraint serializes the competing inserts; the loser must
       // retry in a NEW transaction because the failed INSERT aborts the first
       // transaction in PostgreSQL.
       if (error?.code !== '23505') throw error;
-      user = await AppDataSource.transaction(issueOtp);
+      await AppDataSource.transaction(issueOtp);
+    }
+
+    // Always attempt delivery when SMTP is available. A failure must not reveal
+    // whether the address exists, so it is logged and swallowed.
+    try {
+      await this.emailService.sendOtpEmail(normalizedEmail, code);
+    } catch (err) {
+      console.error('[AuthService] Failed to send OTP email:', err instanceof Error ? err.message : err);
     }
 
     if (process.env.NODE_ENV === 'production') {
-      if (user.email) {
-        try {
-          await this.emailService.sendOtpEmail(user.email, code);
-        } catch (err) {
-          console.error('[AuthService] Failed to send OTP email:', err instanceof Error ? err.message : err);
-        }
-      }
-      console.log(`[AuthService] OTP generated for ${normalizedPhone} (delivery channel pending SMS integration)`);
       return { message: 'OTP sent' };
     }
 
-    console.log(`[DEV OTP] ${normalizedPhone} -> ${code}`);
+    console.log(`[DEV OTP] ${normalizedEmail} -> ${code}`);
     return { message: 'OTP sent (dev mode)', debug_otp: code };
   }
 
+  /* ───────────────────────────────────────────────────────────────────────────
+   * LEGACY — phone / SMS OTP request. Kept commented for reference; restore
+   * this (plus the phone branches in verifyOtp / joinCommunity) to switch the
+   * member auth flow back to SMS.
+   *
+   * async requestOtp(phone: string): Promise<OtpRequestResult> {
+   *   const normalizedPhone = phone?.trim();
+   *   if (!normalizedPhone) {
+   *     throw new Error('Phone number is required');
+   *   }
+   *
+   *   const now = new Date();
+   *   const code = String(Math.floor(100000 + Math.random() * 900000));
+   *   const codeHash = await bcrypt.hash(code, 10);
+   *
+   *   const issueOtp = async (manager: typeof AppDataSource.manager): Promise<User> => {
+   *     const existing = await manager.findOne(User, {
+   *       where: { phone: normalizedPhone },
+   *       lock: { mode: 'pessimistic_write' },
+   *     });
+   *
+   *     if (existing?.otp_last_requested_at &&
+   *       now.getTime() - existing.otp_last_requested_at.getTime() < OTP_REQUEST_COOLDOWN_MS) {
+   *       throw new Error('Please wait before requesting another OTP');
+   *     }
+   *
+   *     const user = existing ?? manager.create(User, {
+   *       phone: normalizedPhone,
+   *       firstName: 'New',
+   *       lastName: 'Member',
+   *       role: Role.INTERNAL_MEMBER,
+   *       isActive: false,
+   *     });
+   *
+   *     user.otp_code_hash = codeHash;
+   *     user.otp_expires_at = new Date(now.getTime() + OTP_TTL_MS);
+   *     user.otp_attempts = 0;
+   *     user.otp_last_requested_at = now;
+   *     return manager.save(user);
+   *   };
+   *
+   *   let user: User;
+   *   try {
+   *     user = await AppDataSource.transaction(issueOtp);
+   *   } catch (error: any) {
+   *     if (error?.code !== '23505') throw error;
+   *     user = await AppDataSource.transaction(issueOtp);
+   *   }
+   *
+   *   if (process.env.NODE_ENV === 'production') {
+   *     if (user.email) {
+   *       try {
+   *         await this.emailService.sendOtpEmail(user.email, code);
+   *       } catch (err) {
+   *         console.error('[AuthService] Failed to send OTP email:', err instanceof Error ? err.message : err);
+   *       }
+   *     }
+   *     console.log(`[AuthService] OTP generated for ${normalizedPhone} (delivery channel pending SMS integration)`);
+   *     return { message: 'OTP sent' };
+   *   }
+   *
+   *   console.log(`[DEV OTP] ${normalizedPhone} -> ${code}`);
+   *   return { message: 'OTP sent (dev mode)', debug_otp: code };
+   * }
+   * ─────────────────────────────────────────────────────────────────────────── */
+
   /**
-   * Verifies an OTP. If the phone belongs to an existing, already-onboarded
+   * Verifies an OTP. If the email belongs to an existing, already-onboarded
    * account, logs them in directly. Otherwise returns a short-lived token the
    * client must present to /auth/join-community to finish registration.
+   *
+   * NOTE: switched from phone/SMS OTP to email OTP — legacy phone lines are
+   * kept inline as comments.
    */
-  async verifyOtp(phone: string, code: string): Promise<OtpVerifyResult> {
-    const normalizedPhone = phone?.trim();
+  async verifyOtp(email: string, code: string): Promise<OtpVerifyResult> {
+    // LEGACY (SMS): const normalizedPhone = phone?.trim();
+    const normalizedEmail = email?.trim().toLowerCase();
     let user!: User;
     let membershipCount = 0;
 
     await AppDataSource.transaction(async (manager) => {
       user = await manager.findOne(User, {
-        where: { phone: normalizedPhone },
+        // LEGACY (SMS): where: { phone: normalizedPhone },
+        where: { email: normalizedEmail },
         lock: { mode: 'pessimistic_write' },
       }) as User;
 
       if (!user || !user.otp_code_hash || !user.otp_expires_at) {
-        throw new Error('No OTP requested for this number');
+        throw new Error('No OTP requested for this email');
       }
 
       if (user.otp_expires_at.getTime() < Date.now()) {
@@ -347,6 +420,10 @@ export class AuthService {
       user.otp_code_hash = null;
       user.otp_expires_at = null;
       user.otp_attempts = 0;
+      // The email that just received and returned a code is now proven. We
+      // reuse the phone_verified column as a generic "primary contact verified"
+      // flag rather than adding a migration for email_verified.
+      // LEGACY (SMS): this marked the phone number verified.
       user.phone_verified = true;
 
       membershipCount = await manager.count(Membership, { where: { user_id: user.id! } });
@@ -359,7 +436,8 @@ export class AuthService {
 
     if (membershipCount === 0) {
       const otpVerifiedToken = jwt.sign(
-        { phone: normalizedPhone, userId: user.id },
+        // LEGACY (SMS): { phone: normalizedPhone, userId: user.id },
+        { email: normalizedEmail, userId: user.id },
         process.env.JWT_ACCESS_SECRET || 'your-access-secret',
         { expiresIn: OTP_JOIN_TOKEN_EXPIRY, issuer: 'auth-service', audience: 'community-join' },
       );
@@ -386,21 +464,22 @@ export class AuthService {
   }
 
   /**
-   * Completes registration for a phone number that just verified its OTP:
+   * Completes registration for an email address that just verified its OTP:
    * creates the Membership for the chosen/invited organization. Status is
    * 'active' immediately for open/invite_only orgs (a valid code proves
    * authorization), or 'pending' for approval_required orgs.
    */
   async joinCommunity(dto: JoinCommunityDto): Promise<JoinCommunityResult> {
-    let decoded: { phone: string; userId: string };
+    // LEGACY (SMS): the token payload carried { phone, userId }.
+    let decoded: { email: string; userId: string };
     try {
       decoded = jwt.verify(
         dto.otpVerifiedToken,
         process.env.JWT_ACCESS_SECRET || 'your-access-secret',
         { issuer: 'auth-service', audience: 'community-join' },
-      ) as { phone: string; userId: string };
+      ) as { email: string; userId: string };
     } catch {
-      throw new Error('OTP verification has expired, please verify your phone again');
+      throw new Error('OTP verification has expired, please verify your email again');
     }
 
     const user = await this.userRepository.findOne({ where: { id: decoded.userId } });

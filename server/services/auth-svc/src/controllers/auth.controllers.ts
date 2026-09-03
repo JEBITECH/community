@@ -7,12 +7,15 @@ import { LoginUserDto } from '../dto/user.dto';
 import { authValidationSchemas, validateRequest } from '../middlewares/validation';
 import { authRateLimiter } from '../middlewares/authRateLimiter';
 
+// Member auth switched from phone/SMS OTP to email OTP.
+// LEGACY (SMS): interface RequestOtpBody { phone: string; }
+// LEGACY (SMS): interface VerifyOtpBody { phone: string; code: string; }
 interface RequestOtpBody {
-  phone: string;
+  email: string;
 }
 
 interface VerifyOtpBody {
-  phone: string;
+  email: string;
   code: string;
 }
 
@@ -103,7 +106,8 @@ export class AuthController {
   @UseBefore(authRateLimiter)
   async requestOtp(@Body() body: RequestOtpBody, @Res() res: Response) {
     try {
-      const result = await this.authService.requestOtp(body.phone);
+      // LEGACY (SMS): await this.authService.requestOtp(body.phone);
+      const result = await this.authService.requestOtp(body.email);
       return res.json(result);
     } catch (error) {
       return res.status(400).json({
@@ -116,7 +120,8 @@ export class AuthController {
   @UseBefore(authRateLimiter)
   async verifyOtp(@Body() body: VerifyOtpBody, @Res() res: Response) {
     try {
-      const result = await this.authService.verifyOtp(body.phone, body.code);
+      // LEGACY (SMS): await this.authService.verifyOtp(body.phone, body.code);
+      const result = await this.authService.verifyOtp(body.email, body.code);
 
       if (result.isNewUser) {
         return res.json({

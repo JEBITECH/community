@@ -5,20 +5,29 @@ import { Input } from "@/components/ui/input";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { useRequestOtpMutation, useVerifyOtpMutation } from "../hooks/useAuthMutation";
 
+/**
+ * Member OTP login.
+ *
+ * NOTE: switched from phone/SMS OTP to email OTP. Legacy phone lines are kept
+ * inline as comments; the component/file name is unchanged to limit churn.
+ */
 export default function MobileOtpLogin() {
   const navigate = useNavigate();
-  const [phone, setPhone] = useState("");
+  // LEGACY (SMS): const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
-  const [step, setStep] = useState<"phone" | "otp">("phone");
+  // LEGACY (SMS): const [step, setStep] = useState<"phone" | "otp">("phone");
+  const [step, setStep] = useState<"email" | "otp">("email");
   const [devOtp, setDevOtp] = useState<string | null>(null);
 
   const requestOtpMutation = useRequestOtpMutation();
   const verifyOtpMutation = useVerifyOtpMutation();
 
   const handleSendOtp = () => {
-    if (!phone.trim()) return;
+    if (!email.trim()) return;
     requestOtpMutation.mutate(
-      { phone: phone.trim() },
+      // LEGACY (SMS): { phone: phone.trim() },
+      { email: email.trim() },
       {
         onSuccess: (data) => {
           setStep("otp");
@@ -31,7 +40,8 @@ export default function MobileOtpLogin() {
   const handleVerify = () => {
     if (code.length !== 6) return;
     verifyOtpMutation.mutate(
-      { phone: phone.trim(), code },
+      // LEGACY (SMS): { phone: phone.trim(), code },
+      { email: email.trim(), code },
       {
         onSuccess: (data) => {
           if (data.isNewUser) {
@@ -42,16 +52,16 @@ export default function MobileOtpLogin() {
     );
   };
 
-  if (step === "phone") {
+  if (step === "email") {
     return (
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-foreground">Mobile Number</label>
+          <label className="block text-sm font-medium text-foreground">Email Address</label>
           <Input
-            type="tel"
-            placeholder="Enter your mobile number"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            type="email"
+            placeholder="Enter your email address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
             autoFocus
           />
         </div>
@@ -59,7 +69,7 @@ export default function MobileOtpLogin() {
           type="button"
           shape="pill"
           className="w-full"
-          disabled={!phone.trim() || requestOtpMutation.isPending}
+          disabled={!email.trim() || requestOtpMutation.isPending}
           onClick={handleSendOtp}
         >
           {requestOtpMutation.isPending ? "Sending..." : "Send OTP"}
@@ -72,7 +82,7 @@ export default function MobileOtpLogin() {
     <div className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-foreground">Enter the 6-digit code</label>
-        <p className="text-sm text-muted-foreground mb-2">Sent to {phone}</p>
+        <p className="text-sm text-muted-foreground mb-2">Sent to {email}</p>
         {devOtp && (
           <p className="text-xs text-amber-600 mb-2">Dev mode — code: {devOtp}</p>
         )}
@@ -98,11 +108,11 @@ export default function MobileOtpLogin() {
           type="button"
           className="text-muted-foreground hover:text-foreground"
           onClick={() => {
-            setStep("phone");
+            setStep("email");
             setCode("");
           }}
         >
-          Change number
+          Change email
         </button>
         <button
           type="button"

@@ -37,7 +37,7 @@ export default function LoginComponent() {
           </div>
           <Tabs defaultValue="otp">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="otp">Mobile OTP</TabsTrigger>
+              <TabsTrigger value="otp">Email OTP</TabsTrigger>
               <TabsTrigger value="password">Email &amp; Password</TabsTrigger>
             </TabsList>
             <TabsContent value="otp" className="pt-2">
