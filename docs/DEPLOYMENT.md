@@ -9,8 +9,8 @@ The definitive, corrected version — every step below reflects fixes that are n
 - A DigitalOcean droplet: **Ubuntu 24.04**, **6GB RAM / 2 vCPU minimum** (6 Node/TypeScript services now build concurrently — the admin client, `client-web`, and the three backend services — bumped up from the earlier 4GB recommendation now that there are two frontends).
 - An SSH key added to your DigitalOcean account and selected when creating the droplet.
 - **Two DNS A records**, both pointed at the droplet's IP — Caddy fronts two separate sites now:
-  - `eoorai.com` — the admin/member dashboard (the original React client).
-  - `community.eoorai.com` — the resident-facing public website (`client-web`, Next.js).
+  - `eoorai.com` — the resident-facing public website (`client-web`, Next.js).
+  - `community.eoorai.com` — the admin/member dashboard (the original React client).
   
   Caddy needs both resolving correctly before it can get TLS certificates for each. If deploying to different domains, update `Caddyfile` first (see step 8) — it has one block per site.
 
@@ -60,15 +60,15 @@ Change these from their placeholder values:
   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
   ```
   `USER_CONTEXT_SECRET`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `JWT_RESET_SECRET`.
-- **Frontend URLs** — Caddy fronts everything on one domain, so no ports needed:
+- **Frontend URLs** — Caddy fronts everything without needing ports; `client` (admin dashboard) now lives on the `community.` subdomain:
   ```
-  VITE_API_URL=https://eoorai.com/api
+  VITE_API_URL=https://community.eoorai.com/api
   VITE_COMMUNITY_WS_URL=https://eoorai.com
   ```
-- **Email links**, so invite/reset emails point at the real domain:
+- **Email links**, so invite/reset emails point at the admin dashboard's real domain:
   ```
-  INVITE_USER_LINK=https://eoorai.com/set-account-detail
-  RESET_PASSWORD_LINK=https://eoorai.com/reset-password
+  INVITE_USER_LINK=https://community.eoorai.com/set-account-detail
+  RESET_PASSWORD_LINK=https://community.eoorai.com/reset-password
   ```
 - `SMTP_*` can stay blank if you don't need real emails sending yet.
 
@@ -137,7 +137,7 @@ curl -sI https://community.eoorai.com
 
 The Caddy log should show certificates obtained for **both** domains (no `NXDOMAIN`/DNS errors — if you see those, one of the A records isn't resolving yet, or is pointed at the wrong domain). Both curls should return a real HTTP response, not a timeout.
 
-Then open `eoorai.com` in a browser and log in with `admin@localhost.com` / `Admin@123` — and separately check `community.eoorai.com` loads the public resident-facing site.
+Then open `community.eoorai.com` in a browser and log in with `admin@localhost.com` / `Admin@123` — and separately check `eoorai.com` loads the public resident-facing site.
 
 ## Redeploying after this (the common case)
 
