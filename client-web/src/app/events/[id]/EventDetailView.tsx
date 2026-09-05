@@ -612,20 +612,37 @@ function ScheduleRowAction({
   const mine = byComponent.get(component.id);
 
   if (mine) {
+    const participating = mine.registration_method === "participate";
     return (
-      <div className="u-row" style={{ gap: "var(--space-2)", marginTop: "0.5rem" }}>
-        <Button variant="joined" size="sm">
-          <Icon name="ti-check" size={11} /> {mine.type === "book" ? "Booked" : "Joined"}
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() =>
-            open({ kind: "cancel", participationId: mine.id, label: component.name })
-          }
-        >
-          Cancel
-        </Button>
+      <div style={{ marginTop: "0.5rem" }}>
+        <div className="u-row" style={{ gap: "var(--space-2)" }}>
+          <Button variant="joined" size="sm">
+            <Icon name="ti-check" size={11} />{" "}
+            {mine.type === "book" ? "Booked" : participating ? "Participating" : "Joined"}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              open({ kind: "cancel", participationId: mine.id, label: component.name })
+            }
+          >
+            Cancel
+          </Button>
+        </div>
+        {participating && (
+          <span
+            style={{
+              display: "block",
+              marginTop: "0.25rem",
+              fontSize: "var(--text-2xs)",
+              color: "var(--color-tx3)",
+            }}
+          >
+            {(mine.beneficiaries ?? []).map((b) => b.full_name).join(", ") ||
+              "No participant details"}
+          </span>
+        )}
       </div>
     );
   }
@@ -644,9 +661,11 @@ function ScheduleRowAction({
     );
   }
 
-  if (component.registration_enabled) {
-    return (
-      <div style={{ marginTop: "0.5rem" }}>
+  if (!component.registration_enabled && !component.participation_enabled) return null;
+
+  return (
+    <div className="u-row" style={{ gap: "var(--space-2)", marginTop: "0.5rem" }}>
+      {component.registration_enabled && (
         <Button
           variant="join"
           size="sm"
@@ -654,11 +673,18 @@ function ScheduleRowAction({
         >
           Join
         </Button>
-      </div>
-    );
-  }
-
-  return null;
+      )}
+      {component.participation_enabled && (
+        <Button
+          variant="part"
+          size="sm"
+          onClick={() => open({ kind: "participate", eventId, componentId: component.id })}
+        >
+          Participate
+        </Button>
+      )}
+    </div>
+  );
 }
 
 /* ── Volunteer strip ────────────────────────────────────────────────────── */

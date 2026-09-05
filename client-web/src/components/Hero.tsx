@@ -123,19 +123,19 @@ export function Hero({ onNavigate }: { onNavigate: (tab: TabId) => void }) {
             {user?.firstName ? `, ${user.firstName}` : ""} 👋
           </h1>
 
-          <p
-            style={{
-              fontSize: "var(--text-xs)",
-              color: "rgba(255,255,255,.78)",
-              margin: "0 0 var(--space-4)",
-              maxWidth: "28rem",
-              lineHeight: 1.55,
-            }}
-          >
-            {!event
-              ? "No events are coming up just yet. Explore your community and check back soon."
-              : `Here's what's happening in your community${isLive ? " right now" : " this week"}.`}
-          </p>
+          {event && (
+            <p
+              style={{
+                fontSize: "var(--text-xs)",
+                color: "rgba(255,255,255,.78)",
+                margin: "0 0 var(--space-4)",
+                maxWidth: "28rem",
+                lineHeight: 1.55,
+              }}
+            >
+              {`Here's what's happening in your community${isLive ? " right now" : " this week"}.`}
+            </p>
+          )}
 
           <div className="u-hero-actions">
             <Button

@@ -31,6 +31,7 @@ import {
   formatTime,
   formatTimeRange,
   humanize,
+  todayISO,
 } from "@/lib/utils/format";
 import type {
   Announcement,
@@ -298,26 +299,35 @@ function ComponentAction({
   const mine = byComponent.get(component.id);
 
   if (mine) {
+    const participating = mine.registration_method === "participate";
     return (
-      <>
-        <Button variant="joined" size="sm">
-          <Icon name="ti-check" size={11} />
-          {mine.type === "book" ? "Booked" : "Joined"}
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() =>
-            open({
-              kind: "cancel",
-              participationId: mine.id,
-              label: component.name,
-            })
-          }
-        >
-          Cancel
-        </Button>
-      </>
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+        <div style={{ display: "flex", gap: "0.375rem" }}>
+          <Button variant="joined" size="sm">
+            <Icon name="ti-check" size={11} />
+            {mine.type === "book" ? "Booked" : participating ? "Participating" : "Joined"}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() =>
+              open({
+                kind: "cancel",
+                participationId: mine.id,
+                label: component.name,
+              })
+            }
+          >
+            Cancel
+          </Button>
+        </div>
+        {participating && (
+          <span style={{ fontSize: "var(--text-2xs)", color: "var(--color-tx3)" }}>
+            {(mine.beneficiaries ?? []).map((b) => b.full_name).join(", ") ||
+              "No participant details"}
+          </span>
+        )}
+      </div>
     );
   }
 
@@ -338,17 +348,29 @@ function ComponentAction({
     );
   }
 
-  if (!component.registration_enabled) return null;
-
   return (
-    <Button
-      variant="join"
-      size="sm"
-      disabled={full}
-      onClick={() => open({ kind: "join", eventId, componentId: component.id })}
-    >
-      {full ? "Full" : "Join"}
-    </Button>
+    <>
+      {component.registration_enabled && (
+        <Button
+          variant="join"
+          size="sm"
+          disabled={full}
+          onClick={() => open({ kind: "join", eventId, componentId: component.id })}
+        >
+          {full ? "Full" : "Join"}
+        </Button>
+      )}
+      {component.participation_enabled && (
+        <Button
+          variant="part"
+          size="sm"
+          disabled={full}
+          onClick={() => open({ kind: "participate", eventId, componentId: component.id })}
+        >
+          {full ? "Full" : "Participate"}
+        </Button>
+      )}
+    </>
   );
 }
 
@@ -565,11 +587,14 @@ function Meta({
 }
 
 function StatusTag({ event }: { event: CommunityEvent }) {
-  const delta = describeWhen(event.start_date);
-
   if (event.status === "cancelled") return <Tag tone="urgent">Cancelled</Tag>;
-  if (delta === "today" || event.start_date < event.end_date)
-    return <Tag tone="done">Ongoing</Tag>;
+
+  const today = todayISO();
+  const isLive = event.start_date <= today && event.end_date >= today;
+  const isPast = event.end_date < today;
+
+  if (isLive) return <Tag tone="done">Ongoing</Tag>;
+  if (isPast) return <Tag tone="muted">Past</Tag>;
   if (event.registration_required)
     return <Tag tone="part">Registration open</Tag>;
   return <Tag tone="muted">Coming soon</Tag>;

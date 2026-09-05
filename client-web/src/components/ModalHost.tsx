@@ -10,6 +10,7 @@ import {
 import { Modal, DefGrid } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Icon } from "@/components/ui/Icon";
+import { BeneficiaryPicker } from "@/components/BeneficiaryPicker";
 import { errorMessage } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import {
@@ -28,6 +29,7 @@ import {
   formatTimeRange,
   toNumber,
 } from "@/lib/utils/format";
+import type { BeneficiaryInput } from "@/lib/api/types";
 
 /**
  * Every write the resident can make, driven by a typed request so each dialog
@@ -36,6 +38,8 @@ import {
 export type ModalRequest =
   /** RSVP to a whole event, or to one activity within it. */
   | { kind: "join"; eventId: string; componentId?: string }
+  /** Detailed registration: single/multiple, self/family member/other. */
+  | { kind: "participate"; eventId: string; componentId: string }
   /** Reserve seats on a component that requires booking. */
   | { kind: "book"; eventId: string; componentId: string }
   /** Pick a volunteer role on an event. */
@@ -83,6 +87,9 @@ export function ModalHost({ children }: { children: ReactNode }) {
 
       {request?.kind === "join" && (
         <JoinDialog request={request} onClose={close} onDone={succeed} />
+      )}
+      {request?.kind === "participate" && (
+        <ParticipateDialog request={request} onClose={close} onDone={succeed} />
       )}
       {request?.kind === "book" && (
         <BookDialog request={request} onClose={close} onDone={succeed} />
@@ -260,6 +267,110 @@ function JoinDialog({
       >
         You&apos;ll find this under My activity once confirmed.
       </p>
+    </Modal>
+  );
+}
+
+function ParticipateDialog({
+  request,
+  onClose,
+  onDone,
+}: {
+  request: Extract<ModalRequest, { kind: "participate" }>;
+  onClose: () => void;
+  onDone: (msg: string) => void;
+}) {
+  const { event, component } = useComponent(request.eventId, request.componentId);
+  const { user } = useAuth();
+  const availability = useComponentAvailability(
+    request.componentId,
+    component ? component.requires_booking || component.capacity !== null : false,
+  );
+  const participate = useParticipate();
+  const [error, setError] = useState<string | null>(null);
+  const [beneficiaries, setBeneficiaries] = useState<BeneficiaryInput[]>([
+    { relation_type: "self" },
+  ]);
+  const [mode, setMode] = useState<"single" | "multiple">("single");
+
+  const target = component?.name ?? event?.name ?? "this activity";
+  const selfName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "You";
+  const remaining = availability.data?.available;
+  const tooMany =
+    remaining != null && remaining >= 0 && beneficiaries.length > remaining;
+  const valid =
+    beneficiaries.length > 0 &&
+    (mode === "single" ? beneficiaries.length === 1 : true) &&
+    !tooMany;
+
+  async function confirm() {
+    if (!valid) {
+      setError("Add at least one person to continue.");
+      return;
+    }
+
+    setError(null);
+    try {
+      await participate.mutateAsync({
+        event_id: request.eventId,
+        event_component_id: request.componentId,
+        type: "join",
+        registration_method: "participate",
+        mode,
+        beneficiaries,
+      });
+      onDone(`You're registered for ${target}.`);
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
+
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={`Participate — ${target}`}
+      footer={
+        <>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant="part"
+            onClick={confirm}
+            disabled={participate.isPending || !valid}
+          >
+            {participate.isPending ? "Registering…" : "Confirm"}
+          </Button>
+        </>
+      }
+    >
+      {error && <ErrorNote message={error} />}
+
+      <BeneficiaryPicker
+        selfName={selfName}
+        maxBeneficiaries={remaining}
+        initialMode={mode}
+        initialBeneficiaries={beneficiaries}
+        onChange={(next, nextMode) => {
+          setBeneficiaries(next);
+          setMode(nextMode);
+          setError(null);
+        }}
+      />
+
+      {tooMany && (
+        <p
+          style={{
+            margin: "0.75rem 0 0",
+            fontSize: "var(--text-xs)",
+            color: "#8b1010",
+          }}
+        >
+          Only {remaining} spot{remaining === 1 ? "" : "s"} left — remove a person to
+          continue.
+        </p>
+      )}
     </Modal>
   );
 }
