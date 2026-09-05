@@ -92,11 +92,14 @@ export function Modal({
         background: "rgba(5,40,38,.5)",
         zIndex: 200,
         display: "flex",
-        // Bottom-sheet on small screens, centred once there's room.
-        alignItems: "flex-end",
+        // Centre the panel; it clamps its own height and scrolls internally, so
+        // the overlay itself must NOT scroll (a scrolling overlay let the panel
+        // grow past the viewport and pushed the pinned footer outside the card
+        // on short/landscape screens).
+        alignItems: "center",
         justifyContent: "center",
-        padding: "clamp(0rem, 2vw, 1rem)",
-        overflowY: "auto",
+        padding: "clamp(0.75rem, 2vw, 1rem)",
+        overflow: "hidden",
       }}
     >
       <div
@@ -111,8 +114,11 @@ export function Modal({
           borderRadius: "0.875rem",
           // rem width, capped to the viewport so it can't cause overflow.
           width: `min(${(width / 16).toFixed(2)}rem, 100%)`,
-          maxHeight: "min(92dvh, 100%)",
-          margin: "auto",
+          // Fill at most the overlay's height (which already subtracts its
+          // padding). The panel is a strict flex column with overflow:hidden,
+          // so the body scrolls internally while header/footer stay pinned and
+          // nothing spills outside the rounded card.
+          maxHeight: "100%",
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",

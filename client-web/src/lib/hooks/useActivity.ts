@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  announcementsApi,
   donationsApi,
   membersApi,
   participationsApi,
@@ -57,6 +58,15 @@ export function useMembers() {
     queryKey: qk.members.list,
     queryFn: () => membersApi.list(),
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+/** Committee announcements for the org (pinned first, then newest). */
+export function useAnnouncements() {
+  return useQuery({
+    queryKey: qk.announcements.list,
+    queryFn: () => announcementsApi.list(),
+    staleTime: 2 * 60 * 1000,
   });
 }
 

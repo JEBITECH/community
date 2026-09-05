@@ -104,7 +104,10 @@ export class OrganizationService {
                     organization_contact_info: organizationDto.organization_contact_info || '',
                     organization_type: (organizationDto.organization_type as any) || 'society',
                     subdomain,
-                    membership_model: (organizationDto.membership_model as any) || 'approval_required',
+                    // Default to `open` so residents can join without an
+                    // invitation code or approval. Admins can tighten this to
+                    // `approval_required` or `invite_only` from the admin panel.
+                    membership_model: (organizationDto.membership_model as any) || 'open',
                     plan: (organizationDto.plan as any) || 'free',
                     organization_logo: organizationDto.organization_logo || null,
                     organization_status: 'active',

@@ -5,6 +5,7 @@ import { Icon } from "@/components/ui/Icon";
 import { ProfileDialog } from "@/components/profile/ProfileDialog";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useOrganization } from "@/lib/org/useOrganization";
+import { DEFAULT_LOGO } from "@/lib/org/branding";
 import { fullName, initials } from "@/lib/utils/format";
 
 /**
@@ -25,8 +26,12 @@ export function Topbar() {
     membership?.organization?.organization_name ??
     publicOrg?.organization_name ??
     "Community";
+  // Fall back to the bundled brand logo when the org record has none, so the
+  // header is always branded rather than showing initials on a plain tile.
   const logo =
-    membership?.organization?.organization_logo ?? publicOrg?.organization_logo;
+    membership?.organization?.organization_logo ||
+    publicOrg?.organization_logo ||
+    DEFAULT_LOGO;
 
   return (
     <header
@@ -39,8 +44,14 @@ export function Topbar() {
       }}
     >
       <div
-        className="u-container u-row u-row--between"
+        className="u-container"
         style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          // Single row, no wrapping — the brand truncates instead of pushing
+          // the account chip onto a second line.
+          flexWrap: "nowrap",
           minHeight: "3.625rem",
           paddingBlock: "var(--space-2)",
           gap: "var(--space-3)",
@@ -53,6 +64,8 @@ export function Topbar() {
             display: "flex",
             alignItems: "center",
             gap: "var(--space-2)",
+            flex: 1,
+            minWidth: 0,
           }}
         >
           <span
@@ -92,7 +105,7 @@ export function Topbar() {
             )}
           </span>
 
-          <span className="u-min0">
+          <span className="u-min0" style={{ minWidth: 0 }}>
             <span
               style={{
                 display: "block",
@@ -100,16 +113,24 @@ export function Topbar() {
                 fontWeight: 700,
                 color: "#fff",
                 lineHeight: 1.25,
+                // One line with ellipsis so a long org name never wraps.
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
               }}
             >
               {orgName}
             </span>
             <span
+              className="u-brand-tagline"
               style={{
                 display: "block",
                 fontSize: "var(--text-2xs)",
                 color: "rgba(255,255,255,.7)",
                 lineHeight: 1.4,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
               }}
             >
               Together we celebrate, participate and connect
@@ -151,7 +172,22 @@ function AccountChip({ name, unit }: { name: string; unit: string | null }) {
   }, [open]);
 
   return (
-    <div ref={boxRef} style={{ position: "relative", flexShrink: 0 }}>
+    <div
+      ref={boxRef}
+      style={{
+        position: "relative",
+        flexShrink: 0,
+        // Keep the chip hard against the right edge even when the header row
+        // wraps it onto its own line on narrow phones — otherwise it lands on
+        // the left and the right-anchored menu opens off the left edge.
+        marginLeft: "auto",
+        // While the menu is open, lift the whole chip into its own stacking
+        // layer. On mobile the header is `position: static` (u-sticky is
+        // released), so without this the hero — a later sibling — paints over
+        // the dropdown and only a clipped sliver shows.
+        zIndex: open ? 300 : "auto",
+      }}
+    >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -168,7 +204,7 @@ function AccountChip({ name, unit }: { name: string; unit: string | null }) {
           cursor: "pointer",
           background: "rgba(255,255,255,.12)",
           fontFamily: "inherit",
-          maxWidth: "min(15rem, 60vw)",
+          maxWidth: "min(13rem, 48vw)",
         }}
       >
         <span
@@ -196,6 +232,7 @@ function AccountChip({ name, unit }: { name: string; unit: string | null }) {
         <span
           className="u-min0"
           style={{
+            minWidth: 0,
             fontSize: "var(--text-xs)",
             fontWeight: 500,
             color: "#fff",
@@ -203,7 +240,16 @@ function AccountChip({ name, unit }: { name: string; unit: string | null }) {
             lineHeight: 1.3,
           }}
         >
-          {name}
+          <span
+            style={{
+              display: "block",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {name}
+          </span>
           {unit && (
             <span
               style={{
@@ -228,8 +274,11 @@ function AccountChip({ name, unit }: { name: string; unit: string | null }) {
             top: "100%",
             right: 0,
             marginTop: "var(--space-2)",
-            width: "max(13rem, 60vw)",
-            maxWidth: "min(17rem, 90vw)",
+            // A fixed, comfortable width that always fits a phone screen.
+            // (The old `max(13rem, 60vw)` blew up to 60% of the viewport and,
+            // anchored right, spilled off the left edge behind the hero.)
+            width: "14rem",
+            maxWidth: "calc(100vw - 1.5rem)",
             background: "#fff",
             border: "1px solid var(--color-bdr)",
             borderRadius: "var(--radius-card)",

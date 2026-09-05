@@ -1,16 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
 import { Tag } from "@/components/ui/Tag";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { SectionHeader } from "@/components/ui/SectionHeader";
-import {
-  EmptyNote,
-  LoadingRows,
-  NotAvailable,
-} from "@/components/ui/NotAvailable";
+import { EmptyNote, LoadingRows } from "@/components/ui/NotAvailable";
 import { SubTabs } from "@/components/TabNav";
 import { useModal } from "@/components/ModalHost";
 import {
@@ -21,7 +18,11 @@ import {
   usePublishedEvents,
   useVolunteerRolesForEvents,
 } from "@/lib/hooks/useEvents";
-import { useMyParticipationIndex, useMyVolunteerRoleIds } from "@/lib/hooks/useActivity";
+import {
+  useAnnouncements,
+  useMyParticipationIndex,
+  useMyVolunteerRoleIds,
+} from "@/lib/hooks/useActivity";
 import {
   describeWhen,
   formatDateFull,
@@ -31,7 +32,11 @@ import {
   formatTimeRange,
   humanize,
 } from "@/lib/utils/format";
-import type { CommunityEvent, EventComponent } from "@/lib/api/types";
+import type {
+  Announcement,
+  CommunityEvent,
+  EventComponent,
+} from "@/lib/api/types";
 
 type EventsSubTab = "today" | "all-events" | "volunteer";
 
@@ -382,8 +387,11 @@ function AllEventsView({
 
 function EventCard({ event }: { event: CommunityEvent }) {
   const { open } = useModal();
+  const router = useRouter();
   const { byEvent } = useMyParticipationIndex();
   const mine = byEvent.get(event.id);
+
+  const goToDetail = () => router.push(`/events/${event.id}`);
 
   return (
     <div
@@ -397,7 +405,15 @@ function EventCard({ event }: { event: CommunityEvent }) {
       }}
       className="u-media"
     >
-      <div
+      {/*
+        Figure + title/meta are the clickable surface that opens the event
+        detail page. The action buttons below sit outside this button so they
+        still fire their own handlers (join/volunteer/cancel).
+      */}
+      <button
+        type="button"
+        onClick={goToDetail}
+        aria-label={`Open ${event.name}`}
         className="u-media__figure"
         style={{
           width: "4.5rem",
@@ -407,11 +423,13 @@ function EventCard({ event }: { event: CommunityEvent }) {
           justifyContent: "center",
           fontSize: "var(--text-2xl)",
           background: "var(--color-ivory-dark)",
+          border: "none",
+          cursor: "pointer",
+          fontFamily: "inherit",
         }}
-        aria-hidden="true"
       >
-        {emojiFor(event)}
-      </div>
+        <span aria-hidden="true">{emojiFor(event)}</span>
+      </button>
       <div
         className="u-media__body u-min0"
         style={{
@@ -420,24 +438,54 @@ function EventCard({ event }: { event: CommunityEvent }) {
           borderLeft: "1px solid var(--color-bdr)",
         }}
       >
-        <div
+        <button
+          type="button"
+          onClick={goToDetail}
           className="u-row u-row--between"
-          style={{ marginBottom: "0.3125rem" }}
+          style={{
+            width: "100%",
+            marginBottom: "0.3125rem",
+            background: "none",
+            border: "none",
+            padding: 0,
+            cursor: "pointer",
+            textAlign: "left",
+            fontFamily: "inherit",
+            gap: "var(--space-2)",
+          }}
         >
-          <div
-            style={{ fontSize: "var(--text-base)", fontWeight: 600, color: "var(--color-tx)" }}
+          <span
+            className="u-min0"
+            style={{
+              fontSize: "var(--text-base)",
+              fontWeight: 600,
+              color: "var(--color-tx)",
+              display: "flex",
+              alignItems: "center",
+              gap: "var(--space-1)",
+            }}
           >
             {event.name}
-          </div>
+            <Icon name="ti-chevron-down" size={13} color="var(--color-tx3)" style={{ transform: "rotate(-90deg)" }} />
+          </span>
           <StatusTag event={event} />
-        </div>
+        </button>
 
-        <div
+        <button
+          type="button"
+          onClick={goToDetail}
           style={{
             display: "flex",
             gap: "0.625rem",
             flexWrap: "wrap",
             marginBottom: "0.5rem",
+            width: "100%",
+            background: "none",
+            border: "none",
+            padding: 0,
+            cursor: "pointer",
+            textAlign: "left",
+            fontFamily: "inherit",
           }}
         >
           <Meta icon="ti-calendar">
@@ -446,7 +494,7 @@ function EventCard({ event }: { event: CommunityEvent }) {
           <Meta icon="ti-clock">{describeWhen(event.start_date)}</Meta>
           {event.venue && <Meta icon="ti-map-pin">{event.venue}</Meta>}
           <Meta icon="ti-tag">{humanize(event.event_type)}</Meta>
-        </div>
+        </button>
 
         <div style={{ display: "flex", gap: "0.375rem", flexWrap: "wrap" }}>
           {event.registration_required &&
@@ -719,24 +767,89 @@ function VolunteerView({ events }: { events: CommunityEvent[] }) {
 
 /* ─── Announcements sidebar ─── */
 
+const ANNOUNCEMENTS_PREVIEW = 3;
+
 function AnnouncementsSidebar() {
   const events = usePublishedEvents();
   const buckets = useMemo(() => categorize(events.data ?? []), [events.data]);
   const next = [...buckets.live, ...buckets.upcoming].slice(0, 4);
 
+  const announcements = useAnnouncements();
+  const notices = announcements.data ?? [];
+
+  const [showAll, setShowAll] = useState(false);
+  const hasMore = notices.length > ANNOUNCEMENTS_PREVIEW;
+  const visibleNotices =
+    showAll || !hasMore ? notices : notices.slice(0, ANNOUNCEMENTS_PREVIEW);
+
   return (
     <div>
       <SectionHeader icon="ti-speakerphone" title="Announcements" />
 
-      {/*
-        There is no announcements table or endpoint in community-svc, so rather
-        than reinstate the prototype's invented notices this states the gap and
-        falls back to the real upcoming schedule.
-      */}
-      <NotAvailable
-        title="Announcements aren't wired up yet"
-        detail="community-svc has no announcements endpoint. Once it exists, committee notices will appear here."
-      />
+      {announcements.isLoading ? (
+        <LoadingRows rows={2} />
+      ) : notices.length === 0 ? (
+        <EmptyNote>No announcements right now.</EmptyNote>
+      ) : (
+        <>
+          {/*
+            One box holding the notices, with a hairline separator between rows.
+            Capped to a preview count (expandable) and given a max height so a
+            long list scrolls inside the box rather than stretching the rail
+            past the events column.
+          */}
+          <div
+            style={{
+              background: "#fff",
+              border: "1px solid var(--color-bdr)",
+              borderRadius: "var(--radius-s)",
+              overflow: "hidden auto",
+              maxHeight: showAll ? "28rem" : "none",
+            }}
+          >
+            {visibleNotices.map((a, i) => (
+              <AnnouncementCard
+                key={a.id}
+                announcement={a}
+                last={i === visibleNotices.length - 1}
+              />
+            ))}
+          </div>
+
+          {hasMore && (
+            <button
+              type="button"
+              onClick={() => setShowAll((v) => !v)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "0.375rem",
+                width: "100%",
+                marginTop: "0.5rem",
+                minHeight: "var(--tap)",
+                padding: "0.375rem 0.5rem",
+                background: "none",
+                border: "1px solid var(--color-bdr)",
+                borderRadius: "var(--radius-s)",
+                color: "var(--color-teal)",
+                fontFamily: "inherit",
+                fontSize: "var(--text-xs)",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              {showAll
+                ? "Show less"
+                : `Show all ${notices.length} announcements`}
+              <Icon
+                name={showAll ? "ti-chevron-up" : "ti-chevron-down"}
+                size={13}
+              />
+            </button>
+          )}
+        </>
+      )}
 
       <div style={{ marginTop: "1rem" }}>
         <SectionHeader icon="ti-calendar-event" title="Next up" />
@@ -748,9 +861,10 @@ function AnnouncementsSidebar() {
               key={event.id}
               style={{
                 background: "#fff",
+                borderTop: "1px solid var(--color-bdr)",
+                borderRight: "1px solid var(--color-bdr)",
+                borderBottom: "1px solid var(--color-bdr)",
                 borderLeft: "3px solid var(--color-teal)",
-                border: "1px solid var(--color-bdr)",
-                borderLeftWidth: 3,
                 borderRadius: "var(--radius-s)",
                 padding: "0.625rem 0.75rem",
                 marginBottom: "0.5rem",
@@ -781,6 +895,131 @@ function AnnouncementsSidebar() {
               </div>
             </div>
           ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Announcement card ─── */
+
+// Bodies longer than this get clamped with a "Read more" toggle, so one long
+// notice can't blow up the whole rail.
+const ANNOUNCEMENT_BODY_CLAMP = 140;
+
+function AnnouncementCard({
+  announcement: a,
+  last,
+}: {
+  announcement: Announcement;
+  last?: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  // Urgent/important get a warmer accent; normal uses the app's teal.
+  const accent =
+    a.priority === "urgent"
+      ? "var(--color-danger-tx)"
+      : a.priority === "important"
+        ? "var(--color-saffron)"
+        : "var(--color-teal)";
+
+  const isLong = a.body.length > ANNOUNCEMENT_BODY_CLAMP;
+
+  return (
+    <div
+      style={{
+        borderLeft: `3px solid ${accent}`,
+        padding: "0.625rem 0.75rem",
+        // Separator between rows; the box itself supplies the outer border.
+        borderBottom: last ? "none" : "1px solid var(--color-bdr)",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.375rem",
+          marginBottom: "0.25rem",
+        }}
+      >
+        {a.is_pinned && (
+          <Icon name="ti-pin" size={13} color={accent} style={{ flexShrink: 0 }} />
+        )}
+        <span
+          className="u-min0"
+          style={{
+            flex: 1,
+            fontSize: "var(--text-sm)",
+            fontWeight: 600,
+            color: "var(--color-tx)",
+            // One line only — long titles get an ellipsis, not a wrap.
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {a.title}
+        </span>
+        {a.priority !== "normal" && (
+          <span style={{ flexShrink: 0 }}>
+            <Tag tone={a.priority === "urgent" ? "urgent" : "book"}>
+              {humanize(a.priority)}
+            </Tag>
+          </span>
+        )}
+      </div>
+
+      <p
+        style={{
+          margin: 0,
+          fontSize: "var(--text-xs)",
+          color: "var(--color-tx2)",
+          lineHeight: 1.5,
+          whiteSpace: "pre-wrap",
+          // Clamp to two lines until the reader expands it.
+          ...(expanded
+            ? {}
+            : {
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical" as const,
+                overflow: "hidden",
+              }),
+        }}
+      >
+        {a.body}
+      </p>
+
+      <div
+        style={{
+          marginTop: "0.375rem",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "0.5rem",
+        }}
+      >
+        <span style={{ fontSize: "var(--text-2xs)", color: "var(--color-tx3)" }}>
+          {formatDateFull(String(a.published_at).slice(0, 10))}
+        </span>
+        {isLong && (
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              fontFamily: "inherit",
+              fontSize: "var(--text-2xs)",
+              fontWeight: 600,
+              color: "var(--color-teal)",
+            }}
+          >
+            {expanded ? "Read less" : "Read more"}
+          </button>
         )}
       </div>
     </div>

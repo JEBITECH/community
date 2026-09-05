@@ -41,7 +41,12 @@ export function Hero({ onNavigate }: { onNavigate: (tab: TabId) => void }) {
   const needs = useSponsorshipNeeds(event?.id);
   const members = useMembers();
 
-  if (isLoading || !event) return null;
+  // The hero always renders: the greeting, membership ID and member count are
+  // meaningful even with no event on the horizon. Only the event-specific
+  // pieces (banner pill, activity/volunteer/sponsorship stats, event card) are
+  // gated on `event`. While the featured-event lookup is still loading we hold
+  // off so the layout doesn't flash between the two states.
+  if (isLoading) return null;
 
   const components = flattenComponents(detail.data?.days);
   const dayCount = detail.data?.days?.length ?? 0;
@@ -55,7 +60,7 @@ export function Hero({ onNavigate }: { onNavigate: (tab: TabId) => void }) {
     0,
   );
 
-  const isLive = daysFromToday(event.start_date) <= 0;
+  const isLive = event ? daysFromToday(event.start_date) <= 0 : false;
 
   return (
     <section
@@ -97,9 +102,11 @@ export function Hero({ onNavigate }: { onNavigate: (tab: TabId) => void }) {
             }}
           >
             <Icon name="ti-calendar-event" size={13} />
-            {isLive
-              ? `${event.name} is happening now`
-              : `${event.name} begins ${describeWhen(event.start_date)}`}
+            {!event
+              ? "Welcome to your community"
+              : isLive
+                ? `${event.name} is happening now`
+                : `${event.name} begins ${describeWhen(event.start_date)}`}
           </span>
 
           <h1
@@ -120,25 +127,24 @@ export function Hero({ onNavigate }: { onNavigate: (tab: TabId) => void }) {
             style={{
               fontSize: "var(--text-xs)",
               color: "rgba(255,255,255,.78)",
-              margin: "0 0 var(--space-5)",
+              margin: "0 0 var(--space-4)",
               maxWidth: "28rem",
-              lineHeight: 1.6,
+              lineHeight: 1.55,
             }}
           >
-            Here&apos;s what&apos;s happening in your community
-            {isLive ? " right now" : " this week"}.
+            {!event
+              ? "No events are coming up just yet. Explore your community and check back soon."
+              : `Here's what's happening in your community${isLive ? " right now" : " this week"}.`}
           </p>
 
-          <div className="u-row" style={{ gap: "var(--space-2)" }}>
+          <div className="u-hero-actions">
             <Button
               variant="saffron"
-              size="lg"
               onClick={() => onNavigate("events")}
             >
               <Icon name="ti-calendar-event" size={15} /> View all events
             </Button>
             <Button
-              size="lg"
               onClick={() => onNavigate("my-activity")}
               style={{
                 background: "rgba(255,255,255,.12)",
@@ -148,9 +154,8 @@ export function Hero({ onNavigate }: { onNavigate: (tab: TabId) => void }) {
             >
               <Icon name="ti-clipboard-list" size={15} /> My activity
             </Button>
-            {event.volunteer_enabled && (
+            {event?.volunteer_enabled && (
               <Button
-                size="lg"
                 onClick={() => open({ kind: "volunteer", eventId: event.id })}
                 style={{
                   background: "rgba(255,255,255,.12)",
@@ -204,32 +209,40 @@ export function Hero({ onNavigate }: { onNavigate: (tab: TabId) => void }) {
             </div>
           )}
 
-          <div className="u-autogrid u-autogrid--sm">
+          <div className="u-hero-stats">
             <HeroStat
               num={members.data ? String(members.data.length) : "—"}
               lbl="Members"
               sub="In the directory"
             />
-            <HeroStat
-              num={String(components.length)}
-              lbl="Activities"
-              sub={dayCount > 1 ? `Across ${dayCount} days` : "This event"}
-            />
-            <HeroStat
-              num={String(volunteersSignedUp)}
-              lbl="Volunteers"
-              sub="Signed up"
-            />
-            <HeroStat
-              num={raised > 0 ? formatMoneyCompact(raised) : "—"}
-              lbl="Sponsorships"
-              sub="Raised so far"
-            />
+            {/* Activity/volunteer/sponsorship figures only make sense against a
+                featured event; omit them entirely when there isn't one. */}
+            {event && (
+              <>
+                <HeroStat
+                  num={String(components.length)}
+                  lbl="Activities"
+                  sub={dayCount > 1 ? `Across ${dayCount} days` : "This event"}
+                />
+                <HeroStat
+                  num={String(volunteersSignedUp)}
+                  lbl="Volunteers"
+                  sub="Signed up"
+                />
+                <HeroStat
+                  num={raised > 0 ? formatMoneyCompact(raised) : "—"}
+                  lbl="Sponsorships"
+                  sub="Raised so far"
+                />
+              </>
+            )}
           </div>
 
+          {event && (
           <button
             type="button"
             onClick={() => onNavigate("events")}
+            className="u-hero-eventcard"
             style={{
               textAlign: "left",
               background: "rgba(255,255,255,.1)",
@@ -280,6 +293,7 @@ export function Hero({ onNavigate }: { onNavigate: (tab: TabId) => void }) {
               </span>
             </span>
           </button>
+          )}
         </div>
       </div>
     </section>
@@ -326,13 +340,13 @@ function HeroStat({
         background: "rgba(255,255,255,.1)",
         border: "1px solid rgba(255,255,255,.18)",
         borderRadius: "var(--radius-card)",
-        padding: "var(--space-3)",
+        padding: "0.625rem 0.75rem",
         minWidth: 0,
       }}
     >
       <div
         style={{
-          fontSize: "clamp(1.25rem, 2.5vw, 1.625rem)",
+          fontSize: "clamp(1.125rem, 2.5vw, 1.5rem)",
           fontWeight: 700,
           lineHeight: 1.1,
           color: "var(--color-gold-light)",

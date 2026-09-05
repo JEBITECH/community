@@ -392,6 +392,30 @@ export type MyVolunteerAssignment = VolunteerAssignment & {
 };
 
 // ---------------------------------------------------------------------------
+// Announcements
+// ---------------------------------------------------------------------------
+
+export type AnnouncementPriority = "normal" | "important" | "urgent";
+
+/**
+ * GET /announcements returns the entity rows. The list endpoint already hides
+ * deleted/unpublished/expired rows, so the client can render whatever it gets.
+ */
+export interface Announcement {
+  id: string;
+  organization_id: number;
+  membership_id: string;
+  title: string;
+  body: string;
+  priority: AnnouncementPriority;
+  is_pinned: boolean;
+  published_at: Timestamp;
+  expires_at?: Timestamp | null;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}
+
+// ---------------------------------------------------------------------------
 // Directory
 // ---------------------------------------------------------------------------
 

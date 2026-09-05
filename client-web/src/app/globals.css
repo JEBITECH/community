@@ -266,6 +266,67 @@ textarea {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+/* Phones: tighten the hero so it doesn't consume the whole first screen. */
+@media (max-width: 40rem) {
+  .u-hero {
+    gap: 1rem;
+    padding: 1.125rem 1rem 1.25rem;
+  }
+}
+
+/*
+  Hero action buttons: a neat row that wraps to full-width stacked buttons on
+  phones, rather than an uneven flex-wrap where the third button dangles.
+*/
+.u-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.u-hero-actions > * {
+  flex: 1 1 auto;
+}
+@media (max-width: 40rem) {
+  .u-hero-actions > * {
+    flex: 1 1 100%;
+  }
+}
+
+/*
+  Hero stat tiles: two even columns on phones (so four tiles read as 2x2 with
+  no orphan), auto-fitting into more columns as the viewport widens.
+*/
+.u-hero-stats {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+}
+@media (max-width: 40rem) {
+  .u-hero-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/*
+  The hero's featured-event card duplicates the banner pill and the Events tab
+  content. On phones that's just extra height before the fold, so hide it there
+  — the pill up top and the Events tab still surface the same event.
+*/
+@media (max-width: 40rem) {
+  .u-hero-eventcard {
+    display: none;
+  }
+}
+
+/*
+  Topbar tagline is decorative; on phones it competes with the org name and the
+  account chip for a narrow row, so drop it and keep just logo + name + chip.
+*/
+@media (max-width: 30rem) {
+  .u-brand-tagline {
+    display: none;
+  }
+}
 
 /* Auto-fitting card/stat grids: the browser decides the column count. */
 .u-autogrid {
