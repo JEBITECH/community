@@ -2,6 +2,7 @@
 
 import { api } from "./client";
 import type {
+  Announcement,
   CommunityEvent,
   ComponentAvailability,
   CreateDonationInput,
@@ -178,4 +179,12 @@ export const volunteersApi = {
 export const membersApi = {
   /** Active + directory_visible members only. Takes no query params. */
   list: () => api.get<DirectoryEntry[]>("/api/community/members"),
+};
+
+export const announcementsApi = {
+  /**
+   * Active announcements for the caller's org, newest first with pinned on top.
+   * The server already filters out deleted, unpublished and expired rows.
+   */
+  list: () => api.get<Announcement[]>("/api/community/announcements"),
 };

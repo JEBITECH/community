@@ -303,7 +303,14 @@ export class AuthService {
       console.error('[AuthService] Failed to send OTP email:', err instanceof Error ? err.message : err);
     }
 
-    if (process.env.NODE_ENV === 'production') {
+    // The OTP is only echoed back in the response when SHOW_DEBUG_OTP is
+    // explicitly enabled (never in production). With SMTP configured the code
+    // arrives by email, so this stays off by default and the UI won't leak it.
+    const showDebugOtp =
+      process.env.NODE_ENV !== 'production' &&
+      process.env.SHOW_DEBUG_OTP === 'true';
+
+    if (!showDebugOtp) {
       return { message: 'OTP sent' };
     }
 

@@ -6,6 +6,7 @@ import { authApi } from "@/lib/api/endpoints";
 import { errorMessage } from "@/lib/api/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useOrganization } from "@/lib/org/useOrganization";
+import { DEFAULT_LOGO } from "@/lib/org/branding";
 import type { Membership, User } from "@/lib/api/types";
 
 /** auth-svc enforces a 60s per-email cooldown; mirror it in the UI. */
@@ -48,30 +49,25 @@ export function SignInScreen() {
     >
       <div style={{ width: "100%", maxWidth: "23.75rem" }}>
         <div style={{ textAlign: "center", marginBottom: "1.25rem" }}>
-          {org?.organization_logo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={org.organization_logo}
-              alt=""
-              width={52}
-              height={52}
-              style={{ borderRadius: "0.875rem", display: "inline-block" }}
-            />
-          ) : (
-            <div
-              style={{
-                width: "3.25rem",
-                height: "3.25rem",
-                margin: "0 auto",
-                borderRadius: "0.875rem",
-                background: "rgba(255,255,255,.18)",
-                display: "grid",
-                placeItems: "center",
-              }}
-            >
-              <Icon name="ti-building-community" size={26} color="#fff" />
-            </div>
-          )}
+          {/*
+            Prefer the org's configured logo; fall back to the bundled
+            SweetwaterVilla mark when the backend record has none (or the org
+            couldn't be resolved), so the page is always branded rather than
+            showing a generic placeholder icon.
+          */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={org?.organization_logo || DEFAULT_LOGO}
+            alt=""
+            width={56}
+            height={56}
+            style={{
+              borderRadius: "0.875rem",
+              display: "inline-block",
+              objectFit: "cover",
+              background: "rgba(255,255,255,.14)",
+            }}
+          />
 
           <h1
             style={{
@@ -82,12 +78,14 @@ export function SignInScreen() {
               color: "#fff",
             }}
           >
-            {org?.organization_name ?? "Your community"}
+            {org?.organization_name ?? "Welcome"}
           </h1>
-          <p style={{ fontSize: "var(--text-base)", color: "rgba(255,255,255,.75)", margin: "0rem" }}>
+          <p style={{ fontSize: "var(--text-base)", color: "rgba(255,255,255,.75)", margin: "0rem", lineHeight: 1.5 }}>
             {step.kind === "join"
-              ? "A few details and you're in."
-              : "Sign in with your email"}
+              ? "Just a few details and you're in."
+              : org?.organization_name
+                ? "Sign in with your email to continue."
+                : "Sign in with your email to reach your community."}
           </p>
         </div>
 
@@ -128,7 +126,12 @@ export function SignInScreen() {
             <JoinStep
               otpVerifiedToken={step.otpVerifiedToken}
               organizationId={org?.organization_id}
-              requiresCode={!org || org.membership_model === "invite_only"}
+              // An invitation code is only required when the admin has set the
+              // org to `invite_only`. Open and approval_required orgs join with
+              // no code. If the org couldn't be resolved we do NOT force a code
+              // either — the backend still rejects invite_only without one and
+              // surfaces a clear message, so the default stays "no code".
+              requiresCode={org?.membership_model === "invite_only"}
               orgName={org?.organization_name}
               onSignedIn={adoptSession}
             />

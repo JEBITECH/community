@@ -5,12 +5,13 @@ import { Icon } from "@/components/ui/Icon";
 import { Card, CardHead, CardBody } from "@/components/ui/Card";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { NotAvailable, LoadingRows } from "@/components/ui/NotAvailable";
-import { useMembers, displayName } from "@/lib/hooks/useActivity";
+import {
+  useAnnouncements,
+  useMembers,
+  displayName,
+} from "@/lib/hooks/useActivity";
 import { humanize, initials } from "@/lib/utils/format";
-import type { DirectoryEntry } from "@/lib/api/types";
-
-/** Roles that make up the organising committee. */
-const COMMITTEE_ROLES = new Set(["super_admin", "core_committee", "master_admin"]);
+import type { Announcement, DirectoryEntry } from "@/lib/api/types";
 
 export function CommunityTab() {
   return (
@@ -22,7 +23,7 @@ export function CommunityTab() {
       </div>
 
       <div style={{ display: "grid", gap: "1.125rem" }}>
-        <CommitteeBox />
+        <AnnouncementsBox />
         <BirthdaysBox />
         <UrgentContactsBox />
       </div>
@@ -177,27 +178,31 @@ function MemberRow({ member }: { member: DirectoryEntry }) {
   );
 }
 
-/* ─── 3. Committee (real) ─── */
+/* ─── 3. Announcements (real) ─── */
 
-function CommitteeBox() {
-  const members = useMembers();
+const ANNOUNCEMENTS_PREVIEW = 2;
 
-  // Derived from membership roles -- there's no dedicated committee endpoint,
-  // but the directory already exposes each member's role.
-  const committee = useMemo(
-    () => (members.data ?? []).filter((m) => COMMITTEE_ROLES.has(m.role)),
-    [members.data],
-  );
+function AnnouncementsBox() {
+  const announcements = useAnnouncements();
+  const notices = announcements.data ?? [];
+
+  const [showAll, setShowAll] = useState(false);
+  const hasMore = notices.length > ANNOUNCEMENTS_PREVIEW;
+  const visible =
+    showAll || !hasMore ? notices : notices.slice(0, ANNOUNCEMENTS_PREVIEW);
 
   return (
     <Card>
-      <CardHead icon="ti-award" title="Committee" />
-      <CardBody flush style={{ paddingBottom: "0.75rem" }}>
-        {members.isLoading ? (
+      <CardHead
+        icon="ti-speakerphone"
+        title={`Announcements${notices.length ? ` · ${notices.length}` : ""}`}
+      />
+      <CardBody flush style={{ paddingBottom: hasMore ? "0.5rem" : "0.75rem" }}>
+        {announcements.isLoading ? (
           <div style={{ padding: "0.75rem 0" }}>
             <LoadingRows rows={2} />
           </div>
-        ) : committee.length === 0 ? (
+        ) : notices.length === 0 ? (
           <div
             style={{
               padding: "1rem 0",
@@ -206,73 +211,144 @@ function CommitteeBox() {
               color: "var(--color-tx3)",
             }}
           >
-            No committee members are listed in the directory.
+            No announcements right now.
           </div>
         ) : (
-          committee.map((m) => (
+          <>
+            {/*
+              Show only the first couple by default; expanding reveals the rest
+              inside a height-capped scroll area so a long list can't stretch
+              the card down the page.
+            */}
             <div
-              key={m.membership_id}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.625rem",
-                padding: "0.5rem 0",
-                borderBottom: "1px solid var(--color-bdr)",
-              }}
+              style={
+                showAll
+                  ? { maxHeight: "22rem", overflowY: "auto" }
+                  : undefined
+              }
             >
-              <span
+              {visible.map((a, i) => (
+                <AnnouncementRow
+                  key={a.id}
+                  announcement={a}
+                  last={i === visible.length - 1}
+                />
+              ))}
+            </div>
+
+            {hasMore && (
+              <button
+                type="button"
+                onClick={() => setShowAll((v) => !v)}
                 style={{
-                  width: "1.875rem",
-                  height: "1.875rem",
-                  flexShrink: 0,
-                  borderRadius: "50%",
-                  background: "var(--color-gold-pale)",
-                  color: "var(--color-gold)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "0.375rem",
+                  width: "100%",
+                  marginTop: "0.5rem",
+                  minHeight: "var(--tap)",
+                  padding: "0.375rem 0.5rem",
+                  background: "none",
+                  border: "none",
+                  color: "var(--color-teal)",
+                  fontFamily: "inherit",
                   fontSize: "var(--text-xs)",
-                  fontWeight: 700,
-                  display: "grid",
-                  placeItems: "center",
+                  fontWeight: 600,
+                  cursor: "pointer",
                 }}
               >
-                {initials(m.first_name, m.last_name)}
-              </span>
-              <div style={{ minWidth: "0rem", flex: 1 }}>
-                <div
-                  style={{
-                    fontSize: "var(--text-sm)",
-                    fontWeight: 600,
-                    color: "var(--color-tx)",
-                  }}
-                >
-                  {displayName(m)}
-                </div>
-                <div
-                  style={{
-                    fontSize: "var(--text-2xs)",
-                    color: "var(--color-teal)",
-                    marginTop: "0.0625rem",
-                    fontWeight: 500,
-                  }}
-                >
-                  {humanize(m.role)}
-                  {m.unit_identifier ? ` · ${m.unit_identifier}` : ""}
-                </div>
-              </div>
-            </div>
-          ))
+                {showAll
+                  ? "Show less"
+                  : `View ${notices.length - ANNOUNCEMENTS_PREVIEW} more`}
+                <Icon
+                  name={showAll ? "ti-chevron-up" : "ti-chevron-down"}
+                  size={13}
+                />
+              </button>
+            )}
+          </>
         )}
-        <p
-          style={{
-            margin: "0.625rem 0 0",
-            fontSize: "var(--text-2xs)",
-            lineHeight: 1.5,
-            color: "var(--color-tx3)",
-          }}
-        >
-          Contact details are only shared with committee members.
-        </p>
       </CardBody>
     </Card>
+  );
+}
+
+/** Compact one-glance row: dot + title, body clamped to two lines. */
+function AnnouncementRow({
+  announcement: a,
+  last,
+}: {
+  announcement: Announcement;
+  last?: boolean;
+}) {
+  const accent =
+    a.priority === "urgent"
+      ? "var(--color-danger-tx)"
+      : a.priority === "important"
+        ? "var(--color-saffron)"
+        : "var(--color-teal)";
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: "0.625rem",
+        padding: "0.5rem 0",
+        borderBottom: last ? "none" : "1px solid var(--color-bdr)",
+      }}
+    >
+      <span
+        aria-hidden="true"
+        style={{
+          marginTop: "0.375rem",
+          width: "0.5rem",
+          height: "0.5rem",
+          flexShrink: 0,
+          borderRadius: "50%",
+          background: accent,
+        }}
+      />
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "0.375rem",
+          }}
+        >
+          {a.is_pinned && <Icon name="ti-pin" size={12} color={accent} />}
+          <span
+            className="u-min0"
+            style={{
+              fontSize: "var(--text-sm)",
+              fontWeight: 600,
+              color: "var(--color-tx)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {a.title}
+          </span>
+        </div>
+        <p
+          style={{
+            margin: "0.125rem 0 0",
+            fontSize: "var(--text-2xs)",
+            color: "var(--color-tx3)",
+            lineHeight: 1.45,
+            // Clamp the body to two lines so the card stays an overview.
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
+        >
+          {a.body}
+        </p>
+      </div>
+    </div>
   );
 }
 

@@ -117,13 +117,9 @@ export function MyActivityTab() {
   const bookedCount = rows.filter((r) => r.kind === "book").length;
   const volunteerCount = rows.filter((r) => r.kind === "volunteer").length;
 
-  const givenTotal =
-    (donations.data ?? []).reduce((s, d) => s + toNumber(d.amount), 0) +
-    (sponsorships.data ?? []).reduce((s, x) => s + toNumber(x.amount_pledged), 0);
-
   return (
     <>
-      {/* Stats — the browser picks the column count, so 4 tiles become 2 then 1. */}
+      {/* Stats — the browser picks the column count, so 3 tiles become 2 then 1. */}
       <div
         className="u-autogrid"
         style={{ marginBottom: "var(--space-5)" }}
@@ -145,12 +141,6 @@ export function MyActivityTab() {
           label="Volunteering"
           color="var(--color-vol-tx)"
           top="var(--color-teal)"
-        />
-        <StatTile
-          n={formatMoney(givenTotal)}
-          label="Contributed"
-          color="var(--color-done-tx)"
-          top="#50b888"
         />
       </div>
 

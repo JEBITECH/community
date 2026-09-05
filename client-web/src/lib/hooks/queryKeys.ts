@@ -34,4 +34,8 @@ export const qk = {
     all: ["members"] as const,
     list: ["members", "list"] as const,
   },
+  announcements: {
+    all: ["announcements"] as const,
+    list: ["announcements", "list"] as const,
+  },
 } as const;
