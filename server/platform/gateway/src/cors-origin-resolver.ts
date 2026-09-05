@@ -37,8 +37,8 @@ class SimpleTTLCache {
 const domainCache = new SimpleTTLCache({ max: 500, ttl: 60_000 });
 
 const PLATFORM_ALLOWED_DOMAINS = [
-  '*.virtueinspect.com',
-  'virtueinspect.com',
+  '*.eoorai.com',
+  'eoorai.com',
   '*.localhost',
   '127.0.0.1',
 ];
