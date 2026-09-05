@@ -179,6 +179,12 @@ export const volunteersApi = {
 export const membersApi = {
   /** Active + directory_visible members only. Takes no query params. */
   list: () => api.get<DirectoryEntry[]>("/api/community/members"),
+
+  /** Looks up a single member by membership id -- used by the Participate
+   * dialog to auto-fill a family member/other's name from an id they were
+   * given. Open to any authenticated member, not just admins. */
+  lookup: (membershipId: string) =>
+    api.get<DirectoryEntry>(`/api/community/members/${membershipId}`),
 };
 
 export const announcementsApi = {

@@ -198,6 +198,9 @@ export interface EventComponent {
   /** Overrides the day's, which overrides the event's. */
   audience?: EventAudience | null;
   registration_enabled: boolean;
+  /** Distinct from `registration_enabled` (plain one-tap "Join"): this offers
+   * the detailed Participate flow (single/multiple, self/family/other). */
+  participation_enabled: boolean;
   donation_enabled: boolean;
   sponsorship_enabled: boolean;
   volunteer_enabled: boolean;
@@ -272,6 +275,16 @@ export type ParticipationType =
 
 export type ParticipationStatus = "active" | "cancelled" | "attended" | "no_show";
 
+export type BeneficiaryRelation = "self" | "family" | "other";
+export type ParticipationMode = "single" | "multiple";
+
+export interface ParticipationBeneficiary {
+  id?: string;
+  relation_type: BeneficiaryRelation;
+  full_name: string;
+  membership_id?: string | null;
+}
+
 export interface Participation {
   id: string;
   organization_id: number;
@@ -280,10 +293,26 @@ export interface Participation {
   membership_id: string;
   type: ParticipationType;
   status: ParticipationStatus;
+  registration_method: "join" | "participate" | "book";
+  mode: ParticipationMode;
+  party_size: number;
   /** Presented as the member's check-in QR payload. */
   qr_code_token: string;
   attended_at?: Timestamp | null;
   createdAt: Timestamp;
+  /** Only populated for `registration_method: "participate"`. */
+  beneficiaries?: ParticipationBeneficiary[];
+}
+
+/** One beneficiary in a create/update request. Provide either
+ * `membership_id` (looked up server-side to auto-fill their name) or
+ * `full_name` (for a family member/guest who isn't a member) -- both are
+ * ignored for relation_type "self", which the server always resolves to the
+ * caller's own membership. */
+export interface BeneficiaryInput {
+  relation_type: BeneficiaryRelation;
+  full_name?: string;
+  membership_id?: string;
 }
 
 export interface CreateParticipationInput {
@@ -291,8 +320,13 @@ export interface CreateParticipationInput {
   event_component_id?: string;
   /** POST /participations only accepts these two. */
   type: "join" | "book";
+  /** Only meaningful for type "join": distinguishes a plain RSVP from the
+   * detailed Participate flow. */
+  registration_method?: "join" | "participate";
   /** Honoured for `book` only; the service ignores it for `join`. */
   seats_requested?: number;
+  mode?: ParticipationMode;
+  beneficiaries?: BeneficiaryInput[];
 }
 
 // ---------------------------------------------------------------------------

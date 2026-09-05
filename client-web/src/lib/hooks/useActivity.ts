@@ -61,6 +61,19 @@ export function useMembers() {
   });
 }
 
+/** On-demand lookup for "add the membership id to fetch the data" -- used by
+ * the Participate dialog to resolve a family member/other's name from an ID
+ * they were given, without loading the whole directory. Caller controls
+ * `enabled` (only fire once an id of plausible length has been typed). */
+export function useMemberLookup(membershipId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["member-lookup", membershipId],
+    queryFn: () => membersApi.lookup(membershipId),
+    enabled: enabled && membershipId.length > 0,
+    retry: false,
+  });
+}
+
 /** Committee announcements for the org (pinned first, then newest). */
 export function useAnnouncements() {
   return useQuery({
